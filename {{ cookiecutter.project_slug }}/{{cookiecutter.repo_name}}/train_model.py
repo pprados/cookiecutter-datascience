@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
+import os
+import pathlib
+from shutil import copyfile
+
 import click
 import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
-
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path())
-def main(input_filepath, output_filepath):
+def main(input_filepath, model_filepath):
     """ Train the model from input_filepath and save it in ../models
     """
     logger = logging.getLogger(__name__)
-    logger.info('train modelfrom processed data')
+    logger.info('train model from processed and featured data')
 
+    pathlib.Path(os.path.dirname(model_filepath)).mkdir(parents=True, exist_ok=True)
+    copyfile(input_filepath, model_filepath)  # FIXME: remove this sample line
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

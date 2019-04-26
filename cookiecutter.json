@@ -4,9 +4,10 @@
   "project_short_description": "Description of the project",
   "python_version": "3.6",
   "repo_name": "{{ cookiecutter.project_slug }}",
-  "use_aws":"y",
   "use_jupyter":"y",
+  "use_tensorflow": "y",
   "use_NLTK": "y",
   "use_Spacy": "y",
+  "use_aws":"y",
   "add_makefile_comments": "y"
 }

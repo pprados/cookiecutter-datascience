@@ -123,5 +123,3 @@ datas/interim/
 *.db
 *.rdb
 
-# exclude data from source control by default
-/data/

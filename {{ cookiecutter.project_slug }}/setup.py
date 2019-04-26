@@ -12,7 +12,7 @@ setup(
     name='{{cookiecutter.project_slug}}' + USE_GPU,
     author="Octo Technology",
     use_scm_version=True,       # Gestion des versions à partir des commits Git
-    python_requires='~=3.6',    # Version de Python
+    python_requires='~={{ cookiecutter.python_version }}',    # Version de Python
     packages=find_packages(),
     # Pour utiliser Git pour gérer les versions
     setup_requires=['setuptools_scm'],
@@ -31,17 +31,14 @@ setup(
     [
         'click',
         'python-dotenv',
-        # Exemple avec une alternative GPU
-        'tensorflow' + USE_GPU + '~=0.5',
-        {% if cookiecutter.use_jupyter == "y" %}
-        'jupyter~=1.0',  # Ouvre les add-on Jupyter
-        {% endif %}
-        'numpy~=1.14',
+{% if cookiecutter.use_jupyter == "y" %}        'tensorflow' + USE_GPU + '~=0.5',{% endif %}
+{% if cookiecutter.use_jupyter == "y" %}        'jupyter~=1.0',  # Ouvre les add-on Jupyter{% endif %}
+{% if cookiecutter.use_Spacy == "y"   %}        'spacy~=2.0', {% endif %}
+{% if cookiecutter.use_NLTK == "y"    %}        'nltk~=3.3', {% endif %}
+'numpy~=1.14',
         'pandas~=0.22',
         'plotly~=2.7',
         'scikit-learn~=0.19',
-{% if cookiecutter.use_Spacy == "y" %}        'spacy~=2.0',{% endif %}
-{% if cookiecutter.use_NLTK == "y" %}        'nltk~=3.3',{% endif %}
     ],
     # test_suite="tests",
     classifiers = [

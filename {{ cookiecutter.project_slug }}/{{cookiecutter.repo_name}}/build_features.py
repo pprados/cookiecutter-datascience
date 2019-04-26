@@ -1,20 +1,25 @@
 # -*- coding: utf-8 -*-
+import os
+import pathlib
+from shutil import copyfile
+
 import click
 import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
-
 @click.command()
-@click.argument('input_interim_filepath', type=click.Path(exists=True))
-@click.argument('output_processed_filepath', type=click.Path())
-def main(input_filepath, output_filepath):
+@click.argument('input_prepared_filepath', type=click.Path(exists=True))
+@click.argument('output_featured_filepath', type=click.Path())
+def main(input_prepared_filepath, output_featured_filepath):
     """ Runs data processing scripts to turn raw data from (../interim) into
         extended data (saved in ../processed).
     """
     logger = logging.getLogger(__name__)
-    logger.info('making final data set from raw data')
+    logger.info('add features from prepared data')
 
+    pathlib.Path(os.path.dirname(output_featured_filepath)).mkdir(parents=True, exist_ok=True)
+    copyfile(input_prepared_filepath, output_featured_filepath)  # FIXME: remove this sample line
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

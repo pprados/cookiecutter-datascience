@@ -41,11 +41,19 @@ setup(
         'plotly~=2.7',
         'scikit-learn~=0.19',
         {% if cookiecutter.use_Spacy == "y" %}
-        'spacy~=2.0',   # Exemple de Spacy avec téléchargement de data
+        'spacy~=2.0',
         {% endif %}
         {% if cookiecutter.use_NLTK == "y" %}
-        'nltk~=3.3',    # Exemple de NLTK avec téléchargement de data
+        'nltk~=3.3',
         {% endif %}
     ],
     # test_suite="tests",
+    classifiers = [
+                  'Development Status :: 4 - Beta',
+                  'Environment :: Console',
+                  'Intended Audience :: Developers',
+                  'Natural Language :: English',
+                  'Programming Language :: Python :: {{ cookiecutter.python_version }}',
+                  'Topic :: Software Development',
+              ],
 )

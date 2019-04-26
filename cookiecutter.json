@@ -2,11 +2,11 @@
   "project_name": "BDA Project",
   "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '_').replace('-', '_') }}",
   "project_short_description": "Description of the project",
+  "python_version": "3.6",
   "repo_name": "{{ cookiecutter.project_slug }}",
   "use_aws":"y",
   "use_jupyter":"y",
-  "use_NLTK": "n",
-  "use_Spacy": "n",
-  "add_makefile_comments": "y"
-
+  "use_NLTK": "y",
+  "use_Spacy": "y",
+  "add_makefile_comments": "n"
 }

@@ -1,56 +1,43 @@
-testcutter
+{{ cookiecutter.project_name }}
 ==============================
-
-A test
 
 Project Organization
 ------------
 
-    ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train`
-    ├── README.md          <- The top-level README for developers using this project.
+    ├── Makefile              <- Makefile with commands like `make data` or `make train`
+    ├── README.md             <- The top-level README for developers using this project.
     ├── data
-    │   ├── external       <- Data from third party sources.
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
+    │   ├── external          <- Data from third party sources.
+    │   ├── interim           <- Intermediate data that has been transformed.
+    │   ├── processed         <- The final, canonical data sets for modeling.
+    │   └── raw               <- The original, immutable data dump.
     │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+    ├── docs                  <- A default Sphinx project; see sphinx-doc.org for details
     │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
+    ├── models                <- Trained and serialized models, model predictions, or model summaries
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
+{% if cookiecutter.use_jupyter == "y" %}    ├── notebooks             <- Jupyter notebooks. Naming convention is a number (for ordering),
+    │                            the creator's initials, and a short `-` delimited description, e.g.
+    │                            `1.0-jqp-initial-data-exploration`.
+    │{% endif %}
+    ├── references            <- Data dictionaries, manuals, and all other explanatory materials.
     │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── reports               <- Generated analysis as HTML, PDF, LaTeX, etc.
+    │   └── figures           <- Generated graphics and figures to be used in reporting
     │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
+    ├── setup.py              <- makes project pip installable (pip install -e .[tests]) 
+    │                            so src can be imported and dependencies installed
+    ├── {{cookiecutter.repo_name}}                <- Source code for use in this project
+    │   ├── __init__.py       <- Makes src a Python module
+    │   ├── build_dataset.py  <- Scripts to download or generate data
+    │   ├── build_features.py <- Scripts to turn raw data into features for modeling
+    │   ├── train_model.py    <- Scripts to train models and then use trained models to make predictions
+    │   ├── evaluate_model.py <- Scripts to train models and then use trained models to make predictions
+    │   └── visualize.py      <- Scripts to create exploratory and results oriented visualizations
     │
-    ├── setup.py           <- makes project pip installable (pip install -e .[tests]) 
-    │                         so src can be imported and dependencies installed
-    ├── src                <- Source code for use in this project (Rename to PRJ name, and mark directory as a sources root)
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
-    │
-    ├── test               <- Unit and integrations tests ((Mark directory as a sources root).
-    └── tox.ini            <- tox file with settings for running tox; see https://tox.readthedocs.io/en/latest/
+    └── tests                 <- Unit and integrations tests ((Mark directory as a sources root).
 
 
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+<p><small>Project based on the <a target="_blank" href="https://gitlab.octo.com/pprados/cookiecutter-bda/">cookiecutter BDA project template</a>. #cookiecutterbda</small></p>

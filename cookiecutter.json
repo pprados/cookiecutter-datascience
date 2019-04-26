@@ -8,5 +8,5 @@
   "use_jupyter":"y",
   "use_NLTK": "y",
   "use_Spacy": "y",
-  "add_makefile_comments": "n"
+  "add_makefile_comments": "y"
 }

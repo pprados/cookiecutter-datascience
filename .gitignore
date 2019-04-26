@@ -77,48 +77,8 @@ docs/_build/
 # PyBuilder
 target/
 
-
-# pyenv
-.python-version
-
-# celery beat schedule file
-celerybeat-schedule
-
-# SageMath parsed files
-*.sage.py
-
 # Environments
 .idea/
-.vscode/
-# vim
-*.swp
-*.swo
-
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-site/
-
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Database
-*.db
-*.rdb
 
 # exclude data from source control by default
 tmp

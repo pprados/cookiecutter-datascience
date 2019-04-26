@@ -168,19 +168,18 @@ clean: clean-pyc
 ## Clean all environments
 clean-all: clean remove-venv
 
-# Hack pour contourner l'impossibilité d'ajouter les paramètres Jinja trim_blocks et lstrip_blocks
-# à Cookiecutter. J'applique alors des transformations à partir de Makefile.template
-# Avant l'ajout à Git.
-{{\ cookiecutter.project_slug\ }}/Makefile : Makefile.template
-	sed -e ':a' -e 'N' -e '$$!ba' -e 's/%} *\n/%}/g' Makefile.template >{{\ cookiecutter.project_slug\ }}/Makefile
-	sed -i -e ':a' -e 'N' -e '$$!ba' -e 's/\n\n *{%/{%/g' {{\ cookiecutter.project_slug\ }}/Makefile
-
-
 .PHONY: test
 ## Run all tests
-test: $(REQUIREMENTS) {{\ cookiecutter.project_slug\ }}/Makefile
+test: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python -m unittest discover -s tests -b
 
-try: {{\ cookiecutter.project_slug\ }}/Makefile
+Makefile.snippet: {{\ cookiecutter.project_slug\ }}
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
+	cp tmp/bda_project/Makefile Makefile.snippet
+	git add Makefile.snippet
+
+try:
+	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
+
+validate: Makefile.snippet try

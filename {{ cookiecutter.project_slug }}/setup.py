@@ -40,12 +40,8 @@ setup(
         'pandas~=0.22',
         'plotly~=2.7',
         'scikit-learn~=0.19',
-        {% if cookiecutter.use_Spacy == "y" %}
-        'spacy~=2.0',
-        {% endif %}
-        {% if cookiecutter.use_NLTK == "y" %}
-        'nltk~=3.3',
-        {% endif %}
+{% if cookiecutter.use_Spacy == "y" %}        'spacy~=2.0',{% endif %}
+{% if cookiecutter.use_NLTK == "y" %}        'nltk~=3.3',{% endif %}
     ],
     # test_suite="tests",
     classifiers = [

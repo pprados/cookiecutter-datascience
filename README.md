@@ -22,7 +22,7 @@ $ conda install cookiecutter
 
 ### Pour démarrer un nouveau projet, executez:
 ```bash
-    cookiecutter TODO https://gitlab.octo.com/pprados/cookiecutter-bda
+    cookiecutter https://gitlab.octo.com/pprados/cookiecutter-bda.git
 ```
 
 ## Snippet de Makefile

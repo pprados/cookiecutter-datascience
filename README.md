@@ -24,6 +24,7 @@ $ conda install cookiecutter
 ```bash
     cookiecutter https://gitlab.octo.com/pprados/cookiecutter-bda.git
 ```
+et répondez aux questions.
 
 ## Snippet de Makefile
 Il est également possible de consulter l'ensemble des [snippets de code

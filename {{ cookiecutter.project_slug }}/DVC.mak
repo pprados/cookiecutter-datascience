@@ -47,25 +47,33 @@ dvc-external-%:
 	dvc remote add ${*} $(BUCKET)/cache
 	dvc config cache.gs $*
 
-# Lock DVC file. DVC ne le reconstruit plus. Meme si cela semble nécessaire.
-# C'est util en phase de développement.
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour vérouiller un fichier DVC pour ne plus le reconstruire, meme si cela
+# semble nécessaire. C'est util en phase de développement.
 # See https://dvc.org/doc/commands-reference/lock
 lock-%:
 	dvc lock $(*:lock-%=%)
 
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour afficher les métrics gérées par DVC.
 # See https://dvc.org/doc/commands-reference/metrics
 metrics: ## show the DVC metrics
 	dvc metrics show
 
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour supprimer les fichiers de DVC du projet
 clean-dvc: # Remove all .dvc files
 	rm -Rf .dvc
 	-/usr/bin/find . -type f -name "*.dvc" -delete
-	rm -f Dvcfile data/interim/*
-	rm -f reports/auc.metric models/model.pkl
 
 #################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
+#
+# ┌─────────┐ ┌──────────┐ ┌───────┐ ┌──────────┐ ┌───────────┐
+# │ prepare ├─┤ features ├─┤ train ├─┤ evaluate ├─┤ visualize │
+# └─────────┘ └──────────┘ └───────┘ └──────────┘ └───────────┘
+#
 
 .PHONY: prepare features train evaluate visualize
 

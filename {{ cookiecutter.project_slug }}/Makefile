@@ -77,9 +77,17 @@ VENV ?= $(PRJ)
 {% if cookiecutter.use_jupyter == "y" %}KERNEL ?=$(VENV){% endif %}
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:={{ cookiecutter.python_version }}
-{% if cookiecutter.use_aws == "y" %}BUCKET = s3://$(USER)
+{% if cookiecutter.use_aws == "y" %}S3_BUCKET?=s3://$(PRJ)
 PROFILE = default{% endif %}
 {% if cookiecutter.add_makefile_comments == "y" %}
+{% if cookiecutter.use_DVC == "y" %}
+# Use DVC bucket. May be :
+# DVC_BUCKET?=s3://$(PRJ)
+# DVC_BUCKET?=gs://$(PRJ)
+# DVC_BUCKET?=ssh://user@example.com:
+# DVC_BUCKET?=hdfs://user@example.com
+DVC_BUCKET?={% if cookiecutter.use_aws == "y" %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
+{% endif %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
@@ -193,6 +201,7 @@ pipe_clear_jupyter_output:
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
 
+{% if cookiecutter.use_DVC == "n" %}
 ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	# Add git lfs if possible
 	@git lfs install >/dev/null
@@ -204,6 +213,7 @@ ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	@git lfs track "*.gif"  >/dev/null
 	@git lfs track "*.png"  >/dev/null
 endif
+{% endif %}
 
 {% if cookiecutter.use_jupyter == "y" %}ifeq ($(shell which jupyter >/dev/null ; echo "$$?"),0)
 	# Add rules to manage the output data of notebooks
@@ -323,11 +333,13 @@ endif
 
 # Ajoutez ici les bases de données supplémentaires.
 # Par exemple, ajoutez
-# $(NLTK_DATA)/corpora/wordnet
+# NLTK_DATABASE=$(PIP_PACKAGE) \
+# $(NLTK_DATA)/corpora/wordnet \
+# $(NLTK_DATA)/tokenizers/punkt \
+# $(NLTK_DATA)/corpora/stopwords
 # et c'est tout.
 NLTK_DATABASE=$(PIP_PACKAGE) \
-	$(NLTK_DATA)/tokenizers/punkt \
-	$(NLTK_DATA)/corpora/stopwords
+
 
 # Les recettes génériques de downloads
 $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
@@ -345,11 +357,12 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 # Ci-dessous, la recette pour lister toutes les bases{% endif %}
 # Ajoutez les bases complémentaires.
 # Par exemple :
-# $(CONDA_PACKAGE)/spacy/data/fr
+# SPACY-DATABASE=$(PIP_PACKAGE) \
+#   $(CONDA_PACKAGE)/spacy/data/en
 # et c'est tout.
 .PHONY: spacy-database
 SPACY-DATABASE=$(PIP_PACKAGE) \
-	$(CONDA_PACKAGE)/spacy/data/en
+
 
 # La recette générique de téléchargement
 $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
@@ -438,17 +451,17 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 ## Upload Data to S3
 sync_data_to_s3:
 ifeq (default,$(PROFILE))
-	aws s3 sync data/ s3://$(BUCKET_S3)/data/
+	aws s3 sync data/ s3://$(S3_BUCKET)/data/
 else
-	aws s3 sync data/ s3://$(BUCKET_S3)/data/ --profile $(PROFILE)
+	aws s3 sync data/ s3://$(S3_BUCKET)/data/ --profile $(PROFILE)
 endif
 
 ## Download Data from S3
 sync_data_from_s3:
 ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(BUCKET_S3)/data/ data/
+	aws s3 sync s3://$(S3_BUCKET)/data/ data/
 else
-	aws s3 sync s3://$(BUCKET_S3)/data/ data/ --profile $(PROFILE)
+	aws s3 sync s3://$(S3_BUCKET)/data/ data/ --profile $(PROFILE)
 endif{% endif %}
 {% if cookiecutter.use_jupyter == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
@@ -622,9 +635,6 @@ ec2-notebook:
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 {% endif %}{% endif %}
 
-#################################################################################
-# PROJECT RULES                                                                 #
-#################################################################################
 {#
 # ---------------------------------------------------------------------------------------
 # EXPERIMENTAL SNIPPET pour calculer automatiquement les dépendances entres fichiers python.
@@ -637,4 +647,9 @@ define python_dep
 endef
 
 #}
+
+{% if cookiecutter.use_DVC == "y" %}
+{% include 'DVC.mak' %}
+{% else %}
 {% include 'Classic.mak' %}
+{% endif %}

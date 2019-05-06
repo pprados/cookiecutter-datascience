@@ -1,4 +1,9 @@
-# /!\ WORK IN PROGRESS
+# /!\ EXPERIMENTAL: WORK IN PROGRESS
+
+# Rule to declare dependencies from tools package for all project files
+$(PRJ)/* : $(PRJ)/tools/*
+	@touch $@
+
 # Sous-projet pour essayer de faire des recettes pour DVC (https://dvc.org)
 
 # Invoke dvc run
@@ -11,145 +16,109 @@ define dvc_run
 	#dvc remove $(addsuffix .dvc,$@)
 	#	--no-commit
 	dvc run -f $1 \
-		$(addprefix -d ,$?) \
+		$(addprefix -d ,$(filter-out .%,$?)) \
 		$(if $3,-M $@,-o $@) \
 	$2
-	#if [ -e $(@D)/.gitignore ] ; then git add $(@D)/.gitignore ; fi
-	#if [ -e $1 ] ; then git add $1 ; fi
+	if [ -e $(@D)/.gitignore ] ; then git add $(@D)/.gitignore ; fi
+	if [ -e $1 ] ; then git add $1 ; fi
 endef
 
-PRJ:=bda_project
-
-DEPENDENCIES=dvc-init
+# ---------------------------------------------------------------------------------------
+# Initialize DVC
+.dvc: | .git
+	dvc init
+	dvc config cache.protected true
+	dvc remote add -d origin $(DVC_BUCKET)
+	git add .dvc/config
+DEPENDENCIES += | .dvc
 
 # ---------------------------------------------------------------------------------------
-# See https://github.com/iterative/dvc/issues/211
-# SNIPPET initialiser DVC
-# see https://dvc.org/doc/get-started/configure
-
-# Note: l'import fonctionne avec cache local, même si s3: ou autres
-#DVC_REMOTE?=$(BUCKET)
-DVC_REMOTE?=/tmp/$(PRJ)
-.dvc:
-	dvc init
-	# See https://dvc.org/doc/commands-reference/checkout
-	# FIXME dvc install
-	dvc remote add -d dvcremote $(DVC_REMOTE)
-	# PPR: fixme ?
-	#dvc remote modify dvcremote region eu-west-3
-	git add .dvc/config
-	# Azure https://dvc.org/doc/commands-reference/remote-modify
-	# ??? dvc remote modify myremote connection_string my-connection-string
-
-
-BUCKET?=s3://$(PRJ)
-BUCKET?=gs://$(PRJ)
-BUCKET?=ssh://user@example.com:
-BUCKET?=hdfs://user@example.com
-
-.PHONY: dump-*
-dump-%:
-	@if [ "${${*}}" = "" ]; then
-		echo "Environment variable $* is not set";
-		exit 1;
-	else
-		echo "$*=${${*}}";
-	fi
-
-# SNIPPET pour initialiser DVC pour utiliser un distant.
+# SNIPPET pour initialiser DVC avec la production de fichiers distants dans des buckets
 # Voir: https://dvc.org/doc/user-guide/external-outputs
-# Voir: https://dvc.org/doc/commands-reference/remote-add
 # Use :
-# - dvc-init-s3cache
-# - dvc-init-gscache
-# - dvc-init-azurecache
-# - dvc-init-sshcache
-# - dvc-init-htfscache
-.PHONY: dvc-init-*
-## Initialize the DVC cache provider
-dvc-init-%:
+# - make dvc-external-s3cache
+# - make dvc-external-gscache
+# - make dvc-external-azurecache
+# - make dvc-external-sshcache
+# - make dvc-external-htfscache
+.PHONY: dvc-external-*
+## Initialize the DVC external cache provider
+dvc-external-%:
 	dvc remote add ${*} $(BUCKET)/cache
 	dvc config cache.gs $*
-	# https://dvc.org/doc/commands-reference/config
-	dvc config cache.protected true
 
-## Initialize DVC
-dvc-init: | .dvc
+# Lock DVC file. DVC ne le reconstruit plus. Meme si cela semble nécessaire.
+# C'est util en phase de développement.
+# See https://dvc.org/doc/commands-reference/lock
+lock-%:
+	dvc lock $(*:lock-%=%)
 
+# See https://dvc.org/doc/commands-reference/metrics
+metrics: ## show the DVC metrics
+	dvc metrics show
 
-.PHONY: prepare
-data/interim/datas-prepared.csv: $(PRJ)/prepare_dataset.py data/raw/*
+clean-dvc: # Remove all .dvc files
+	rm -Rf .dvc
+	-/usr/bin/find . -type f -name "*.dvc" -delete
+	rm -f Dvcfile data/interim/*
+	rm -f reports/auc.metric models/model.pkl
+
+#################################################################################
+# PROJECT RULES                                                                 #
+#################################################################################
+
+.PHONY: prepare features train evaluate visualize
+
+data/interim/datas-prepared.csv: $(DEPENDENCIES) $(PRJ)/prepare_dataset.py data/raw/*
 	$(call dvc_run,prepare.dvc,\
 	python -O -m $(PRJ).prepare_dataset \
 		data/raw/datas.csv \
 		data/interim/datas-prepared.csv\
 	)
 prepare.dvc: data/interim/datas-prepared.csv
+## Prepare the dataset
+prepare: prepare.dvc
 
-prepare: $(DEPENDENCIES) prepare.dvc
-
-.PHONY: features
-data/interim/datas-features.csv : $(PRJ)/build_features.py data/interim/datas-prepared.csv
+data/interim/datas-features.csv : $(DEPENDENCIES) $(PRJ)/build_features.py data/interim/datas-prepared.csv
 	$(call dvc_run,feature.dvc,\
 	python -O -m $(PRJ).build_features \
 		data/interim/datas-prepared.csv \
 		data/interim/datas-features.csv\
 	)
-features: $(DEPENDENCIES) data/interim/datas-features.csv
+## Add features
+features: data/interim/datas-features.csv
 
-.PHONY: train
-models/model.pkl : $(PRJ)/train_model.py data/interim/datas-features.csv
+models/model.pkl : $(DEPENDENCIES) $(PRJ)/train_model.py data/interim/datas-features.csv
 	$(call dvc_run,train.dvc,\
 	python -O -m $(PRJ).train_model \
 		data/interim/datas-features.csv \
 		models/model.pkl \
 	)
-train: $(DEPENDENCIES) models/model.pkl
+## Train the model
+train: models/model.pkl
 
 
-.PHONY: evaluate
-reports/auc.metric: $(PRJ)/evaluate_model.py models/model.pkl
-	$(call dvc_run,Dvcfile,\
+reports/auc.metric: $(DEPENDENCIES) $(PRJ)/evaluate_model.py models/model.pkl
+	$(call dvc_run,evaluate.dvc,\
 	python -O -m $(PRJ).evaluate_model \
 		models/model.pkl \
 		data/interim/datas-features.csv \
 		reports/auc.metric \
 	,-M \
 	)
-evaluate: $(DEPENDENCIES) reports/auc.metric
+## Evalutate the model
+evaluate: reports/auc.metric
 
-.PHONY: visualize
+## Visualize the result
 visualize: $(DEPENDENCIES) $(PRJ)/visualize.py models/model.pkl
 	$(call dvc_run,visualize.dvc,\
 	python -O -m $(PRJ).visualize \
 		reports/ \
 	)
 
-# PPR c'est redondant la gestion des dépendances
-# Lock file. DVC ne le reconstruit plus. Meme si cela semble nécessaire
-# See https://dvc.org/doc/commands-reference/lock
-lock-%:
-	dvc lock $(*:lock-%=%)
-
 # See https://dvc.org/doc/commands-reference/repro
-## 	Rerun commands recorded in the pipeline stages in the same order.
-repro: DvcFile
-	dvc repro Dvcfile
-
-push:
-	git push
-	dvc push
-
-# See https://dvc.org/doc/commands-reference/commit
-# Approche --no-commit dans le dvc run, pour la recherche
-commit-% :
-	$(MAKE) $(*:commit-%=%)
-	dvc commit
-
-commit:
-	dvc commit
-
-# See https://dvc.org/doc/commands-reference/metrics
-metrics:
-	dvc metrics show
+.PHONY: repro
+## 	Re-run commands recorded in the last DVC stages in the same order.
+repro: evaluate.dvc
+	dvc repro $<
 

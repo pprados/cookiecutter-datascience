@@ -7,6 +7,7 @@
   "use_jupyter":"y",
   "use_tensorflow": "y",
   "use_text_processing": "y",
+  "use_DVC":"n",
   "use_aws":"y",
   "add_makefile_comments": "y"
 }

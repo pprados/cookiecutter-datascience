@@ -23,9 +23,10 @@ setup(
             ['mock',
              'unittest2',
              'flake8',
-{% if cookiecutter.use_jupyter == "y" %}             'jupyter~=1.0',  # Ouvre les add-on Jupyter{% endif %}
              'daff',
-{% if cookiecutter.use_aws == "y" %}             'awscli',{% endif %}
+{% if cookiecutter.use_jupyter == "y" %}             'jupyter~=1.0',  # Ouvre les add-on Jupyter{% endif %}
+{% if cookiecutter.use_DVC == "y" %}             'dvc',  # Utilise DVC{% endif %}
+{% if cookiecutter.use_aws == "y" %}             'awscli',  # Utilise AWS{% endif %}
              ]
     },
     # TODO Indiquer les dépendances à ajuster suivant le projet

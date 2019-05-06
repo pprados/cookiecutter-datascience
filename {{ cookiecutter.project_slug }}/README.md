@@ -1,8 +1,6 @@
-{{ cookiecutter.project_name }}
-==============================
+# {{ cookiecutter.project_name }}
 
-Project Organization
-------------
+# Project Organization
 
     ├── Makefile              <- Makefile with commands like `make data` or `make train`
     ├── README.md             <- The top-level README for developers using this project.
@@ -26,7 +24,7 @@ Project Organization
     │   └── figures           <- Generated graphics and figures to be used in reporting
     │
     ├── setup.py              <- makes project pip installable (pip install -e .[tests]) 
-    │                            so src can be imported and dependencies installed
+    │                            so sources can be imported and dependencies installed
     ├── {{cookiecutter.repo_name}}                <- Source code for use in this project
     │   ├── __init__.py       <- Makes src a Python module
     │   ├── build_dataset.py  <- Scripts to download or generate data
@@ -40,6 +38,10 @@ Project Organization
     └── tests                 <- Unit and integrations tests ((Mark directory as a sources root).
 
 
---------
-
-<p><small>Project based on the <a target="_blank" href="https://gitlab.octo.com/pprados/cookiecutter-bda/">cookiecutter BDA project template</a>. #cookiecutterbda</small></p>
+# Build
+```bash
+$ git clone ...
+$ make configure
+$ conda activate {{cookiecutter.repo_name}}
+$ make evalutate
+```

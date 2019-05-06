@@ -1,7 +1,7 @@
 # /!\ EXPERIMENTAL: WORK IN PROGRESS
 
 # Rule to declare dependencies from tools package for all project files
-$(PRJ)/* : $(PRJ)/tools/*
+$(PRJ)/*.py : $(PRJ)/tools/*.py
 	@touch $@
 
 # Sous-projet pour essayer de faire des recettes pour DVC (https://dvc.org)
@@ -30,7 +30,7 @@ endef
 	dvc config cache.protected true
 	dvc remote add -d origin $(DVC_BUCKET)
 	git add .dvc/config
-DEPENDENCIES += | .dvc
+REQUIREMENTS += | .dvc
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour initialiser DVC avec la production de fichiers distants dans des buckets
@@ -69,7 +69,7 @@ clean-dvc: # Remove all .dvc files
 
 .PHONY: prepare features train evaluate visualize
 
-data/interim/datas-prepared.csv: $(DEPENDENCIES) $(PRJ)/prepare_dataset.py data/raw/*
+data/interim/datas-prepared.csv: $(REQUIREMENTS) $(PRJ)/prepare_dataset.py data/raw/*
 	$(call dvc_run,prepare.dvc,\
 	python -O -m $(PRJ).prepare_dataset \
 		data/raw/datas.csv \
@@ -79,7 +79,7 @@ prepare.dvc: data/interim/datas-prepared.csv
 ## Prepare the dataset
 prepare: prepare.dvc
 
-data/interim/datas-features.csv : $(DEPENDENCIES) $(PRJ)/build_features.py data/interim/datas-prepared.csv
+data/interim/datas-features.csv : $(REQUIREMENTS) $(PRJ)/build_features.py data/interim/datas-prepared.csv
 	$(call dvc_run,feature.dvc,\
 	python -O -m $(PRJ).build_features \
 		data/interim/datas-prepared.csv \
@@ -88,7 +88,7 @@ data/interim/datas-features.csv : $(DEPENDENCIES) $(PRJ)/build_features.py data/
 ## Add features
 features: data/interim/datas-features.csv
 
-models/model.pkl : $(DEPENDENCIES) $(PRJ)/train_model.py data/interim/datas-features.csv
+models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py data/interim/datas-features.csv
 	$(call dvc_run,train.dvc,\
 	python -O -m $(PRJ).train_model \
 		data/interim/datas-features.csv \
@@ -98,7 +98,7 @@ models/model.pkl : $(DEPENDENCIES) $(PRJ)/train_model.py data/interim/datas-feat
 train: models/model.pkl
 
 
-reports/auc.metric: $(DEPENDENCIES) $(PRJ)/evaluate_model.py models/model.pkl
+reports/auc.metric: $(REQUIREMENTS) $(PRJ)/evaluate_model.py models/model.pkl
 	$(call dvc_run,evaluate.dvc,\
 	python -O -m $(PRJ).evaluate_model \
 		models/model.pkl \
@@ -110,7 +110,7 @@ reports/auc.metric: $(DEPENDENCIES) $(PRJ)/evaluate_model.py models/model.pkl
 evaluate: reports/auc.metric
 
 ## Visualize the result
-visualize: $(DEPENDENCIES) $(PRJ)/visualize.py models/model.pkl
+visualize: $(REQUIREMENTS) $(PRJ)/visualize.py models/model.pkl
 	$(call dvc_run,visualize.dvc,\
 	python -O -m $(PRJ).visualize \
 		reports/ \

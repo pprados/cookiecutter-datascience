@@ -433,7 +433,7 @@ build-%: $(REQUIREMENTS)
 # SNIPPET pour valider le code avec flake8{% endif %}
 .PHONY: lint
 ## Lint TODO
-lint: $(DEPENDENCIES)
+lint: $(REQUIREMENTS)
 	flake8 src
 {% if cookiecutter.use_jupyter == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------

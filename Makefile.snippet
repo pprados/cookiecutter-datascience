@@ -77,8 +77,9 @@ VENV ?= $(PRJ)
 KERNEL ?=$(VENV)
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:=3.6
-BUCKET = s3://$(USER)
+S3_BUCKET?=s3://$(PRJ)
 PROFILE = default
+
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
@@ -193,6 +194,7 @@ pipe_clear_jupyter_output:
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
 
+
 ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	# Add git lfs if possible
 	@git lfs install >/dev/null
@@ -204,6 +206,7 @@ ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	@git lfs track "*.gif"  >/dev/null
 	@git lfs track "*.png"  >/dev/null
 endif
+
 
 ifeq ($(shell which jupyter >/dev/null ; echo "$$?"),0)
 	# Add rules to manage the output data of notebooks
@@ -266,7 +269,8 @@ VALIDATE_VENV=$(CHECK_VENV)
 # Toutes les dépendances du projet à regrouper ici
 .PHONY: requirements
 REQUIREMENTS=$(PIP_PACKAGE) \
-		$(NLTK_DATABASE) \		$(SPACY-DATABASE) \		.gitattributes
+		$(NLTK_DATABASE) $(SPACY-DATABASE) \
+		.gitattributes
 requirements: $(REQUIREMENTS)
 
 # Règle de vérification de la bonne installation de la version de python dans l'environnement Conda
@@ -322,11 +326,13 @@ endif
 
 # Ajoutez ici les bases de données supplémentaires.
 # Par exemple, ajoutez
-# $(NLTK_DATA)/corpora/wordnet
+# NLTK_DATABASE=$(PIP_PACKAGE) \
+# $(NLTK_DATA)/corpora/wordnet \
+# $(NLTK_DATA)/tokenizers/punkt \
+# $(NLTK_DATA)/corpora/stopwords
 # et c'est tout.
 NLTK_DATABASE=$(PIP_PACKAGE) \
-	$(NLTK_DATA)/tokenizers/punkt \
-	$(NLTK_DATA)/corpora/stopwords
+
 
 # Les recettes génériques de downloads
 $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
@@ -344,11 +350,12 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 # Ci-dessous, la recette pour lister toutes les bases
 # Ajoutez les bases complémentaires.
 # Par exemple :
-# $(CONDA_PACKAGE)/spacy/data/fr
+# SPACY-DATABASE=$(PIP_PACKAGE) \
+#   $(CONDA_PACKAGE)/spacy/data/en
 # et c'est tout.
 .PHONY: spacy-database
 SPACY-DATABASE=$(PIP_PACKAGE) \
-	$(CONDA_PACKAGE)/spacy/data/en
+
 
 # La recette générique de téléchargement
 $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
@@ -419,7 +426,7 @@ build-%: $(REQUIREMENTS)
 # SNIPPET pour valider le code avec flake8
 .PHONY: lint
 ## Lint TODO
-lint: $(DEPENDENCIES)
+lint: $(REQUIREMENTS)
 	flake8 src
 
 # ---------------------------------------------------------------------------------------
@@ -437,17 +444,17 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 ## Upload Data to S3
 sync_data_to_s3:
 ifeq (default,$(PROFILE))
-	aws s3 sync data/ s3://$(BUCKET_S3)/data/
+	aws s3 sync data/ s3://$(S3_BUCKET)/data/
 else
-	aws s3 sync data/ s3://$(BUCKET_S3)/data/ --profile $(PROFILE)
+	aws s3 sync data/ s3://$(S3_BUCKET)/data/ --profile $(PROFILE)
 endif
 
 ## Download Data from S3
 sync_data_from_s3:
 ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(BUCKET_S3)/data/ data/
+	aws s3 sync s3://$(S3_BUCKET)/data/ data/
 else
-	aws s3 sync s3://$(BUCKET_S3)/data/ data/ --profile $(PROFILE)
+	aws s3 sync s3://$(S3_BUCKET)/data/ data/ --profile $(PROFILE)
 endif
 
 # ---------------------------------------------------------------------------------------
@@ -621,7 +628,48 @@ ec2-notebook:
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 
 
+
+
+
 #################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
 
+.PHONY: prepare features train evaluate visualize
+
+# Rule to declare dependencies from tools package for all project files
+$(PRJ)/*.py : $(PRJ)/tools/*.py
+	@touch $@
+
+data/interim/datas-prepared.csv : $(REQUIREMENTS) $(PRJ)/prepare_dataset.py data/raw/*
+	python -O -m $(PRJ).prepare_dataset \
+		data/raw/datas.csv \
+		data/interim/datas-prepared.csv
+## Prepare the dataset
+prepare: data/interim/datas-prepared.csv
+
+data/interim/datas-features.csv : $(REQUIREMENTS) $(PRJ)/build_features.py data/interim/datas-prepared.csv
+	python -O -m $(PRJ).build_features \
+		data/interim/datas-prepared.csv \
+		data/interim/datas-features.csv
+## Add features
+features: data/interim/datas-features.csv
+
+models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py data/interim/datas-features.csv
+	python -O -m $(PRJ).train_model \
+		data/interim/datas-features.csv \
+		models/model.pkl
+## Train the model
+train: models/model.pkl
+
+reports/auc.metric: $(REQUIREMENTS) $(PRJ)/evaluate_model.py models/model.pkl
+	python -O -m $(PRJ).evaluate_model \
+		models/model.pkl \
+		data/interim/datas-features.csv \
+		reports/auc.metric
+## Evalutate the model
+evaluate: reports/auc.metric
+
+## Visualize the result
+visualize: $(REQUIREMENTS) $(PRJ)/visualize.py models/model.pkl
+	python -O -m $(PRJ).visualize reports/

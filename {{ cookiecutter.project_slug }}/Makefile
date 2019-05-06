@@ -251,8 +251,8 @@ VALIDATE_VENV=$(CHECK_VENV)
 # SNIPPET pour gérer correctement toute les dépendances python du projet.
 # La cible `requirements` se charge de gérer toutes les dépendances
 # d'un projet Python. Dans le SNIPPET présenté, il y a de quoi gérer :
-# - les dépendances PIP{% if cookiecutter.use_Spacy == "y" %}
-# - l'import de données pour spacy{% endif %}{% if cookiecutter.use_NLTK == "y" %}
+# - les dépendances PIP{% if cookiecutter.use_text_processing == "y" %}
+# - l'import de données pour spacy
 # - l'import de données pour nltk{% endif %}{% if cookiecutter.use_jupyter == "y" %}
 # - la gestion d'un kernel pour Jupyter{% endif %}
 #
@@ -266,7 +266,8 @@ VALIDATE_VENV=$(CHECK_VENV)
 # Toutes les dépendances du projet à regrouper ici
 .PHONY: requirements
 REQUIREMENTS=$(PIP_PACKAGE) \
-{% if cookiecutter.use_NLTK == "y" %}		$(NLTK_DATABASE) \{% endif %}{% if cookiecutter.use_Spacy == "y" %}		$(SPACY-DATABASE) \{% endif %}		.gitattributes
+{% if cookiecutter.use_text_processing == "y" %}		$(NLTK_DATABASE) $(SPACY-DATABASE) \
+{% endif %}		.gitattributes
 requirements: $(REQUIREMENTS)
 
 # Règle de vérification de la bonne installation de la version de python dans l'environnement Conda
@@ -293,7 +294,7 @@ $(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(PIP_PACKAGE)
 remove-kernel:
 	@echo y | jupyter kernelspec uninstall $(KERNEL) 2>/dev/null || true
 	echo -e "$(yellow)Warning: Kernel $(KERNEL) uninstalled$(normal)"{% endif %}
-{% if cookiecutter.use_NLTK == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
+{% if cookiecutter.use_text_processing == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de nltk.
 # Ci-dessous, la recette pour lister toutes les bases.
@@ -338,7 +339,7 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 	$(VALIDATE_VENV)
 	python -O -m nltk.downloader $*
 	touch ~/nltk_data/corpora/$*{% endif %}
-{% if cookiecutter.use_Spacy == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
+{% if cookiecutter.use_text_processing == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de spacy.
 # Ci-dessous, la recette pour lister toutes les bases{% endif %}
@@ -624,5 +625,16 @@ ec2-notebook:
 #################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
+{#
+# ---------------------------------------------------------------------------------------
+# EXPERIMENTAL SNIPPET pour calculer automatiquement les dépendances entres fichiers python.
+# Pour cela, il faut installer [importlab](https://github.com/google/importlab)
+# et ajouter pour chaque fichiers python
+# toto.py: $(call python_dep,toto.py)
+# Comme c'est très lent, je déconseille d'utiliser cette approche.
+define python_dep
+	$(shell importlab --tree $1 2>/dev/null | grep -v '::' | grep '^ .*\.py$$')
+endef
 
+#}
 {% include 'Classic.mak' %}

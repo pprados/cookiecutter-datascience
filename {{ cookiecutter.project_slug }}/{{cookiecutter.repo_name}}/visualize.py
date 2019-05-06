@@ -7,6 +7,9 @@ import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
+from .tools.tools import *
+
+toto()
 
 @click.command()
 @click.argument('evaluate_filepath', type=click.Path(exists=True))

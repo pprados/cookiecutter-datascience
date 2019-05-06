@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
+from .tools import *
+
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path())

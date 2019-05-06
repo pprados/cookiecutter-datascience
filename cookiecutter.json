@@ -6,8 +6,7 @@
   "repo_name": "{{ cookiecutter.project_slug }}",
   "use_jupyter":"y",
   "use_tensorflow": "y",
-  "use_NLTK": "y",
-  "use_Spacy": "y",
+  "use_text_processing": "y",
   "use_aws":"y",
   "add_makefile_comments": "y"
 }

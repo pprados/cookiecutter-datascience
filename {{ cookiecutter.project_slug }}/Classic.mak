@@ -1,6 +1,10 @@
 
 .PHONY: prepare features train evaluate visualize
 
+# Rule to declare dependencies from tools package for all project files
+$(PRJ)/* : $(PRJ)/tools/*
+	@touch $@
+
 data/interim/datas-prepared.csv : $(PRJ)/prepare_dataset.py data/raw/*
 	python -O -m $(PRJ).prepare_dataset \
 		data/raw/datas.csv \
@@ -28,4 +32,4 @@ reports/: $(PRJ)/evaluate_model.py models/model.pkl
 evaluate: reports/auc.metric
 
 visualize: $(PRJ)/visualize.py models/model.pkl
-	python -O $(PRJ)/visualize.py reports/
+	python -O -m $(PRJ).visualize reports/

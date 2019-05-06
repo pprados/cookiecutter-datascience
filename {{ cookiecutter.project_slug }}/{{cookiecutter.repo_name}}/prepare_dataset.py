@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
+from .tools import *
 
 @click.command()
 @click.argument('input_raw_filepath', type=click.Path(exists=True))

@@ -33,7 +33,9 @@ Project Organization
     │   ├── build_features.py <- Scripts to turn raw data into features for modeling
     │   ├── train_model.py    <- Scripts to train models and then use trained models to make predictions
     │   ├── evaluate_model.py <- Scripts to train models and then use trained models to make predictions
-    │   └── visualize.py      <- Scripts to create exploratory and results oriented visualizations
+    │   ├── visualize.py      <- Scripts to create exploratory and results oriented visualizations
+    │   ├── tools/__init__.py <- Python module to expose internal API
+    │   └── tools/tools.py    <- Python module for functions, object, etc
     │
     └── tests                 <- Unit and integrations tests ((Mark directory as a sources root).
 

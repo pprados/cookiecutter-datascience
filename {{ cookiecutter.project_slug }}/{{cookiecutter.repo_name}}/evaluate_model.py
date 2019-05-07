@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+    Traitement en charge d'évaluer le modèle
+"""
+
 import os
 import pathlib
-from shutil import copyfile
+import logging
+import shutil
 
 import click
-import logging
-from pathlib import Path
-from dotenv import find_dotenv, load_dotenv
+import dotenv
 
-from .tools import *
+from .tools import *  # pylint: disable=W0401
 
 
 @click.command()
@@ -20,23 +23,23 @@ def main(data_filepath, model_filepath, evaluate_filepath):
         from data_filepath
     """
     logger = logging.getLogger(__name__)
-    logger.info('Evaludate model from processed data')
+    logger.info('Evaludate model %s from processed data', model_filepath)
 
     pathlib.Path(os.path.dirname(evaluate_filepath))\
         .mkdir(parents=True, exist_ok=True)
     # FIXME: remove this sample line
-    copyfile(data_filepath, evaluate_filepath)
+    shutil.copyfile(data_filepath, evaluate_filepath)
 
 
 if __name__ == '__main__':
-    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # not used in this stub but often useful for finding various files
-    project_dir = Path(__file__).resolve().parents[2]
+    PROJECT_DIR = pathlib.Path(__file__).resolve().parents[1]
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables
-    load_dotenv(find_dotenv())
+    dotenv.load_dotenv(dotenv.find_dotenv())
 
-    main()
+    main()  # pylint: disable=E1120

@@ -430,9 +430,12 @@ build-%: $(REQUIREMENTS)
 .PHONY: lint
 ## Lint the code
 lint: $(REQUIREMENTS)
-	flake8 $(PRJ)
+	@flake8 $(PRJ) || true
+	@echo "----------------------"
+	@pylint $(PRJ) || true
 {% if cookiecutter.use_jupyter == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
 
+toto: lint
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour executer jupyter notebook, mais en s'assurant de la bonne application des dépendances.
 # Utilisez 'make notebook' à la place de 'jupyter notebook'.{% endif %}

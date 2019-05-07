@@ -20,9 +20,9 @@ setup(
     extras_require={
         # FIXME Indiquer les dépendances nécessaire au build et au tests à ajuster suivant le projet
         'tests':
-            ['mock',
-             'unittest2',
-             'flake8',
+            [
+             'unittest2', 'mock',  # For unit tests
+             'flake8','pylint',  # For lint
              'daff',
 {% if cookiecutter.use_jupyter == "y" %}             'jupyter~=1.0',  # Ouvre les add-on Jupyter{% endif %}
 {% if cookiecutter.use_DVC == "y" %}             'dvc',  # Utilise DVC{% endif %}

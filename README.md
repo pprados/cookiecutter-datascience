@@ -86,16 +86,16 @@ et les fichiers qui ne sont pas nécessaires.
 - `make ec2-detach-%` # Pour détacher une règle sur une instance EC2
 - `make ec2-notebook` # Pour executer un notebook sur EC2
 
-## open_source_software
+### open_source_software
 - Modification des licenses dans `setup.py`
 - `make check-twine` # Pour tester le packaging avant publication
 - `make test-twine` # Pour tester publication du package sur [test.pypi.org]((http://test.pypi.org))
 - `make twine` # Pour publier la version du package sur [pypi.org](http://pypi.org)
 
-## add_makefile_comments
+### add_makefile_comments
 - Ajout des commentaires verbeux dans le `Makefile`
 
 ## Snippet de Makefile
-Il est également possible de consulter l'ensemble des [snippets de code
+Il est également possible de consulter la plupart des [snippets de code
 du Makefile](Makefile.snippet).
 

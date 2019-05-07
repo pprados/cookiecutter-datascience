@@ -447,25 +447,31 @@ sdist: $(REQUIREMENTS)
 # Pour vérifier la version produite :
 # python setup.py --version
 # Cela correspond au dernier tag d'un format 'version'{% endif %}
-.PHONY: bdist_wheel
-## Create a binary egg distribution
-bdist_wheel: $(REQUIREMENTS)
-	python setup.py bdist_egg
+.PHONY: bdist
+## Create a binary wheel distribution
+bdist: $(REQUIREMENTS)
+	python setup.py bdist_wheel
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour tester la publication d'une distribution avant sa publication.{% endif %}
+.PHONY: test-twine
+## Check the distribution before publication
+check-twine: bdist
+	twine check dist/*
 {% if cookiecutter.open_source_software == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour test la publication d'une distribution
+# SNIPPET pour tester la publication d'une distribution
 # sur test.pypi.org.{% endif %}
 .PHONY: test-twine
 ## Publish distribution on test.pypi.org
-test-twine: bdist_wheel
-	twine upload --repository-url https://test.pypi.org/legacy/ dist/*.whl
+test-twine: bdist
+	twine upload --sign --repository-url https://test.pypi.org/legacy/ dist/*
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour test la publication d'une distribution
-# sur test.pypi.org.{% endif %}
+# SNIPPET pour publier la version sur pypi.org.{% endif %}
 .PHONY: twine
 ## Publish distribution on pypi.org
-twine: bdist_wheel
+twine: bdist
 	twine upload dist/*.whl
 {% endif %}
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}

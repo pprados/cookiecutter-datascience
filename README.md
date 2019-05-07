@@ -72,6 +72,7 @@ et les fichiers qui ne sont pas nécessaires.
 
 ## open_source_software
 - Modification des licenses dans `setup.py`
+- `make check-twine` # Pour tester le packaging avant publication
 - `make test-twine` # Pour tester publication du package sur [test.pypi.org]((http://test.pypi.org))
 - `make twine` # Pour publier la version du package sur [pypi.org](http://pypi.org)
 

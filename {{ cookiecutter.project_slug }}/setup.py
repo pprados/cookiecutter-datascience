@@ -13,12 +13,16 @@ setup(
     author="Octo Technology",
     author_email="bda@octo.com",
     description="{{cookiecutter.project_short_description}}",
+    long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
+    long_description_content_type='text/markdown',
     url='https://gitlab.octo.com//{{cookiecutter.project_slug}}',  # FIXME validate URL
 
     license={% if cookiecutter.open_source_software == 'y' %}'Apache License'{% else %}'Private usage'{% endif %},
     keywords = "data science",
     classifiers=[  # See https://pypi.org/classifiers/
         'Development Status :: 2 - PRE-ALPHA',
+        # Before release
+        # 'Development Status :: 5 - Production/Stable'
         'Environment :: Console',
         'Intended Audience :: Developers',
         {% if cookiecutter.open_source_software == 'y' %}'License :: OSI Approved'{% else %}'License :: Other/Proprietary License'{% endif %},

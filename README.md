@@ -69,7 +69,7 @@ et les fichiers qui ne sont pas nécessaires.
 - `make ec2-tmux-%` # Pour executer une règle via ssh-ec2 en mode tmux
 - `make ec2-detach-%` # Pour détacher une règle sur une instance EC2
 - `make ec2-notebook` # Pour executer un notebook sur EC2
-- 
+
 ## open_source_software
 - Modification des licenses dans `setup.py`
 - `make test-twine` # Pour tester publication du package sur [test.pypi.org]((http://test.pypi.org))

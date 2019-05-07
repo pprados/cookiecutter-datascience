@@ -201,7 +201,7 @@ pipe_clear_jupyter_output:
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
 
-{% if cookiecutter.use_DVC == "n" %}
+{% if cookiecutter.use_LFS == "y" %}{% if cookiecutter.use_DVC != "y" %}
 ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	# Add git lfs if possible
 	@git lfs install >/dev/null
@@ -213,8 +213,8 @@ ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	@git lfs track "*.gif"  >/dev/null
 	@git lfs track "*.png"  >/dev/null
 endif
-{% endif %}
 
+{% endif %}{% endif %}
 {% if cookiecutter.use_jupyter == "y" %}ifeq ($(shell which jupyter >/dev/null ; echo "$$?"),0)
 	# Add rules to manage the output data of notebooks
 	@git config --local filter.dropoutput_jupyter.clean "make --silent pipe_clear_jupyter_output"

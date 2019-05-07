@@ -17,13 +17,13 @@ from .tools import *  # pylint: disable=W0401
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path())
-def main(input_filepath, model_filepath):
+def main(input_filepath: str, model_filepath: str) -> None:
     """ Train the model from input_filepath and save it in ../models
     """
     logger = logging.getLogger(__name__)
     logger.info('train model from processed and featured data')
 
-    pathlib.Path(os.path.dirname(model_filepath))\
+    pathlib.Path(os.path.dirname(model_filepath)) \
         .mkdir(parents=True, exist_ok=True)
     shutil.copyfile(input_filepath, model_filepath)  # FIXME: remove this sample line
 

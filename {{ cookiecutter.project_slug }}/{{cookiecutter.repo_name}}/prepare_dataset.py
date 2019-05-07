@@ -17,7 +17,7 @@ from .tools import *  # pylint: disable=W0401
 @click.command()
 @click.argument('input_raw_filepath', type=click.Path(exists=True))
 @click.argument('output_interim_filepath', type=click.Path())
-def main(input_raw_filepath, output_interim_filepath):
+def main(input_raw_filepath: str, output_interim_filepath: str) -> None:
     """ Runs data processing scripts to turn raw data from (../raw) into
         cleaned data ready to be analyzed and extended with
         features (saved in ../interim).
@@ -25,7 +25,7 @@ def main(input_raw_filepath, output_interim_filepath):
     logger = logging.getLogger(__name__)
     logger.info('Clean data set from raw data to interim')
 
-    pathlib.Path(os.path.dirname(output_interim_filepath))\
+    pathlib.Path(os.path.dirname(output_interim_filepath)) \
         .mkdir(parents=True, exist_ok=True)
     # FIXME: remove this sample line
     shutil.copyfile(input_raw_filepath, output_interim_filepath)

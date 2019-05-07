@@ -12,7 +12,7 @@ import dotenv
 
 @click.command()
 @click.argument('evaluate_filepath', type=click.Path(exists=True))
-def main(evaluate_filepath):
+def main(evaluate_filepath: str ) -> None:
     """ Predict with using the model from model_filepath and data
         from data_filepath
     """

@@ -18,14 +18,14 @@ from .tools import *  # pylint: disable=W0401
 @click.argument('data_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path(exists=True))
 @click.argument('evaluate_filepath', type=click.Path())
-def main(data_filepath, model_filepath, evaluate_filepath):
+def main(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> None:
     """ Evaluate the model from model_filepath and data
         from data_filepath
     """
     logger = logging.getLogger(__name__)
     logger.info('Evaludate model %s from processed data', model_filepath)
 
-    pathlib.Path(os.path.dirname(evaluate_filepath))\
+    pathlib.Path(os.path.dirname(evaluate_filepath)) \
         .mkdir(parents=True, exist_ok=True)
     # FIXME: remove this sample line
     shutil.copyfile(data_filepath, evaluate_filepath)

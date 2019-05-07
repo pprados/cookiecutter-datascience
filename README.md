@@ -31,15 +31,12 @@ et les fichiers qui ne sont pas nécessaires.
 
 ### Présent quelque soit les options
 - `make help` # Print all majors target
-
 - `make evaluate` # Evalutate the model 
 - `make prepare` # Prepare the dataset
 - `make features` # Add features
 - `make train` # Train the model
 - `make visualize` # Visualize the result
-
 - `make test` # Run all unit-tests
-
 - `make configure`  # Prepare the environment (conda venv, kernel, ...)
 - `make clean` # Clean current environment
 - `make build-%` # Invoke all script in lexical order from scripts/<% dir> 
@@ -47,7 +44,6 @@ et les fichiers qui ne sont pas nécessaires.
 - `make validate` # Validate the version before commit
 - `make sdist` # Create a source distribution
 - `make bdist` # Create a binary wheel distribution
-
 
 ### use_jupyter
 - un répertoire `notebooks/`

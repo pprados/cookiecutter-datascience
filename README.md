@@ -28,7 +28,27 @@ Lors de la création d'un projet, des questions vous sont posées
 pour identifier les caractèristiques du projet à créer.
 Elles permettent d'alléger le project, en supprimant les règles
 et les fichiers qui ne sont pas nécessaires.
- 
+
+### Présent quelque soit les options
+- `make help` # Print all majors target
+
+- `make evaluate` # Evalutate the model 
+- `make prepare` # Prepare the dataset
+- `make features` # Add features
+- `make train` # Train the model
+- `make visualize` # Visualize the result
+
+- `make test` # Run all unit-tests
+
+- `make configure`  # Prepare the environment (conda venv, kernel, ...)
+- `make clean` # Clean current environment
+- `make build-%` # Invoke all script in lexical order from scripts/<% dir> 
+- `make lint` # Lint the code
+- `make validate` # Validate the version before commit
+- `make sdist` # Create a source distribution
+- `make bdist` # Create a binary wheel distribution
+
+
 ### use_jupyter
 - un répertoire `notebooks/`
 - ajout d'une dépendance à jupyter dans `setup.py`

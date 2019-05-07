@@ -451,14 +451,14 @@ sdist: $(REQUIREMENTS)
 ## Create a binary wheel distribution
 bdist: $(REQUIREMENTS)
 	python setup.py bdist_wheel
-{% if cookiecutter.add_makefile_comments == 'y' %}
+{% if cookiecutter.open_source_software == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour tester la publication d'une distribution avant sa publication.{% endif %}
 .PHONY: test-twine
 ## Check the distribution before publication
 check-twine: bdist
 	twine check dist/*
-{% if cookiecutter.open_source_software == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
+{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour tester la publication d'une distribution
 # sur test.pypi.org.{% endif %}

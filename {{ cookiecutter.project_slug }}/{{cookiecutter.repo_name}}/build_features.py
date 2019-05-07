@@ -10,6 +10,7 @@ from dotenv import find_dotenv, load_dotenv
 
 from .tools import *
 
+
 @click.command()
 @click.argument('input_prepared_filepath', type=click.Path(exists=True))
 @click.argument('output_featured_filepath', type=click.Path())
@@ -20,8 +21,11 @@ def main(input_prepared_filepath, output_featured_filepath):
     logger = logging.getLogger(__name__)
     logger.info('add features from prepared data')
 
-    pathlib.Path(os.path.dirname(output_featured_filepath)).mkdir(parents=True, exist_ok=True)
-    copyfile(input_prepared_filepath, output_featured_filepath)  # FIXME: remove this sample line
+    pathlib.Path(os.path.dirname(output_featured_filepath))\
+        .mkdir(parents=True, exist_ok=True)
+    # FIXME: remove this sample line
+    copyfile(input_prepared_filepath, output_featured_filepath)
+
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

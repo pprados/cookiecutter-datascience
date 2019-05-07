@@ -331,17 +331,15 @@ endif
 endif
 endif
 
-# Ajoutez ici les bases de données supplémentaires.
+# Ajoutez ici les bases de données NLTK supplémentaires.
 # Par exemple, ajoutez
-# NLTK_DATABASE=$(PIP_PACKAGE) \
+# NLTK_DATABASE= \
 # $(NLTK_DATA)/corpora/wordnet \
 # $(NLTK_DATA)/tokenizers/punkt \
 # $(NLTK_DATA)/corpora/stopwords
 # et c'est tout.
-NLTK_DATABASE=$(PIP_PACKAGE) \
+NLTK_DATABASE=
 
-
-# Les recettes génériques de downloads
 $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
 	$(VALIDATE_VENV)
 	python -O -m nltk.downloader $*
@@ -355,16 +353,14 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de spacy.
 # Ci-dessous, la recette pour lister toutes les bases{% endif %}
-# Ajoutez les bases complémentaires.
+# Ajoutez les bases de données Spacy complémentaires.
 # Par exemple :
-# SPACY-DATABASE=$(PIP_PACKAGE) \
+# SPACY-DATABASE= \
 #   $(CONDA_PACKAGE)/spacy/data/en
 # et c'est tout.
 .PHONY: spacy-database
-SPACY-DATABASE=$(PIP_PACKAGE) \
+SPACY-DATABASE=
 
-
-# La recette générique de téléchargement
 $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 	$(VALIDATE_VENV)
 	python -O -m spacy download $*
@@ -407,7 +403,7 @@ upgrade-venv: upgrade-$(VENV)
 # Pour valider toutes les phases : `make nbbuild-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
 .PHONY: nbbuild-*
-## Invoke all notebooks in lexical order from pipeline/%
+## Invoke all notebooks in lexical order from notebooks/<% dir>
 nbbuild-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	time jupyter nbconvert \
@@ -423,19 +419,20 @@ nbbuild-%: $(REQUIREMENTS)
 # Pour valider toutes les phases : `make build-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
 .PHONY: build-*
-## Invoke all script in lexical order from pipeline/<dir>
+## Invoke all script in lexical order from scripts/<% dir>
 build-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	time ls pipeline/$*/*.py | grep -v __ | sed 's/\.py//g; s/\//\./g' | \
+	time ls scripts/$*/*.py | grep -v __ | sed 's/\.py//g; s/\//\./g' | \
 		xargs -L 1 -t python -O -m
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le code avec flake8{% endif %}
 .PHONY: lint
-## Lint TODO
+## Lint the code
 lint: $(REQUIREMENTS)
-	flake8 src
+	flake8 $(PRJ)
 {% if cookiecutter.use_jupyter == "y" %}{% if cookiecutter.add_makefile_comments == "y" %}
+
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour executer jupyter notebook, mais en s'assurant de la bonne application des dépendances.
 # Utilisez 'make notebook' à la place de 'jupyter notebook'.{% endif %}
@@ -594,10 +591,10 @@ validate: test build-*
 VENV_AWS=cntk_p36
 
 # Initialisation de l'instance EC2
-export AWS_USER_DATA
 # Les deux premières lignes permettent d'avoir une trace de l'initialisation
 # de l'instance EC2 sur /tmp/user-data.log
 # C'est pratique pour le debug
+export AWS_USER_DATA
 define AWS_USER_DATA
 #!/bin/bash -x
 exec > /tmp/user-data.log 2>&1
@@ -605,7 +602,7 @@ sudo su - ec2-user -c "conda install -n $(VENV_AWS) make>=4 -y"
 endef
 
 # Quel est le cycle de vie par défaut des instances, via ssh-ec2 ?
-#EC2_LIFE_CYCLE=--terminate
+#--leave --stop ou --terminate
 EC2_LIFE_CYCLE=--leave
 {% if cookiecutter.add_makefile_comments == "y" %}
 # Recette permettant un 'make ec2-test'{% endif %}

@@ -10,6 +10,7 @@ from dotenv import find_dotenv, load_dotenv
 
 from .tools import *
 
+
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path())
@@ -19,8 +20,10 @@ def main(input_filepath, model_filepath):
     logger = logging.getLogger(__name__)
     logger.info('train model from processed and featured data')
 
-    pathlib.Path(os.path.dirname(model_filepath)).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(os.path.dirname(model_filepath))\
+        .mkdir(parents=True, exist_ok=True)
     copyfile(input_filepath, model_filepath)  # FIXME: remove this sample line
+
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

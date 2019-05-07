@@ -1,25 +1,23 @@
 # -*- coding: utf-8 -*-
-import os
-from shutil import copyfile
-
 import click
 import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
-from .tools.tools import *
+from .tools import *
 
-toto()
 
 @click.command()
 @click.argument('evaluate_filepath', type=click.Path(exists=True))
 def main(evaluate_filepath):
-    """ Prefict with using the model from model_filepath and data from data_filepath
+    """ Predict with using the model from model_filepath and data
+        from data_filepath
     """
     logger = logging.getLogger(__name__)
     logger.info('Visualize the results')
 
     # TODO: A your code here
+
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

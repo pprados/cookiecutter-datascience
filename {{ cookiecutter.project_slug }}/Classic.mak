@@ -9,7 +9,7 @@
 
 .PHONY: prepare features train evaluate visualize
 
-# Rule to declare dependencies from tools package for all project files
+# Rule to declare dependencies from tools module for all project files
 $(PRJ)/*.py : $(PRJ)/tools/*.py
 	@touch $@
 

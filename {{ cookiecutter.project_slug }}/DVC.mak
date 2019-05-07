@@ -1,12 +1,7 @@
-# /!\ EXPERIMENTAL: WORK IN PROGRESS
 
-# Rule to declare dependencies from tools package for all project files
-$(PRJ)/*.py : $(PRJ)/tools/*.py
-	@touch $@
-
-# Sous-projet pour essayer de faire des recettes pour DVC (https://dvc.org)
-
-# Invoke dvc run
+{% if cookiecutter.add_makefile_comments == "y" %}
+# ---------------------------------------------------------------------------------------{% endif %}
+# Function to invoke DVC run
 # $1 : dvc file
 # $2 : cmd to invoke (python ...)
 # $3 : empty or -M
@@ -23,15 +18,16 @@ define dvc_run
 	if [ -e $1 ] ; then git add $1 ; fi
 endef
 
+{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
-# Initialize DVC
+# Initialize DVC{% endif %}
 .dvc: | .git
 	dvc init
 	dvc config cache.protected true
 	dvc remote add -d origin $(DVC_BUCKET)
 	git add .dvc/config
 REQUIREMENTS += | .dvc
-
+{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour initialiser DVC avec la production de fichiers distants dans des buckets
 # Voir: https://dvc.org/doc/user-guide/external-outputs
@@ -40,29 +36,32 @@ REQUIREMENTS += | .dvc
 # - make dvc-external-gscache
 # - make dvc-external-azurecache
 # - make dvc-external-sshcache
-# - make dvc-external-htfscache
+# - make dvc-external-htfscache{% endif %}
 .PHONY: dvc-external-*
-## Initialize the DVC external cache provider
+## Initialize the DVC external cache provider (dvc-external-s3cache)
 dvc-external-%:
 	dvc remote add ${*} $(BUCKET)/cache
 	dvc config cache.gs $*
-
+{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour vérouiller un fichier DVC pour ne plus le reconstruire, meme si cela
 # semble nécessaire. C'est util en phase de développement.
-# See https://dvc.org/doc/commands-reference/lock
+# See https://dvc.org/doc/commands-reference/lock{% endif %}
+# Lock DVC file
 lock-%:
 	dvc lock $(*:lock-%=%)
-
+{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour afficher les métrics gérées par DVC.
-# See https://dvc.org/doc/commands-reference/metrics
-metrics: ## show the DVC metrics
+# See https://dvc.org/doc/commands-reference/metrics{% endif %}
+## show the DVC metrics
+metrics:
 	dvc metrics show
-
+{% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour supprimer les fichiers de DVC du projet
-clean-dvc: # Remove all .dvc files
+# SNIPPET pour supprimer les fichiers de DVC du projet{% endif %}
+# Remove all .dvc files
+clean-dvc:
 	rm -Rf .dvc
 	-/usr/bin/find . -type f -name "*.dvc" -delete
 
@@ -76,6 +75,10 @@ clean-dvc: # Remove all .dvc files
 #
 
 .PHONY: prepare features train evaluate visualize
+
+# Rule to declare dependencies from tools modules for all project files
+$(PRJ)/*.py : $(PRJ)/tools/*.py
+	@touch $@
 
 data/interim/datas-prepared.csv: $(REQUIREMENTS) $(PRJ)/prepare_dataset.py data/raw/*
 	$(call dvc_run,prepare.dvc,\
@@ -123,8 +126,8 @@ visualize: $(REQUIREMENTS) $(PRJ)/visualize.py models/model.pkl
 	python -O -m $(PRJ).visualize \
 		reports/ \
 	)
-
-# See https://dvc.org/doc/commands-reference/repro
+{% if cookiecutter.add_makefile_comments == "y" %}
+# See https://dvc.org/doc/commands-reference/repro{% endif %}
 .PHONY: repro
 ## 	Re-run commands recorded in the last DVC stages in the same order.
 repro: evaluate.dvc

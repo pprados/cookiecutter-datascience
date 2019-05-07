@@ -11,6 +11,24 @@ USE_GPU = "-gpu" if (os.environ['GPU'].lower() in 'yes'
 setup(
     name='{{cookiecutter.project_slug}}' + USE_GPU,
     author="Octo Technology",
+    author_email="bda@octo.com",
+    description="{{cookiecutter.project_short_description}}",
+    url='https://gitlab.octo.com//{{cookiecutter.project_slug}}',  # FIXME validate URL
+
+    license={% if cookiecutter.open_source_software == 'y' %}'Apache License'{% else %}'Private usage'{% endif %},
+    keywords = "data science",
+    classifiers=[  # See https://pypi.org/classifiers/
+        'Development Status :: 2 - PRE-ALPHA',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        {% if cookiecutter.open_source_software == 'y' %}'License :: OSI Approved'{% else %}'License :: Other/Proprietary License'{% endif %},
+        'Natural Language :: English',
+        'Programming Language :: Python :: {{ cookiecutter.python_version }}',
+        'Operating System :: OS Independent',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    ],
+    test_suite="tests",
+
     python_requires='~={{ cookiecutter.python_version }}',  # Version de Python
     packages=find_packages(),
     # Pour utiliser Git pour extraire les numéros des versions
@@ -21,6 +39,7 @@ setup(
         # FIXME Indiquer les dépendances nécessaire au build et au tests à ajuster suivant le projet
         'tests':
             [
+                'twine',  # For publish package in Pypi
                 'unittest2', 'mock',  # For unit tests
                 'flake8', 'pylint',  # For lint
                 'daff',
@@ -42,13 +61,4 @@ setup(
         'plotly~=2.7',
         'scikit-learn~=0.19',
     ],
-    # test_suite="tests",
-    classifiers = [
-                  'Development Status :: 4 - Beta',
-                  'Environment :: Console',
-                  'Intended Audience :: Developers',
-                  'Natural Language :: English',
-                  'Programming Language :: Python :: {{ cookiecutter.python_version }}',
-                  'Topic :: Machine Learning',
-              ],
 )

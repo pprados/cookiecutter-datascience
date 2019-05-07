@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #rm DVC.mak
 rm Classic.mak DVC.mak
+{% if cookiecutter.use_jupyter == "n" %}
+rm -Rf notebooks
+{% endif %}
 cat <<END
 Read README.md file.
 

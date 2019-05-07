@@ -44,4 +44,5 @@ $ git clone ...
 $ make configure
 $ conda activate {{cookiecutter.repo_name}}
 $ make evalutate
+$ make help
 ```

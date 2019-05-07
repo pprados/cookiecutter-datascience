@@ -410,7 +410,44 @@ build-%: $(REQUIREMENTS)
 .PHONY: lint
 ## Lint the code
 lint: $(REQUIREMENTS)
-	flake8 $(PRJ)
+	@flake8 $(PRJ) || true
+	@echo "----------------------"
+	@pylint $(PRJ) || true
+
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour créer une distribution des sources
+.PHONY: lint
+## Create a source distribution
+sdist: $(REQUIREMENTS)
+	python setup.py sdist
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour créer une distribution des binaires au format egg.
+# Pour vérifier la version produite :
+# python setup.py --version
+# Cela correspond au dernier tag d'un format 'version'
+.PHONY: bdist_wheel
+## Create a binary egg distribution
+bdist_wheel: $(REQUIREMENTS)
+	python setup.py bdist_egg
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour test la publication d'une distribution
+# sur test.pypi.org.
+.PHONY: test-twine
+## Publish distribution on test.pypi.org
+test-twine: bdist_wheel
+	twine upload --repository-url https://test.pypi.org/legacy/ dist/*.whl
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour test la publication d'une distribution
+# sur test.pypi.org.
+.PHONY: twine
+## Publish distribution on pypi.org
+twine: bdist_wheel
+	twine upload dist/*.whl
+
 
 
 # ---------------------------------------------------------------------------------------
@@ -546,11 +583,13 @@ clean-all: clean remove-venv remove-kernel
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour déclencher les tests unitaires
+# Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite
+
 .PHONY: test
 ## Run all tests
 test: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	python -m unittest discover -s tests -b
+	python setup.py test
 
 # SNIPPET pour vérifier les TU et le recalcule de tous les notebooks
 .PHONY: validate

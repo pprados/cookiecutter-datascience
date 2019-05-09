@@ -131,8 +131,8 @@ $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 ## Prepare the environment (conda venv, kernel, ...)
 configure:
 	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y
-	echo -e "Use: $(cyan)conda activate $(VENV)$(normal)"
-
+	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
+	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal)" ; fi
 
 # ---------------------------------------------------------------------------------------
 .PHONY: remove-venv
@@ -140,7 +140,7 @@ remove-venv remove-$(VENV):
 	@$(DEACTIVATE_VENV)
 	conda env remove --name "$(VENV)" -y
 	echo -e "Use: $(cyan)conda deactivate$(normal)"
-## Remove venv
+# Remove venv
 remove-venv : remove-$(VENV)
 
 # ---------------------------------------------------------------------------------------
@@ -174,12 +174,12 @@ test: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python -m unittest discover -s tests -b
 
-Makefile.snippet: {{\ cookiecutter.project_slug\ }}
+Makefile.snippet: {{\ cookiecutter.project_slug\ }} $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
 	cp tmp/bda_project/Makefile Makefile.snippet
 	git add Makefile.snippet
 
-try:
+try: $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
 
 validate: Makefile.snippet try

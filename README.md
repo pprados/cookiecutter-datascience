@@ -30,35 +30,39 @@ Elles permettent d'alléger le project, en supprimant les règles
 et les fichiers qui ne sont pas nécessaires.
 
 ### Présent quelque soit les options
-- `make help` # Print all majors target
+
+Pour le pipeline de data-science
 - `make evaluate` # Evalutate the model 
 - `make prepare` # Prepare the dataset
 - `make features` # Add features
 - `make train` # Train the model
 - `make visualize` # Visualize the result
-- `make test` # Run all unit-tests
+
+Et le reste, pour la gestion du projet
+- `make help` # Print all majors target
 - `make configure`  # Prepare the environment (conda venv, kernel, ...)
-- `make clean` # Clean current environment
 - `make build-%` # Invoke all script in lexical order from scripts/<% dir> 
 - `make lint` # Lint the code
+- `make test` # Run all unit-tests
 - `make validate` # Validate the version before commit
+- `make clean` # Clean current environment
 - `make sdist` # Create a source distribution
 - `make bdist` # Create a binary wheel distribution
 
 ### use_jupyter
 - un répertoire `notebooks/`
-- ajout d'une dépendance à jupyter dans `setup.py`
+- une dépendance à jupyter dans `setup.py`
 - des hooks à GIT pour nettoyer les notebooks lors des push/pull
-- la gestion du kernel du projet
+- la gestion d'un kernel Jupyter dédié au projet
 - `make remove-kernel` # Pour supprimer le kernel du projet
 - `make nbbuild-%` # Pour executer tous les notebooks
 - `make notebook` # pour gérer les dépendances
 - `make nbconvert` # Pour convertir les notebooks en script pythons
 - `make clean-notebooks` # Pour nettoyer les données dans les notebooks
-- `make ec2-notebook` # Si AWS, pour lancer un notebook sur une instance EC2
+- `make ec2-notebook` # Si AWS, pour lancer un notebook sur une instance EC2 (via [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2))
  
 ### use_tensorflow
-- ajout d'une dépendance à Tensorflow, avec ou sans GPU suivant la plateforme
+- une dépendance à Tensorflow, avec ou sans GPU suivant la plateforme
 
 ### use_text_processing
 - une dépendance à [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
@@ -67,33 +71,33 @@ et les fichiers qui ne sont pas nécessaires.
  
 ### use_git_LFS
 - ajout de l'installation des hooks LFS dans le projet si possible
-- ajout des tracks standards (.pkl, *.bin, *.jpg, *.jpeg, *.git, *.png)
+- ajout des tracks de fichiers standards (.pkl, *.bin, *.jpg, *.jpeg, *.git, *.png)
 
-### use_DVC
+### use_[DVC](https://dvc.org/)
 - modification dès règles du pipeline du projet, pour exploiter `dvc run`
 - ajout d'une variable `DVC_BUCKET` pour indiquer où localiser les données
 - `make dvc-external-%` # Pour ajouter un suivit des modifications de fichier externe
 - `make lock-%` # Pour bloquer le rebuild d'un fichier DVC
 - `make metrics` # Pour afficher les métriques de DVC
 
-### use_aws
+### use_aws (utilisation de [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2))
 - une dépendance à `awscli`
 - une variable `S3_BUCKET` pour le bucket du projet
-- `make sync_data_to_s3` # Pour envoyer une copie des data/ fichiers vers S3
-- `make sync_data_from_s3` # Pour récupérer une copie des data/ depuis S3
-- `make ec2-%` # Pour executer une règle via ssh-ec2
-- `make ec2-tmux-%` # Pour executer une règle via ssh-ec2 en mode tmux
+- `make sync_data_to_s3` # Pour envoyer une copie des `data/\ vers S3
+- `make sync_data_from_s3` # Pour récupérer une copie des `data/` depuis S3
+- `make ec2-%` # Pour executer une règle via `ssh-ec2`
+- `make ec2-tmux-%` # Pour executer une règle via `ssh-ec2` en mode tmux
 - `make ec2-detach-%` # Pour détacher une règle sur une instance EC2
 - `make ec2-notebook` # Pour executer un notebook sur EC2
 
 ### open_source_software
 - Modification des licenses dans `setup.py`
 - `make check-twine` # Pour tester le packaging avant publication
-- `make test-twine` # Pour tester publication du package sur [test.pypi.org]((http://test.pypi.org))
+- `make test-twine` # Pour tester la publication du package sur [test.pypi.org]((http://test.pypi.org))
 - `make twine` # Pour publier la version du package sur [pypi.org](http://pypi.org)
 
 ### add_makefile_comments
-- Ajout des commentaires verbeux dans le `Makefile`
+- Ajout des commentaires "verbeux" dans le `Makefile`
 
 ## Snippet de Makefile
 Il est également possible de consulter la plupart des [snippets de code

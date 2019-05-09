@@ -1,22 +1,32 @@
 # !/usr/bin/env python
-
+import os
 from distutils.core import setup
 setup(
     name='cookiecutter-bda',
     packages=[],
-    version='0.1.0',
+    # Pour utiliser Git pour extraire les numéros des versions
+    use_scm_version=True,  # Gestion des versions à partir des commits Git
+    setup_requires=['setuptools_scm'],
     description='Cookiecutter template for BDA',
+    long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
+    long_description_content_type='text/markdown',
     author='Philippe Prados',
-    license='Private',
     author_email='pprados@octo.com',
-    url='https://github.com/audreyr/cookiecutter-pypackage', # FIXME
+    license='Private',
+    test_suite="tests",
+    url='https://gitlab.octo.com/pprados/cookiecutter-bda',
     keywords=['cookiecutter', 'template', 'package', ],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
+        'License :: Other/Proprietary License',
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Programming Language :: Python :: 3.6',
         'Topic :: Software Development',
+    ],
+    install_requires =
+    [
+        'cookiecutter',
     ],
 )

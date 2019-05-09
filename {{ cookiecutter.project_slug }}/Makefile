@@ -372,7 +372,8 @@ $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 ## Prepare the environment (conda venv, kernel, ...)
 configure:
 	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y
-	echo -e "Use: $(cyan)conda activate $(VENV)$(normal)"
+	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
+	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal)" ; fi
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------{% endif %}
 .PHONY: remove-venv
@@ -465,14 +466,14 @@ check-twine: bdist
 .PHONY: test-twine
 ## Publish distribution on test.pypi.org
 test-twine: bdist
-	twine upload --sign --repository-url https://test.pypi.org/legacy/ dist/*
+	ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour publier la version sur pypi.org.{% endif %}
 .PHONY: twine
 ## Publish distribution on pypi.org
 twine: bdist
-	twine upload dist/*.whl
+	ls . --hide "*.dev*" | xargs twine upload
 {% endif %}
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 
@@ -566,7 +567,7 @@ clean-pyc:
 clean-build:
 	@echo "+ $@"
 	@rm -fr build/
-	@rm -fr dist/
+	@rm -fr dist/*.dev*
 	@rm -fr *.egg-info
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------

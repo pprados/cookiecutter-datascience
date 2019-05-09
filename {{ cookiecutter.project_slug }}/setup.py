@@ -52,14 +52,14 @@ setup(
 {% if cookiecutter.use_aws == "y"     %}                'awscli',  # Utilise AWS{% endif %}
             ]
         },
-    # TODO Indiquer les dépendances à ajuster suivant le projet
+    # TODO Indiquer les dépendances nécessaire à l'execution du composant, à ajuster suivant le projet
     install_requires =
     [
         'click',
         'python-dotenv',
-{% if cookiecutter.use_tensorflow == "y"      %}       'tensorflow' + USE_GPU + '~=0.5', {% endif %}
-{% if cookiecutter.use_text_processing == "y" %}       'spacy~=2.0', {% endif %}
-{% if cookiecutter.use_text_processing == "y" %}       'nltk~=3.3', {% endif %}
+{% if cookiecutter.use_tensorflow == "y"      %}        'tensorflow' + USE_GPU + '~=0.5', {% endif %}
+{% if cookiecutter.use_text_processing == "y" %}        'spacy~=2.0', {% endif %}
+{% if cookiecutter.use_text_processing == "y" %}        'nltk~=3.3', {% endif %}
         'numpy~=1.14',
         'pandas~=0.22',
         'plotly~=2.7',

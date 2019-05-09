@@ -1,0 +1,6 @@
+.git
+.eggs
+build
+data/interim
+dist
+docs

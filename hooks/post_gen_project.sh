@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
-#rm DVC.mak
+# ----------- Manage colors
+if test -t 1; then
+
+    # see if it supports colors...
+    ncolors=$(tput colors)
+
+    if test -n "$ncolors" && test $ncolors -ge 8; then
+        normal="$(tput sgr0)"
+        red="$(tput setaf 1)"
+        green="$(tput setaf 2)"
+        yellow="$(tput setaf 3)"
+        gray="$(tput setaf 8)"
+    fi
+fi
+
 rm Classic.mak DVC.mak
 {% if cookiecutter.use_jupyter == "n" %}
 rm -Rf notebooks
@@ -7,7 +21,7 @@ rm -Rf notebooks
 cat <<END
 Read README.md file.
 
-The project use:
+The project {% if cookiecutter.open_source_software == "y" %}is open source and {% endif %}use:
 - Python {{ cookiecutter.python_version }}
 {% if cookiecutter.use_tensorflow == "y" %}- Tensorflow with or without GPU{% endif %}
 {% if cookiecutter.use_text_processing == "y" %}- Text processing (NLTK and/or Spacy){% endif %}
@@ -15,12 +29,15 @@ The project use:
 {% if cookiecutter.use_DVC == "y" %}- DVC to manage datas{% endif %}
 
 Use can use:
-- make prepare    # To prepare datas
-- make feature    # To add features
-- make train      # To train the model
-- make evaluate   # To validate the model
-- make visualize  # To validate
-{% if cookiecutter.use_DVC == "y" %}- make repro      # To rebuild DVC dependencies{% endif %}
+- ${yellow}make prepare${normal}    # To prepare datas
+- ${yellow}make feature${normal}    # To add features
+- ${yellow}make train${normal}      # To train the model
+- ${yellow}make evaluate${normal}   # To validate the model
+- ${yellow}make visualize${normal}  # To validate
+{% if cookiecutter.use_DVC == "y" %}- ${yellow}make repro${normal}      # To rebuild DVC dependencies{% endif %}
 
-(update the python file in '{{ cookiecutter.project_slug }}' directory)
+Now, check if the make version is 4+:
+$ ${green}make -v${normal}
+and
+$ ${green}cd {{ cookiecutter.project_slug }} && make configure${normal}
 END

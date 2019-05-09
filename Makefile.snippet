@@ -352,7 +352,8 @@ $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 ## Prepare the environment (conda venv, kernel, ...)
 configure:
 	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y
-	echo -e "Use: $(cyan)conda activate $(VENV)$(normal)"
+	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
+	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal)" ; fi
 
 # ---------------------------------------------------------------------------------------
 .PHONY: remove-venv
@@ -427,26 +428,10 @@ sdist: $(REQUIREMENTS)
 # Pour vérifier la version produite :
 # python setup.py --version
 # Cela correspond au dernier tag d'un format 'version'
-.PHONY: bdist_wheel
-## Create a binary egg distribution
-bdist_wheel: $(REQUIREMENTS)
-	python setup.py bdist_egg
-
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour test la publication d'une distribution
-# sur test.pypi.org.
-.PHONY: test-twine
-## Publish distribution on test.pypi.org
-test-twine: bdist_wheel
-	twine upload --repository-url https://test.pypi.org/legacy/ dist/*.whl
-
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour test la publication d'une distribution
-# sur test.pypi.org.
-.PHONY: twine
-## Publish distribution on pypi.org
-twine: bdist_wheel
-	twine upload dist/*.whl
+.PHONY: bdist
+## Create a binary wheel distribution
+bdist: $(REQUIREMENTS)
+	python setup.py bdist_wheel
 
 
 
@@ -484,12 +469,12 @@ endif
 # Le code utilise un modèle permettant d'encadrer les cellules Markdown dans des strings.
 # Les scripts possède ensuite le flag d'exécution, pour pouvoir les lancer directement
 # via un 'scripts/phase1/1_sample.py'.
-.PHONY: nbconvert add_nbconvert_to_git
+.PHONY: nbconvert
 # Convert all notebooks to python scripts
 _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	@echo -e "Convert all notebooks..."
 	notebook_path=notebooks
-	script_path=src/scripts
+	script_path=scripts
 	tmpfile=$$(mktemp /tmp/make-XXXXX)
 	
 	cat >$${tmpfile} <<TEMPLATE
@@ -536,11 +521,11 @@ clean-pyc:
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer les fichiers de builds.
 .PHONY: clean-build
-## Remove build artifacts
+# Remove build artifacts
 clean-build:
 	@echo "+ $@"
 	@rm -fr build/
-	@rm -fr dist/
+	@rm -fr dist/*.dev*
 	@rm -fr *.egg-info
 
 # ---------------------------------------------------------------------------------------
@@ -578,7 +563,7 @@ clean: clean-pyc clean-build clean-notebooks
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour faire le ménage du projet (hors environnement)
 .PHONY: clean-all
-## Clean all environments
+# Clean all environments
 clean-all: clean remove-venv remove-kernel
 
 # ---------------------------------------------------------------------------------------
@@ -586,7 +571,7 @@ clean-all: clean remove-venv remove-kernel
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite
 
 .PHONY: test
-## Run all tests
+## Run all unit-tests
 test: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python setup.py test

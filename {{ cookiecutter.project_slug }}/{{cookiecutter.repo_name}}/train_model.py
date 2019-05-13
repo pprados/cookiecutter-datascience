@@ -27,8 +27,7 @@ from .tools import *  # pylint: disable=W0401
 def main(input_filepath: str,
          model_filepath: str,
          epoch,
-         batch_size,
-         sageMaker) -> int:
+         batch_size) -> int:
     """ Train the model from input_filepath and save it in ../models
     """
     logger = logging.getLogger(__name__)

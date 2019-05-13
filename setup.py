@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 import os
 from distutils.core import setup
+
 setup(
     name='cookiecutter-bda',
     packages=[],
@@ -25,7 +26,14 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Topic :: Software Development',
     ],
-    install_requires =
+    extras_require={
+        'tests':
+            [
+                'unittest2', 'mock',  # For unit tests
+                'pytest', 'pytest-openfiles', 'pytest-cookies',
+            ]
+    },
+    install_requires=
     [
         'cookiecutter',
     ],

@@ -172,7 +172,7 @@ clean-all: clean remove-venv
 ## Run all tests
 test: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	python -m unittest discover -s tests -b
+	python -m pytest -s tests
 
 Makefile.snippet: {{\ cookiecutter.project_slug\ }} $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
@@ -182,4 +182,27 @@ Makefile.snippet: {{\ cookiecutter.project_slug\ }} $(REQUIREMENTS)
 try: $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
 
-validate: Makefile.snippet try
+_make-%: try
+	cd tmp/bda_project
+	source $(CONDA_BASE)/bin/activate bda_project
+	make $*
+
+check-lint: _make-lint
+
+check-clean: _make-clean _make-clean-notebooks
+
+check-dist: _make-sdist _make-bdist
+
+## Try all machine learning cycle
+check-all-ml: _make-train _make-evaluate _make-visualize
+
+check-configure:
+	conda env remove -n bda_project
+	cd tmp/bda_project
+	make configure
+
+## Try all major make target
+check-all-make: check-configure check-all-ml check-dist check-lint check-clean
+
+## Validate all before commit
+validate: Makefile.snippet test check-all-make

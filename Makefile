@@ -202,7 +202,7 @@ check-configure:
 	make configure
 
 ## Try all major make target
-check-all-make: check-configure check-all-ml check-dist check-lint check-clean
+check-all-make: check-configure check-all-ml check-dist check-lint check-clean _make-docs
 
 ## Validate all before commit
 validate: Makefile.snippet test check-all-make

@@ -1,6 +1,6 @@
 # {{ cookiecutter.project_name }}
 
-# Project Organization
+## Project Organization
 
     ├── Makefile              <- Makefile with commands like `make data` or `make train`
     ├── README.md             <- The top-level README for developers using this project.
@@ -38,7 +38,7 @@
     └── tests                 <- Unit and integrations tests ((Mark directory as a sources root).
 
 
-# Build
+## Build
 ```bash
 $ git clone ...
 $ make configure

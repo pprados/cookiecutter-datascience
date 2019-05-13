@@ -44,6 +44,7 @@ setup(
         'tests':
             [
                 'twine',  # For publish package in Pypi
+                'sphinx', 'sphinx-execute-code', 'm2r',  # For generate doc
                 'unittest2', 'mock',  # For unit tests
                 'pytest','pytest-openfiles',
                 'flake8', 'pylint',  # For lint

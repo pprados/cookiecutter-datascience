@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    Traitement en charge de préparer le dataset (changement de format, nettoyage, etc)
+    Traitement en charge de préparer le dataset (changement de format, nettoyage, etc).
 """
 
 import os
@@ -12,7 +12,7 @@ import sys
 import click
 import dotenv
 
-from .tools import *  # pylint: disable=W0401
+#from .tools import *  # pylint: disable=W0401
 
 
 @click.command()
@@ -22,6 +22,10 @@ def main(input_raw_filepath: str, output_interim_filepath: str) -> int:
     """ Runs data processing scripts to turn raw data from (../raw) into
         cleaned data ready to be analyzed and extended with
         features (saved in ../interim).
+
+        :param input_raw_filepath: data file path
+        :param output_interim_filepath: new file to write with prepared datas
+        :return: 0 if ok, else error
     """
     logger = logging.getLogger(__name__)
     logger.info('Clean data set from raw data to interim')

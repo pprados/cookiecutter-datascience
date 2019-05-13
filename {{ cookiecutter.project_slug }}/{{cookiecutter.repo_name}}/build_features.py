@@ -13,8 +13,7 @@ import sys
 import click
 import dotenv
 
-from .tools import *  # pylint: disable=W0401
-
+#from .tools import *  # pylint: disable=W0401
 
 @click.command()
 @click.argument('input_prepared_filepath', type=click.Path(exists=True))
@@ -22,6 +21,10 @@ from .tools import *  # pylint: disable=W0401
 def main(input_prepared_filepath: str, output_featured_filepath: str) -> int:
     """ Runs data processing scripts to turn raw data from (../interim) into
         extended data (saved in ../processed).
+
+        :param input_prepared_filepath: input prepared file path
+        :param output_featured_filepath: output file path with features
+        :return: 0 if ok, else error
     """
     logger = logging.getLogger(__name__)
     logger.info('add features from prepared data')

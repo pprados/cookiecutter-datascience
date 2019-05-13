@@ -431,9 +431,24 @@ build-%: $(REQUIREMENTS)
 .PHONY: lint
 ## Lint the code
 lint: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
 	@flake8 $(PRJ) || true
 	@echo "----------------------"
 	@pylint $(PRJ) || true
+
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour créer la documentation html du projet{% endif %}
+.PHONY: rst docs
+# Generate API docs
+rst:
+	sphinx-apidoc -f -o docs/source $(PRJ)/
+
+## Create HTML documentation
+# FIXME docs: $(REQUIREMENTS) rst
+docs: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
+	sphinx-build -b html docs build_docs
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -441,6 +456,7 @@ lint: $(REQUIREMENTS)
 .PHONY: lint
 ## Create a source distribution
 sdist: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
 	python setup.py sdist
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -451,6 +467,7 @@ sdist: $(REQUIREMENTS)
 .PHONY: bdist
 ## Create a binary wheel distribution
 bdist: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
 	python setup.py bdist_wheel
 {% if cookiecutter.open_source_software == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -458,6 +475,7 @@ bdist: $(REQUIREMENTS)
 .PHONY: test-twine
 ## Check the distribution before publication
 check-twine: bdist
+	$(VALIDATE_VENV)
 	twine check dist/*
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -466,6 +484,7 @@ check-twine: bdist
 .PHONY: test-twine
 ## Publish distribution on test.pypi.org
 test-twine: bdist
+	$(VALIDATE_VENV)
 	ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -473,6 +492,8 @@ test-twine: bdist
 .PHONY: twine
 ## Publish distribution on pypi.org
 twine: bdist
+	$(VALIDATE_VENV)
+	ls . --hide "*.dev*" | xargs twine upload
 	ls . --hide "*.dev*" | xargs twine upload
 {% endif %}
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -601,6 +622,7 @@ clean-venv : clean-$(VENV)
 .PHONY: clean
 ## Clean current environment
 {% if cookiecutter.use_jupyter == 'y' %}clean: clean-pyc clean-build clean-notebooks{% else %}clean: clean-pyc clean-build{% endif %}
+	rm -Rf build_docs/
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour faire le ménage du projet (hors environnement){% endif %}

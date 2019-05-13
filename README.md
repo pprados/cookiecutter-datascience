@@ -32,10 +32,10 @@ et les fichiers qui ne sont pas nécessaires.
 ### Présent quelque soit les options
 
 Pour le pipeline de data-science
-- `make evaluate` # Evalutate the model 
 - `make prepare` # Prepare the dataset
 - `make features` # Add features
 - `make train` # Train the model
+- `make evaluate` # Evalutate the model 
 - `make visualize` # Visualize the result
 
 Et le reste, pour la gestion du projet
@@ -43,6 +43,7 @@ Et le reste, pour la gestion du projet
 - `make configure`  # Prepare the environment (conda venv, kernel, ...)
 - `make build-%` # Invoke all script in lexical order from scripts/<% dir> 
 - `make lint` # Lint the code
+- `make docs` # Create the HTML doc
 - `make test` # Run all unit-tests
 - `make validate` # Validate the version before commit
 - `make clean` # Clean current environment
@@ -88,7 +89,6 @@ Et le reste, pour la gestion du projet
 - `make ec2-%` # Pour executer une règle via `ssh-ec2`
 - `make ec2-tmux-%` # Pour executer une règle via `ssh-ec2` en mode tmux
 - `make ec2-detach-%` # Pour détacher une règle sur une instance EC2
-- `make ec2-notebook` # Pour executer un notebook sur EC2
 
 ### open_source_software
 - Modification des licenses dans `setup.py`

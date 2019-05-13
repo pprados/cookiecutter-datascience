@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    Traitement en charge d'évaluer le modèle
+    Traitement en charge d'évaluer le modèle.
 """
 
 import os
@@ -12,7 +12,7 @@ import sys
 import click
 import dotenv
 
-from .tools import *  # pylint: disable=W0401
+#from .tools import *  # pylint: disable=W0401
 
 
 @click.command()
@@ -22,6 +22,11 @@ from .tools import *  # pylint: disable=W0401
 def main(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> int:
     """ Evaluate the model from model_filepath and data
         from data_filepath
+
+        :param data_filepath: data file path
+        :param model_filepath: model file path with features
+        :param evaluate_filepath: evaluate file path to write
+        :return: 0 if ok, else error
     """
     logger = logging.getLogger(__name__)
     logger.info('Evaludate model %s from processed data', model_filepath)

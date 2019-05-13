@@ -16,6 +16,9 @@ import dotenv
 def main(evaluate_filepath: str ) -> None:
     """ Predict with using the model from model_filepath and data
         from data_filepath
+
+        :param evaluate_filepath: data file path
+        :return: 0 if ok, else error
     """
     logger = logging.getLogger(__name__)
     logger.info('Visualize the results')

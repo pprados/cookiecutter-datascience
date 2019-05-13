@@ -7,6 +7,7 @@ import os
 import pathlib
 import logging
 import shutil
+import sys
 
 import click
 import dotenv
@@ -18,7 +19,7 @@ from .tools import *  # pylint: disable=W0401
 @click.argument('data_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path(exists=True))
 @click.argument('evaluate_filepath', type=click.Path())
-def main(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> None:
+def main(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> int:
     """ Evaluate the model from model_filepath and data
         from data_filepath
     """
@@ -29,6 +30,8 @@ def main(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> Non
         .mkdir(parents=True, exist_ok=True)
     # FIXME: remove this sample line
     shutil.copyfile(data_filepath, evaluate_filepath)
+
+    return 0
 
 
 if __name__ == '__main__':
@@ -42,4 +45,4 @@ if __name__ == '__main__':
     # load up the .env entries as environment variables
     dotenv.load_dotenv(dotenv.find_dotenv())
 
-    main()  # pylint: disable=E1120
+    sys.exit(main())  # pylint: disable=E1120

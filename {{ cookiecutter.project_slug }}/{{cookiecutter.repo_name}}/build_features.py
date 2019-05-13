@@ -8,6 +8,7 @@ import os
 import pathlib
 import logging
 import shutil
+import sys
 
 import click
 import dotenv
@@ -18,7 +19,7 @@ from .tools import *  # pylint: disable=W0401
 @click.command()
 @click.argument('input_prepared_filepath', type=click.Path(exists=True))
 @click.argument('output_featured_filepath', type=click.Path())
-def main(input_prepared_filepath: str, output_featured_filepath: str) -> None:
+def main(input_prepared_filepath: str, output_featured_filepath: str) -> int:
     """ Runs data processing scripts to turn raw data from (../interim) into
         extended data (saved in ../processed).
     """
@@ -29,6 +30,8 @@ def main(input_prepared_filepath: str, output_featured_filepath: str) -> None:
         .mkdir(parents=True, exist_ok=True)
     # FIXME: remove this sample line
     shutil.copyfile(input_prepared_filepath, output_featured_filepath)
+
+    return 0
 
 
 if __name__ == '__main__':
@@ -42,4 +45,4 @@ if __name__ == '__main__':
     # load up the .env entries as environment variables
     dotenv.load_dotenv(dotenv.find_dotenv())
 
-    main()  # pylint: disable=E1120
+    sys.exit(main())  # pylint: disable=E1120

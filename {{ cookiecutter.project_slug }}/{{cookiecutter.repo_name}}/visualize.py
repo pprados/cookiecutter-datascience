@@ -5,6 +5,7 @@
 
 import pathlib
 import logging
+import sys
 
 import click
 import dotenv
@@ -21,6 +22,8 @@ def main(evaluate_filepath: str ) -> None:
 
     # TODO: Add your code here
 
+    return 0
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
@@ -33,4 +36,4 @@ if __name__ == '__main__':
     # load up the .env entries as environment variables
     dotenv.load_dotenv(dotenv.find_dotenv())
 
-    main()  # pylint: disable=E1120
+    sys.exit(main())  # pylint: disable=E1120

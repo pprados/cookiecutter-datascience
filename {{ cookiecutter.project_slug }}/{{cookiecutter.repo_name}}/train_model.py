@@ -17,19 +17,23 @@ from .tools import *  # pylint: disable=W0401
 
 @click.command()
 
-@click.option('--model-dir', default=os.environ.get('SM_MODEL_DIR','.'), help='model directory')
-@click.option('--train', type=click.Path(exists=True), default=os.environ.get('SM_CHANNEL_TRAIN', '.'))
-@click.option('--test', type=click.Path(exists=True), default=os.environ.get('SM_CHANNEL_TEST', '.'))
 ## args.train
 
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path())
-def main(input_filepath: str, model_filepath: str,model_dir,train,test) -> int:
+# hyperparameters sent by the client are passed as command-line arguments to the script.
+@click.option('--epoch', default=128, type=int, help='Epoch')
+@click.option('--batch-size', default=1024, type=int, help='Batch size')
+def main(input_filepath: str,
+         model_filepath: str,
+         epoch,
+         batch_size,
+         sageMaker) -> int:
     """ Train the model from input_filepath and save it in ../models
     """
-    input_filepath=os.path.join(train, input_filepath)
     logger = logging.getLogger(__name__)
     logger.info('train model from processed and featured data')
+
 
     pathlib.Path(os.path.dirname(model_filepath)) \
         .mkdir(parents=True, exist_ok=True)

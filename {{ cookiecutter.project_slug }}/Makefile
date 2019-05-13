@@ -612,6 +612,7 @@ clean-venv : clean-$(VENV)
 # SNIPPET pour déclencher les tests unitaires
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite{% endif %}
 {# python -m unittest discover -s tests -b #}
+{# pythest --open-files https://pypi.org/project/pytest-openfiles/ #}
 .PHONY: test
 ## Run all unit-tests
 test: $(REQUIREMENTS)

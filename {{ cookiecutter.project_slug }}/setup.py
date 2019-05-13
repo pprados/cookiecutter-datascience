@@ -45,6 +45,7 @@ setup(
             [
                 'twine',  # For publish package in Pypi
                 'unittest2', 'mock',  # For unit tests
+                'pytest','pytest-openfiles',
                 'flake8', 'pylint',  # For lint
                 'daff',
 {% if cookiecutter.use_jupyter == "y" %}                'jupyter~=1.0',  # Ouvre les add-on Jupyter{% endif %}

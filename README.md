@@ -81,7 +81,7 @@ Et le reste, pour la gestion du projet
 - `make metrics` # Pour afficher les métriques de DVC
 
 ### use_aws (utilisation de [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2))
-- une dépendance à `awscli`
+- une dépendance à `awscli` et `boto3`
 - une variable `S3_BUCKET` pour le bucket du projet
 - `make sync_data_to_s3` # Pour envoyer une copie des `data/\ vers S3
 - `make sync_data_from_s3` # Pour récupérer une copie des `data/` depuis S3

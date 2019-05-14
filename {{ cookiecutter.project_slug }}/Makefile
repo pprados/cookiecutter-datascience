@@ -438,17 +438,32 @@ lint: $(REQUIREMENTS)
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour créer la documentation html du projet{% endif %}
-.PHONY: rst docs
+# SNIPPET pour créer la documentation html du projet.
+# Il est possible d'indiquer build-docs/XXX, ou XXX correspond au type de format
+# à produire. Par exemple: html, singlehtml, latexpdf, ...
+# Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html{% endif %}
+.PHONY: docs
+SPHINX_OPTS=
 # Generate API docs
-rst:
-	sphinx-apidoc -f -o docs/source $(PRJ)/
-
-## Create HTML documentation
-# FIXME docs: $(REQUIREMENTS) rst
-docs: $(REQUIREMENTS)
+docs/source: $(REQUIREMENTS) $(PRJ)/* $(PRJ)/tools/*
 	$(VALIDATE_VENV)
-	sphinx-build -b html docs build_docs
+	sphinx-apidoc -f -o docs/source $(PRJ)/
+	touch docs/source
+
+build_docs/%: docs/* docs/source README.md CHANGELOG.md
+	$(VALIDATE_VENV)
+	echo "Build $(*:build_docs/%=%)..."
+	LATEXMKOPTS=-silent sphinx-build -M $(*:build_docs/%=%) docs build_docs $(SPHINX_OPTS)
+	touch build_docs/%
+
+# Build all format of documentations
+# May be build_docs/html build_docs/latex
+#build_docs : build_docs/html build_docs/latexpdf # PPR
+build_docs : build_docs/html
+	touch build_docs
+
+## Generate HTML documentation
+docs: build_docs
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -643,8 +658,8 @@ test: $(REQUIREMENTS)
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # SNIPPET pour vérifier les TU et le recalcule de tous les notebooks{% endif %}
 .PHONY: validate
-## Validate the version before commit
-validate: test build-*
+## Validate the version before release
+validate: test build-* build_docs
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.

@@ -1,7 +1,6 @@
 import pytest
 
 
-## TODO
 
 @pytest.fixture
 def context():

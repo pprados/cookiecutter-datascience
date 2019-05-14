@@ -39,10 +39,10 @@
 
 
 ## Build
+Clone the git repository, go inside the directory and
 ```bash
-$ git clone ...
 $ make configure
 $ conda activate {{cookiecutter.repo_name}}
-$ make evalutate
+$ make evaluate
 $ make help
 ```

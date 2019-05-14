@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.1] - {% now 'utc' + 'hours=2, seconds=30' %}
+## [0.0.1] - YYYY-MM-DD
 ### Added
 - TODO
+# Changed
+# Deprecated
+# Removed
+# Fixed
+# Security

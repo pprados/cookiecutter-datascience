@@ -12,7 +12,7 @@ import sys
 import click
 import dotenv
 
-#from .tools import *  # pylint: disable=W0401
+from .tools import *  # pylint: disable=W0401
 
 
 @click.command()
@@ -32,7 +32,7 @@ def main(input_raw_filepath: str, output_interim_filepath: str) -> int:
 
     pathlib.Path(os.path.dirname(output_interim_filepath)) \
         .mkdir(parents=True, exist_ok=True)
-    # FIXME: remove this sample line
+    # TODO: remove this sample line
     shutil.copyfile(input_raw_filepath, output_interim_filepath)
 
     return 0

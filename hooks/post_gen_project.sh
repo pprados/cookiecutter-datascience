@@ -33,7 +33,7 @@ Use can use:
 - ${yellow}make feature${normal}    # To add features
 - ${yellow}make train${normal}      # To train the model
 - ${yellow}make evaluate${normal}   # To validate the model
-- ${yellow}make visualize${normal}  # To validate
+- ${yellow}make visualize${normal}  # To visualize the results
 {% if cookiecutter.use_DVC == "y" %}- ${yellow}make repro${normal}      # To rebuild DVC dependencies{% endif %}
 
 Now, check if the make version is 4+:

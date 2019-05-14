@@ -13,7 +13,7 @@ import sys
 import click
 import dotenv
 
-#from .tools import *  # pylint: disable=W0401
+from .tools import *  # pylint: disable=W0401
 
 @click.command()
 @click.argument('input_prepared_filepath', type=click.Path(exists=True))
@@ -31,7 +31,7 @@ def main(input_prepared_filepath: str, output_featured_filepath: str) -> int:
 
     pathlib.Path(os.path.dirname(output_featured_filepath)) \
         .mkdir(parents=True, exist_ok=True)
-    # FIXME: remove this sample line
+    # TODO: remove this sample line
     shutil.copyfile(input_prepared_filepath, output_featured_filepath)
 
     return 0

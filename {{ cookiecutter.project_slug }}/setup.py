@@ -1,4 +1,7 @@
+# -*- coding: utf-8 -*-
 import os
+import re
+import subprocess
 
 from setuptools import setup, find_packages
 
@@ -8,6 +11,28 @@ USE_GPU = "-gpu" if (os.environ['GPU'].lower() in 'yes'
                      if "GPU" in os.environ
                      else os.path.isdir("/proc/driver/nvidia")
                           or "CUDA_PATH" in os.environ) else ""
+def _git_url():
+    try:
+        with open(os.devnull, "wb") as devnull:
+            out = subprocess.check_output(
+                ["git", "remote", "get-url","origin"],
+                cwd=".",
+                universal_newlines=True,
+                stderr=devnull,
+            )
+        return out.strip()
+    except subprocess.CalledProcessError:
+        # git returned error, we are not in a git repo
+        return ""
+    except OSError:
+        # git command not found, probably
+        return ""
+
+def _git_http_url():
+    return re.sub(r".*@(.*):(.*).git", r"http://\1/\2", _git_url())
+
+print("GIT",_git_url())
+print("GIT HTTP",_git_http_url())
 setup(
     name='{{cookiecutter.project_slug}}' + USE_GPU,
     author="Octo Technology",
@@ -15,7 +40,7 @@ setup(
     description="{{cookiecutter.project_short_description}}",
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
     long_description_content_type='text/markdown',
-    url='https://gitlab.octo.com//{{cookiecutter.project_slug}}',  # FIXME validate URL
+    url=_git_http_url(),
 
     license={% if cookiecutter.open_source_software == 'y' %}'Apache License'{% else %}'Private usage'{% endif %},
     keywords = "data science",
@@ -64,7 +89,5 @@ setup(
 {% if cookiecutter.use_text_processing == "y" %}        'nltk~=3.3', {% endif %}
         'numpy~=1.14',
         'pandas~=0.22',
-        'plotly~=2.7',
-        'scikit-learn~=0.19',
     ],
 )

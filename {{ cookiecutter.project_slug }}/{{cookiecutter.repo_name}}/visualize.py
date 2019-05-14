@@ -10,7 +10,6 @@ import sys
 import click
 import dotenv
 
-
 @click.command()
 @click.argument('evaluate_filepath', type=click.Path(exists=True))
 def main(evaluate_filepath: str ) -> None:

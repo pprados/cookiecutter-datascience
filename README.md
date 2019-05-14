@@ -43,7 +43,7 @@ Et le reste, pour la gestion du projet
 - `make configure`  # Prepare the environment (conda venv, kernel, ...)
 - `make build-%` # Invoke all script in lexical order from scripts/<% dir> 
 - `make lint` # Lint the code
-- `make docs` # Create the HTML doc
+- `make docs` # Create the HTML doc in 'build_docs/'
 - `make test` # Run all unit-tests
 - `make validate` # Validate the version before commit
 - `make clean` # Clean current environment
@@ -103,3 +103,6 @@ Et le reste, pour la gestion du projet
 Il est également possible de consulter la plupart des [snippets de code
 du Makefile](Makefile.snippet).
 
+# Conseils
+- Utilisez un CHANGELOG basé sur [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+- Utilisez un format de version conforme à [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

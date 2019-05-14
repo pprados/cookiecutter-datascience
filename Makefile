@@ -176,16 +176,40 @@ test: $(REQUIREMENTS)
 
 Makefile.snippet: {{\ cookiecutter.project_slug\ }} $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
-	cp tmp/bda_project/Makefile Makefile.snippet
+	cp tmp/bdaproject/Makefile Makefile.snippet
 	git add Makefile.snippet
 
 try: $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
 
 _make-%: try
-	@cd tmp/bda_project
-	@source $(CONDA_BASE)/bin/activate bda_project
+	@cd tmp/bdaproject
+	@source $(CONDA_BASE)/bin/activate bdaproject
 	@make $*
+
+check-docs:
+	@cd tmp/bdaproject
+	@source $(CONDA_BASE)/bin/activate bdaproject
+	#@make build_docs/applehelp # https://github.com/miyakogi/m2r/issues/34
+	@make build_docs/changes
+	@make build_docs/devhelp
+	@make build_docs/dirhtml
+	@make build_docs/dummy
+	@make build_docs/epub # Error with KeyErro 'ids' in _epub_base.py
+	@make build_docs/gettext
+	@make build_docs/html
+	@make build_docs/htmlhelp
+	@make build_docs/json
+	@make build_docs/latex
+	@make build_docs/linkcheck
+	@make build_docs/man
+	@make build_docs/pickle
+	@make build_docs/pseudoxml
+	@make build_docs/qthelp
+	@make build_docs/singlehtml
+	@make build_docs/text
+	@make build_docs/texinfo
+	@make build_docs/xml
 
 check-lint: _make-lint
 
@@ -197,12 +221,12 @@ check-dist: _make-sdist _make-bdist
 check-all-ml: _make-train _make-evaluate _make-visualize
 
 check-configure:
-	conda env remove -n bda_project
-	cd tmp/bda_project
+	conda env remove -n bdaproject
+	cd tmp/bdaproject
 	make configure
 
 ## Try all major make target
-check-all-make: check-configure check-all-ml check-dist check-lint check-clean _make-docs
+check-all-make: check-configure check-all-ml check-dist check-lint check-clean _make-docs check-docs
 
 ## Validate all before commit
 validate: Makefile.snippet test check-all-make

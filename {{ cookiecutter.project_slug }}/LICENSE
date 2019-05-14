@@ -1,1 +1,2 @@
+(C) {{cookiecutter.author}} {% now 'utc' %}
 Private licence

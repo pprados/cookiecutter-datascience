@@ -17,6 +17,8 @@ The Makefile contains the central entry points for common tasks related to this 
 * ``make test`` will run all unit-tests
 * ``make validate`` will validate the version before commit
 * ``make clean`` will clean current environment
+
+* ``make docs`` will create a HTML documentation (with doctype, {% if cookiecutter.use_jupyter == 'y' %}notebooks, {% endif %}etc)
 * ``make sdist`` will create a source distribution
 * ``make bdist`` will create a binary wheel distribution
 {% if cookiecutter.use_jupyter == 'y' %}

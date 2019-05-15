@@ -452,14 +452,15 @@ docs/source: $(REQUIREMENTS) $(PRJ)/* $(PRJ)/tools/*
 
 build_docs/%: docs/* docs/source README.md CHANGELOG.md
 	$(VALIDATE_VENV)
-	echo "Build $(*:build_docs/%=%)..."
-	LATEXMKOPTS=-silent sphinx-build -M $(*:build_docs/%=%) docs build_docs $(SPHINX_OPTS)
-	touch build_docs/%
+	TARGET=$(*:build_docs/%=%)
+	echo "Build $$TARGET..."
+	LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build_docs $(SPHINX_OPTS)
+	[[ "$$TARGET" == "latexpdf" ]] && TARGET=latex
+	touch build_docs/$$TARGET
 
 # Build all format of documentations
 # May be build_docs/html build_docs/latex
-#build_docs : build_docs/html build_docs/latexpdf # PPR
-build_docs : build_docs/html
+build_docs : build_docs/html build_docs/latexpdf
 	touch build_docs
 
 ## Generate HTML documentation

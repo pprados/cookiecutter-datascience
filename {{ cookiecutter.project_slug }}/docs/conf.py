@@ -223,9 +223,9 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
     (master_doc,
-     '{{cookiecutter.project_slug}}.tex',
-     '{{cookiecutter.project_name}} Documentation',
-     '{{cookiecutter.project_slug}}',
+     '{{cookiecutter.project_slug.replace('_', '')}}.tex',
+     '{{cookiecutter.project_name.replace('_', '')}} Documentation',
+     '{{cookiecutter.project_slug.replace('_', '')}}',
      'manual'),
 ]
 
@@ -275,7 +275,7 @@ texinfo_documents = [
      '{{cookiecutter.project_slug}}',
      '{{cookiecutter.project_name}} Documentation',
      '{{cookiecutter.author}}',
-     '{{cookiecutter.project_slug}}'),
+     ),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -295,6 +295,7 @@ todo_include_todos=True
 # https://www.sphinx-doc.org/en/master/usage/builders/index.html?highlight=pdf#sphinxcontrib.applehelp.AppleHelpBuilder
 applehelp_disable_external_tools=False
 
+# Add project variables
 rst_prolog = f"""
 .. |giturl| replace:: {git_url}
 .. |homeurl| replace:: {home_url}

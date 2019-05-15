@@ -438,7 +438,7 @@ lint: $(REQUIREMENTS)
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour créer la documentation html du projet.
+# SNIPPET pour créer la documentation html et pdf du projet.
 # Il est possible d'indiquer build-docs/XXX, ou XXX correspond au type de format
 # à produire. Par exemple: html, singlehtml, latexpdf, ...
 # Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html{% endif %}
@@ -450,9 +450,10 @@ docs/source: $(REQUIREMENTS) $(PRJ)/* $(PRJ)/tools/*
 	sphinx-apidoc -f -o docs/source $(PRJ)/
 	touch docs/source
 
-build_docs/%: docs/* docs/source README.md CHANGELOG.md
+build_docs/%: docs/* docs/source README.md CHANGELOG.md | .git
 	$(VALIDATE_VENV)
 	TARGET=$(*:build_docs/%=%)
+	[[ "$$TARGET" == "pdf" ]] && TARGET=latexpdf
 	echo "Build $$TARGET..."
 	LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build_docs $(SPHINX_OPTS)
 	[[ "$$TARGET" == "latexpdf" ]] && TARGET=latex
@@ -460,7 +461,7 @@ build_docs/%: docs/* docs/source README.md CHANGELOG.md
 
 # Build all format of documentations
 # May be build_docs/html build_docs/latex
-build_docs : build_docs/html build_docs/latexpdf
+build_docs : build_docs/html build_docs/pdf
 	touch build_docs
 
 ## Generate HTML documentation

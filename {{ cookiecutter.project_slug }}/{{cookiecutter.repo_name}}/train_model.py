@@ -14,16 +14,13 @@ import dotenv
 
 from .tools import *  # pylint: disable=W0401
 
-@click.command()
-@click.argument('input_filepath', type=click.Path(exists=True))
-@click.argument('model_filepath', type=click.Path())
-# hyperparameters sent by the client are passed as command-line arguments to the script.
-@click.option('--epoch', default=128, type=int, help='Epoch')
-@click.option('--batch-size', default=1024, type=int, help='Batch size')
-def main(input_filepath: str,
-          model_filepath: str,
-          epoch: int,
-          batch_size: int) -> int:
+logger = logging.getLogger(__name__)
+
+
+def train_model(input_filepath: str,
+                model_filepath: str,
+                epoch: int,
+                batch_size: int) -> int:
     """ Train the model from input_filepath and save it in ../models
 
         :param input_filepath: data file path
@@ -32,15 +29,34 @@ def main(input_filepath: str,
         :param batch_size: Value of batch size (default 1024)
         :return: 0 if ok, else error
     """
-    logger = logging.getLogger(__name__)
-    logger.info('train model from processed and featured data')
-
     pathlib.Path(os.path.dirname(model_filepath)) \
         .mkdir(parents=True, exist_ok=True)
     # TODO: remove this sample line
     shutil.copyfile(input_filepath, model_filepath)
 
     return 0
+
+
+@click.command()
+@click.argument('input_filepath', type=click.Path(exists=True))
+@click.argument('model_filepath', type=click.Path())
+# hyperparameters sent by the client are passed as command-line arguments to the script.
+@click.option('--epoch', default=128, type=int, help='Epoch')
+@click.option('--batch-size', default=1024, type=int, help='Batch size')
+def main(input_filepath: str,
+         model_filepath: str,
+         epoch: int,
+         batch_size: int) -> int:
+    """ Train the model from input_filepath and save it in ../models
+
+        :param input_filepath: data file path
+        :param model_filepath: file to write the model
+        :param epoch: Value of epoch (default 128)
+        :param batch_size: Value of batch size (default 1024)
+        :return: 0 if ok, else error
+    """
+    logger.info('train model from processed and featured data')
+    return train_model(input_filepath, model_filepath, epoch, batch_size)
 
 
 if __name__ == '__main__':

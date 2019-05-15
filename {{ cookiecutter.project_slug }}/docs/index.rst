@@ -1,5 +1,5 @@
 ==============================================================
-.. {{cookiecutter.project_slug}} documentation.
+{{cookiecutter.project_slug}}
 ==============================================================
 .. todo::
    You can adapt this file completely to your liking, but it should at least

@@ -183,9 +183,9 @@ try: $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
 
 _make-%: try
-	@cd tmp/bdaproject
-	@source $(CONDA_BASE)/bin/activate bdaproject
-	@make $*
+	@cd tmp/bda_project
+	@source $(CONDA_BASE)/bin/activate bda_project
+	@make $(*:_make-%=%)
 
 check-docs:
 	@cd tmp/bdaproject

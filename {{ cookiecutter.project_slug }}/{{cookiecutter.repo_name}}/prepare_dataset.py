@@ -14,6 +14,25 @@ import dotenv
 
 from .tools import *  # pylint: disable=W0401
 
+logger = logging.getLogger(__name__)
+
+
+def prepare_dataset(input_raw_filepath: str, output_interim_filepath: str) -> int:
+    """ Runs data processing scripts to turn raw data from (../raw) into
+        cleaned data ready to be analyzed and extended with
+        features (saved in ../interim).
+
+        :param input_raw_filepath: data file path
+        :param output_interim_filepath: new file to write with prepared datas
+        :return: 0 if ok, else error
+    """
+    pathlib.Path(os.path.dirname(output_interim_filepath)) \
+        .mkdir(parents=True, exist_ok=True)
+    # TODO: remove this sample line
+    shutil.copyfile(input_raw_filepath, output_interim_filepath)
+
+    return 0
+
 
 @click.command()
 @click.argument('input_raw_filepath', type=click.Path(exists=True))
@@ -27,15 +46,8 @@ def main(input_raw_filepath: str, output_interim_filepath: str) -> int:
         :param output_interim_filepath: new file to write with prepared datas
         :return: 0 if ok, else error
     """
-    logger = logging.getLogger(__name__)
     logger.info('Clean data set from raw data to interim')
-
-    pathlib.Path(os.path.dirname(output_interim_filepath)) \
-        .mkdir(parents=True, exist_ok=True)
-    # TODO: remove this sample line
-    shutil.copyfile(input_raw_filepath, output_interim_filepath)
-
-    return 0
+    return prepare_dataset(input_raw_filepath, output_interim_filepath)
 
 
 if __name__ == '__main__':

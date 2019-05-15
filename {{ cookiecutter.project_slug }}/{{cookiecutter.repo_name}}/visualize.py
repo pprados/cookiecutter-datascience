@@ -10,9 +10,21 @@ import sys
 import click
 import dotenv
 
+
+def visualize(evaluate_filepath: str) -> None:
+    """ Predict with using the model from model_filepath and data
+        from data_filepath
+
+        :param evaluate_filepath: data file path
+        :return: 0 if ok, else error
+    """
+    # TODO: Add your code here
+    return 0
+
+
 @click.command()
 @click.argument('evaluate_filepath', type=click.Path(exists=True))
-def main(evaluate_filepath: str ) -> None:
+def main(evaluate_filepath: str) -> None:
     """ Predict with using the model from model_filepath and data
         from data_filepath
 
@@ -21,10 +33,7 @@ def main(evaluate_filepath: str ) -> None:
     """
     logger = logging.getLogger(__name__)
     logger.info('Visualize the results')
-
-    # TODO: Add your code here
-
-    return 0
+    return visualize(evaluate_filepath)
 
 
 if __name__ == '__main__':

@@ -29,10 +29,10 @@ def _git_url():
         return out.strip()
     except subprocess.CalledProcessError:
         # git returned error, we are not in a git repo
-        return ""
+        return "TODO"
     except OSError:
         # git command not found, probably
-        return ""
+        return "TODO"
 
 # For git clone ...
 git_url=_git_url()
@@ -222,11 +222,15 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    (master_doc,
-     '{{cookiecutter.project_slug.replace('_', '')}}.tex',
-     '{{cookiecutter.project_name.replace('_', '')}} Documentation',
-     '{{cookiecutter.project_slug.replace('_', '')}}',
-     'manual'),
+    (
+        master_doc,  # Doc name
+        '{{cookiecutter.project_slug.replace('_', '')}}.tex',  # targetname
+        '{{cookiecutter.project_name}} Documentation',  # title
+        '{{cookiecutter.project_slug.replace('_', '')}}',  # author
+#        'manual',  # documentclass
+        'howto',  # documentclass
+        False, # toctree_only
+    ),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

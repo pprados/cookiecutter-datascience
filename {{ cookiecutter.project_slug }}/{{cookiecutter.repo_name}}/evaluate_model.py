@@ -14,6 +14,24 @@ import dotenv
 
 from .tools import *  # pylint: disable=W0401
 
+logger = logging.getLogger(__name__)
+
+
+def evaluate_model(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> int:
+    """ Evaluate the model from model_filepath and data
+        from data_filepath
+
+        :param data_filepath: data file path
+        :param model_filepath: model file path with features
+        :param evaluate_filepath: evaluate file path to write
+        :return: 0 if ok, else error
+    """
+    pathlib.Path(os.path.dirname(evaluate_filepath)) \
+        .mkdir(parents=True, exist_ok=True)
+    # TODO: remove this sample line
+    shutil.copyfile(data_filepath, evaluate_filepath)
+    return 0
+
 
 @click.command()
 @click.argument('data_filepath', type=click.Path(exists=True))
@@ -28,15 +46,8 @@ def main(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> int
         :param evaluate_filepath: evaluate file path to write
         :return: 0 if ok, else error
     """
-    logger = logging.getLogger(__name__)
     logger.info('Evaludate model %s from processed data', model_filepath)
-
-    pathlib.Path(os.path.dirname(evaluate_filepath)) \
-        .mkdir(parents=True, exist_ok=True)
-    # TODO: remove this sample line
-    shutil.copyfile(data_filepath, evaluate_filepath)
-
-    return 0
+    return evaluate_model(data_filepath, model_filepath, evaluate_filepath)
 
 
 if __name__ == '__main__':

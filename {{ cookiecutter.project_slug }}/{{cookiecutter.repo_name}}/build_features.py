@@ -15,6 +15,17 @@ import dotenv
 
 from .tools import *  # pylint: disable=W0401
 
+logger = logging.getLogger(__name__)
+
+
+def build_features(input_prepared_filepath: str, output_featured_filepath: str) -> int:
+    pathlib.Path(os.path.dirname(output_featured_filepath)) \
+        .mkdir(parents=True, exist_ok=True)
+    # TODO: remove this sample line
+    shutil.copyfile(input_prepared_filepath, output_featured_filepath)
+    return 0
+
+
 @click.command()
 @click.argument('input_prepared_filepath', type=click.Path(exists=True))
 @click.argument('output_featured_filepath', type=click.Path())
@@ -26,15 +37,8 @@ def main(input_prepared_filepath: str, output_featured_filepath: str) -> int:
         :param output_featured_filepath: output file path with features
         :return: 0 if ok, else error
     """
-    logger = logging.getLogger(__name__)
     logger.info('add features from prepared data')
-
-    pathlib.Path(os.path.dirname(output_featured_filepath)) \
-        .mkdir(parents=True, exist_ok=True)
-    # TODO: remove this sample line
-    shutil.copyfile(input_prepared_filepath, output_featured_filepath)
-
-    return 0
+    return build_features(input_prepared_filepath, output_featured_filepath)
 
 
 if __name__ == '__main__':

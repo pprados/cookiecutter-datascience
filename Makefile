@@ -185,31 +185,32 @@ try: $(REQUIREMENTS)
 _make-%: try
 	@cd tmp/bda_project
 	@source $(CONDA_BASE)/bin/activate bda_project
-	@make $(*:_make-%=%)
+	# PPR virer le -n
+	@make -n $(*:_make-%=%)
 
 check-docs:
 	@cd tmp/bdaproject
 	@source $(CONDA_BASE)/bin/activate bdaproject
-	#@make build_docs/applehelp # https://github.com/miyakogi/m2r/issues/34
-	@make build_docs/changes
-	@make build_docs/devhelp
-	@make build_docs/dirhtml
-	@make build_docs/dummy
-	@make build_docs/epub # Error with KeyErro 'ids' in _epub_base.py
-	@make build_docs/gettext
-	@make build_docs/html
-	@make build_docs/htmlhelp
-	@make build_docs/json
-	@make build_docs/latex
-	@make build_docs/linkcheck
-	@make build_docs/man
-	@make build_docs/pickle
-	@make build_docs/pseudoxml
-	@make build_docs/qthelp
-	@make build_docs/singlehtml
-	@make build_docs/text
-	@make build_docs/texinfo
-	@make build_docs/xml
+	#@make build/applehelp # https://github.com/miyakogi/m2r/issues/34
+	@make build/changes
+	@make build/devhelp
+	@make build/dirhtml
+	@make build/dummy
+	@make build/epub # Error with KeyErro 'ids' in _epub_base.py
+	@make build/gettext
+	@make build/html
+	@make build/htmlhelp
+	@make build/json
+	@make build/latex
+	@make build/linkcheck
+	@make build/man
+	@make build/pickle
+	@make build/pseudoxml
+	@make build/qthelp
+	@make build/singlehtml
+	@make build/text
+	@make build/texinfo
+	@make build/xml
 
 check-lint: _make-lint
 

@@ -48,18 +48,23 @@ USE_GPU:=-gpu
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour pouvoir lancer un browser avec une URL{% endif %}
-define BROWSER_PYSCRIPT
-import os, webbrowser, sys
-try:
-	from urllib import pathname2url
-except:
+# SNIPPET pour pouvoir lancer un browser avec un fichier local{% endif %}
+define BROWSER
+	python -c '
+	import os, sys, webbrowser
 	from urllib.request import pathname2url
 
-webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+	webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+	'
 endef
-export BROWSER_PYSCRIPT
-BROWSER := python -c "$$BROWSER_PYSCRIPT"
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour supprimer le parallelisme pour certaines cibles
+# par exemple pour release
+#ifneq ($(filter release,$(MAKECMDGOALS)),)
+#.NOTPARALLEL:
+#endif
+#{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les séquences de caractères pour les couleurs
@@ -447,9 +452,9 @@ build-%: $(REQUIREMENTS)
 ## Lint the code
 lint: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	@flake8 $(PRJ) tests || true
+	@flake8 {{ cookiecutter.project_slug }} tests || true
 	@echo "----------------------"
-	@pylint $(PRJ) tests || true
+	@pylint {{ cookiecutter.project_slug }} tests || true
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -459,30 +464,28 @@ lint: $(REQUIREMENTS)
 # Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html{% endif %}
 .PHONY: docs
 # Use all processors
-SPHINX_OPTS=-j$(shell grep -c '^processor' /proc/cpuinfo)
+SPHINX_FLAGS=-j$(shell grep -c '^processor' /proc/cpuinfo)
 # Generate API docs
-docs/source: $(REQUIREMENTS) $(PRJ)/* $(PRJ)/tools/*
+docs/source: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/* {{ cookiecutter.project_slug }}/tools/*
 	$(VALIDATE_VENV)
-	sphinx-apidoc -f -o docs/source $(PRJ)/
+	sphinx-apidoc -f -o docs/source {{ cookiecutter.project_slug }}/
 	touch docs/source
 
 # Build the documentation in specificed format (build/html, build/pdf, build/latexpdf, ...)
 build/%: docs/* docs/source README.md CHANGELOG.md | .git
-	echo SPHINX_OPTS=$(SPHINX_OPTS)
+	echo SPHINX_FLAGS=$(SPHINX_FLAGS)
 	$(VALIDATE_VENV)
 	TARGET=$(*:build/%=%)
 	[[ "$$TARGET" == "pdf" ]] && TARGET=latexpdf
 	echo "Build $$TARGET..."
-	LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_OPTS)
+	LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_FLAGS)
 	[[ "$$TARGET" == "latexpdf" ]] && TARGET=latex
 	touch build/$$TARGET
 
 # Build all format of documentations
 # May be build/html build/latex
-## Generate HTML documentation
+## Generate and show the HTML documentation
 docs: build/html build/pdf
-## Show the documentation
-show-docs: docs
 	$(BROWSER) build/html/index.html
 
 ## Watching for changes to compile the docs
@@ -631,9 +634,9 @@ clean-pyc:
 	-/usr/bin/find . -type d -name "__pycache__" -delete
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour nettoyer les fichiers de builds.{% endif %}
+# SNIPPET pour nettoyer les fichiers de builds (package et docs).{% endif %}
 .PHONY: clean-build
-# Remove build artifacts
+# Remove build artifacts and docs
 clean-build:
 	@echo "+ $@"
 	@rm -fr build/

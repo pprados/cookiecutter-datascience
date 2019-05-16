@@ -43,7 +43,7 @@ Et le reste, pour la gestion du projet
 - `make configure`  # Prepare the environment (conda venv, kernel, ...)
 - `make build-%` # Invoke all script in lexical order from scripts/<% dir> 
 - `make lint` # Lint the code
-- `make docs` # Create the HTML doc in 'build_docs/'
+- `make docs` # Create and show the HTML and PDF doc in 'build/'
 - `make test` # Run all unit-tests
 - `make validate` # Validate the version before commit
 - `make clean` # Clean current environment
@@ -106,3 +106,30 @@ du Makefile](Makefile.snippet).
 # Conseils
 - Utilisez un CHANGELOG basé sur [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Utilisez un format de version conforme à [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- faite toujours un `make validate` avant de commiter le code
+
+# TODO
+- [X] Pipeline datascience
+- [X] Test unitaires
+- [X] [Jupyter](https://jupyter.org/)
+- [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
+- [X] [Tensorflow](https://www.tensorflow.org/)
+- [X] [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
+- [X] [pylint](https://www.pylint.org/) et [flake8](http://flake8.pycqa.org/)
+- [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
+- [X] [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2)
+- [X] [LFS](https://git-lfs.github.com/)
+- [X] [DVC](https://dvc.org/)
+- [ ] [MLFlow](https://mlflow.org/) (alternative a DVC))
+- [X] Documentation et [Sphinx](http://www.sphinx-doc.org/)
+- [ ] [Coverage](https://coverage.readthedocs.io/)
+- [ ] [Hypothesis](https://hypothesis.readthedocs.io/)
+- [ ] [Airflow](https://airflow.apache.org/)
+- [ ] Injecter les notebooks dans la documentation
+- [ ] Gestion plusieurs fichiers datas en parallèles
+- [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
+- [ ] Execution parfaite en parallèle (-j)
+- [ ] TU du makefile
+- [ ] [Plugin](https://pypi.org/search/?q=pytest) pytest
+- [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
+- [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles

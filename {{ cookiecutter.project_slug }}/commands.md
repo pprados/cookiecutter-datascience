@@ -18,8 +18,7 @@ The Makefile contains the central entry points for common tasks related to this 
 * ``make validate`` will validate the version before commit
 * ``make clean`` will clean current environment
 
-* ``make docs`` will create a HTML documentation (with doctype, {% if cookiecutter.use_jupyter == 'y' %}notebooks, {% endif %}etc)
-* ``make show-docs`` show the documentation in a browser
+* ``make docs`` will create and show a HTML documentation in 'build/'
 * ``make servedocs`` Start a server to automatically update the html docs
 * ``make dist`` will create a full wheel distribution
 {% if cookiecutter.use_jupyter == 'y' %}

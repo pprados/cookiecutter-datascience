@@ -2,7 +2,7 @@
 """
     Traitement en charge de l'apprentissage du modèle.
 """
-
+import glob
 import os
 import pathlib
 import logging
@@ -31,8 +31,9 @@ def train_model(input_filepath: str,
     """
     pathlib.Path(os.path.dirname(model_filepath)) \
         .mkdir(parents=True, exist_ok=True)
+    inputs = [f for f in glob.glob(input_filepath, recursive=True)]
     # TODO: remove this sample line
-    shutil.copyfile(input_filepath, model_filepath)
+    shutil.copyfile(inputs[0], model_filepath)
 
     return 0
 
@@ -49,7 +50,7 @@ def main(input_filepath: str,
          batch_size: int) -> int:
     """ Train the model from input_filepath and save it in ../models
 
-        :param input_filepath: data file path
+        :param input_filepath: glob data file path
         :param model_filepath: file to write the model
         :param epoch: Value of epoch (default 128)
         :param batch_size: Value of batch size (default 1024)

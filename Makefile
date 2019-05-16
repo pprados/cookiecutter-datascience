@@ -185,8 +185,7 @@ try: $(REQUIREMENTS)
 _make-%: try
 	@cd tmp/bda_project
 	@source $(CONDA_BASE)/bin/activate bda_project
-	# PPR virer le -n
-	@make -n $(*:_make-%=%)
+	@make $(*:_make-%=%)
 
 check-docs:
 	@cd tmp/bdaproject

@@ -20,16 +20,16 @@ data/interim/datas-prepared.csv : $(REQUIREMENTS) $(PRJ)/prepare_dataset.py data
 ## Prepare the dataset
 prepare: data/interim/datas-prepared.csv
 
-data/interim/datas-features.csv : $(REQUIREMENTS) $(PRJ)/build_features.py data/interim/datas-prepared.csv
+data/processed/datas-features.csv : $(REQUIREMENTS) $(PRJ)/build_features.py data/interim/datas-prepared.csv
 	python -O -m $(PRJ).build_features \
 		data/interim/datas-prepared.csv \
-		data/interim/datas-features.csv
+		data/processed/datas-features.csv
 ## Add features
 features: data/interim/datas-features.csv
 
-models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py data/interim/datas-features.csv
+models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py data/processed/datas-features.csv
 	python -O -m $(PRJ).train_model \
-		data/interim/datas-features.csv \
+		data/processed/datas-features.csv \
 		models/model.pkl
 ## Train the model
 train: models/model.pkl

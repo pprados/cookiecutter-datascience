@@ -2,7 +2,7 @@
 """
     Traitement en charge d'évaluer le modèle.
 """
-
+import glob
 import os
 import pathlib
 import logging
@@ -28,8 +28,10 @@ def evaluate_model(data_filepath: str, model_filepath: str, evaluate_filepath: s
     """
     pathlib.Path(os.path.dirname(evaluate_filepath)) \
         .mkdir(parents=True, exist_ok=True)
-    # TODO: remove this sample line
-    shutil.copyfile(data_filepath, evaluate_filepath)
+    for f in glob.glob(evaluate_filepath, recursive=True)]
+        pass # TODO
+    with open(evaluate_filepath,"w") as file:
+        f.write("0.90") # TODO Write AUC or others metrics
     return 0
 
 

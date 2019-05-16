@@ -6,7 +6,7 @@
    contain the root `toctree` directive.
 
 .. ifconfig:: version.find("dev")
-
+.. warning::
     WARNING: It's not a released version !
 
 {{cookiecutter.project_name}} documentation
@@ -24,6 +24,7 @@ Contents:
    source/modules
    todo
 
+* :ref:`notebooks/phase1/1_Sample.ipynb`
 
 Indices and tables
 ==================
@@ -31,3 +32,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+* :ref:`notebooks/phase1/1_Sample.ipynb`

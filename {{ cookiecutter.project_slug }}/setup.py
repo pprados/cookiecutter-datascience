@@ -69,7 +69,7 @@ setup(
         'tests':
             [
                 'twine',  # For publish package in Pypi
-                'sphinx', 'sphinx-execute-code', 'm2r',  # For generate doc
+                'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # For generate doc
                 'unittest2', 'mock',  # For unit tests
                 'pytest','pytest-openfiles',
                 'flake8', 'pylint',  # For lint

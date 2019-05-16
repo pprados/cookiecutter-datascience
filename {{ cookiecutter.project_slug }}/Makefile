@@ -48,6 +48,20 @@ USE_GPU:=-gpu
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
+# SNIPPET pour pouvoir lancer un browser avec une URL{% endif %}
+define BROWSER_PYSCRIPT
+import os, webbrowser, sys
+try:
+	from urllib import pathname2url
+except:
+	from urllib.request import pathname2url
+
+webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+endef
+export BROWSER_PYSCRIPT
+BROWSER := python -c "$$BROWSER_PYSCRIPT"
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les séquences de caractères pour les couleurs
 # A utiliser avec un
 # echo -e "Use '$(cyan)make$(normal)' ..."
@@ -274,11 +288,12 @@ VALIDATE_VENV=$(CHECK_VENV)
 # de run et de test (voir l'exemple `setup.py`){% endif %}
 
 # Toutes les dépendances du projet à regrouper ici
-.PHONY: requirements
+.PHONY: requirements dependencies
 REQUIREMENTS=$(PIP_PACKAGE) \
 {% if cookiecutter.use_text_processing == 'y' %}		$(NLTK_DATABASE) $(SPACY-DATABASE) \
 {% endif %}		.gitattributes
 requirements: $(REQUIREMENTS)
+dependencies: requirements
 
 # Règle de vérification de la bonne installation de la version de python dans l'environnement Conda
 $(CONDA_PYTHON):
@@ -432,46 +447,53 @@ build-%: $(REQUIREMENTS)
 ## Lint the code
 lint: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	@flake8 $(PRJ) || true
+	@flake8 $(PRJ) tests || true
 	@echo "----------------------"
-	@pylint $(PRJ) || true
+	@pylint $(PRJ) tests || true
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer la documentation html et pdf du projet.
-# Il est possible d'indiquer build-docs/XXX, ou XXX correspond au type de format
+# Il est possible d'indiquer build/XXX, ou XXX correspond au type de format
 # à produire. Par exemple: html, singlehtml, latexpdf, ...
 # Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html{% endif %}
 .PHONY: docs
-SPHINX_OPTS=
+# Use all processors
+SPHINX_OPTS=-j$(shell grep -c '^processor' /proc/cpuinfo)
 # Generate API docs
 docs/source: $(REQUIREMENTS) $(PRJ)/* $(PRJ)/tools/*
 	$(VALIDATE_VENV)
 	sphinx-apidoc -f -o docs/source $(PRJ)/
 	touch docs/source
 
-build_docs/%: docs/* docs/source README.md CHANGELOG.md | .git
+# Build the documentation in specificed format (build/html, build/pdf, build/latexpdf, ...)
+build/%: docs/* docs/source README.md CHANGELOG.md | .git
+	echo SPHINX_OPTS=$(SPHINX_OPTS)
 	$(VALIDATE_VENV)
-	TARGET=$(*:build_docs/%=%)
+	TARGET=$(*:build/%=%)
 	[[ "$$TARGET" == "pdf" ]] && TARGET=latexpdf
 	echo "Build $$TARGET..."
-	LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build_docs $(SPHINX_OPTS)
+	LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_OPTS)
 	[[ "$$TARGET" == "latexpdf" ]] && TARGET=latex
-	touch build_docs/$$TARGET
+	touch build/$$TARGET
 
 # Build all format of documentations
-# May be build_docs/html build_docs/latex
-build_docs : build_docs/html build_docs/pdf
-	touch build_docs
-
+# May be build/html build/latex
 ## Generate HTML documentation
-docs: build_docs
+docs: build/html build/pdf
+## Show the documentation
+show-docs: docs
+	$(BROWSER) build/html/index.html
+
+## Watching for changes to compile the docs
+servedocs: docs
+	watchmedo shell-command -p '*' -c '$(MAKE) build/html' -R -D docs
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer une distribution des sources{% endif %}
-.PHONY: lint
-## Create a source distribution
+.PHONY: sdist
+# Create a source distribution
 sdist: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python setup.py sdist
@@ -482,11 +504,21 @@ sdist: $(REQUIREMENTS)
 # python setup.py --version
 # Cela correspond au dernier tag d'un format 'version'{% endif %}
 .PHONY: bdist
-## Create a binary wheel distribution
+# Create a binary wheel distribution
 bdist: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python setup.py bdist_wheel
 {% if cookiecutter.open_source_software == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
+
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour créer une distribution des binaires au format egg.
+# Pour vérifier la version produite :
+# python setup.py --version
+# Cela correspond au dernier tag d'un format 'version'{% endif %}
+.PHONY: dist
+## Create a full distribution
+dist: bdist sdist
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour tester la publication d'une distribution avant sa publication.{% endif %}
 .PHONY: test-twine
@@ -508,10 +540,10 @@ test-twine: bdist
 # SNIPPET pour publier la version sur pypi.org.{% endif %}
 .PHONY: twine
 ## Publish distribution on pypi.org
-twine: bdist
+release: bdist sdist
 	$(VALIDATE_VENV)
-	ls . --hide "*.dev*" | xargs twine upload
-	ls . --hide "*.dev*" | xargs twine upload
+	ls dist --hide "*.dev*" | xargs twine upload
+	ls dist --hide "*.dev*" | xargs twine upload
 {% endif %}
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 
@@ -639,7 +671,6 @@ clean-venv : clean-$(VENV)
 .PHONY: clean
 ## Clean current environment
 {% if cookiecutter.use_jupyter == 'y' %}clean: clean-pyc clean-build clean-notebooks{% else %}clean: clean-pyc clean-build{% endif %}
-	rm -Rf build_docs/
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour faire le ménage du projet (hors environnement){% endif %}
@@ -661,7 +692,7 @@ test: $(REQUIREMENTS)
 # SNIPPET pour vérifier les TU et le recalcule de tous les notebooks{% endif %}
 .PHONY: validate
 ## Validate the version before release
-validate: test build-* build_docs
+validate: test build-* build/linkcheck build/html build/pdf
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.

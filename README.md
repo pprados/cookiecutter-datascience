@@ -28,6 +28,8 @@ Lors de la création d'un projet, des questions vous sont posées
 pour identifier les caractèristiques du projet à créer.
 Elles permettent d'alléger le project, en supprimant les règles
 et les fichiers qui ne sont pas nécessaires.
+Pour simplifier l'aide, toutes ne sont pas indiquées dans `make help`.
+Il suffit de doubler le `#` du commentaire avant la règle pour modifier cela.
 
 ### Présent quelque soit les options
 
@@ -41,7 +43,8 @@ Pour le pipeline de data-science
 Et le reste, pour la gestion du projet
 - `make help` # Print all majors target
 - `make configure`  # Prepare the environment (conda venv, kernel, ...)
-- `make build-%` # Invoke all script in lexical order from scripts/<% dir> 
+- `make run-%` # Invoke all script in lexical order from scripts/<% dir> 
+- `make build/%` # Create sphinx documentation with % format (make build/html)
 - `make lint` # Lint the code
 - `make docs` # Create and show the HTML and PDF doc in 'build/'
 - `make test` # Run all unit-tests
@@ -49,6 +52,7 @@ Et le reste, pour la gestion du projet
 - `make clean` # Clean current environment
 - `make sdist` # Create a source distribution
 - `make bdist` # Create a binary wheel distribution
+- `make dist` # Create a binary and source distribution
 
 ### use_jupyter
 - un répertoire `notebooks/`
@@ -56,7 +60,7 @@ Et le reste, pour la gestion du projet
 - des hooks à GIT pour nettoyer les notebooks lors des push/pull
 - la gestion d'un kernel Jupyter dédié au projet
 - `make remove-kernel` # Pour supprimer le kernel du projet
-- `make nbbuild-%` # Pour executer tous les notebooks
+- `make nb-run-%` # Pour executer tous les notebooks
 - `make notebook` # pour gérer les dépendances
 - `make nbconvert` # Pour convertir les notebooks en script pythons
 - `make clean-notebooks` # Pour nettoyer les données dans les notebooks

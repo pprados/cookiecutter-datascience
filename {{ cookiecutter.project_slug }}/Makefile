@@ -314,12 +314,12 @@ $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer les kernels Jupyter{% endif %}
-# Règle d'installation du Kernel pour Jupyter
+# Intall a Jupyter kernel
 $(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(PIP_PACKAGE)
 	$(VALIDATE_VENV)
 	python -O -m ipykernel install --user --name $(KERNEL)
 
-# Règle de suppression du kernel
+# Remove the kernel
 .PHONY: remove-kernel
 remove-kernel:
 	@echo y | jupyter kernelspec uninstall $(KERNEL) 2>/dev/null || true
@@ -423,9 +423,9 @@ upgrade-venv: upgrade-$(VENV)
 # Ainsi, il suffit d'un `make nbbuild-phase1` pour valider tous les notesbooks du répertoire `notebooks/phase1`.
 # Pour valider toutes les phases : `make nbbuild-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
-.PHONY: nbbuild-*
+.PHONY: nb-run-*
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
-nbbuild-%: $(REQUIREMENTS)
+nb-run-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	time jupyter nbconvert \
 	  --ExecutePreprocessor.timeout=-1 \
@@ -439,9 +439,9 @@ nbbuild-%: $(REQUIREMENTS)
 # Ainsi, il suffit d'un `make build-phase1` pour valider tous les scripts du répertoire `scripts/phase1`.
 # Pour valider toutes les phases : `make build-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
-.PHONY: build-*
+.PHONY: run-*
 ## Invoke all script in lexical order from scripts/<% dir>
-build-%: $(REQUIREMENTS)
+run-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	time ls scripts/$*/*.py | grep -v __ | sed 's/\.py//g; s/\//\./g' | \
 		xargs -L 1 -t python -O -m

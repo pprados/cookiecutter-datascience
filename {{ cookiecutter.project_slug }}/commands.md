@@ -12,7 +12,7 @@ The Makefile contains the central entry points for common tasks related to this 
 ## Others commands
 * ``make help`` will print all majors target
 * ``make configure``  will prepare the environment (conda venv, kernel, ...)
-* ``make build-%`` will invoke all script in lexical order from scripts/<% dir>
+* ``make run-%`` will invoke all script in lexical order from scripts/<% dir>
 * ``make lint`` will lint the code
 * ``make test`` will run all unit-tests
 * ``make validate`` will validate the version before commit
@@ -24,7 +24,7 @@ The Makefile contains the central entry points for common tasks related to this 
 {% if cookiecutter.use_jupyter == 'y' %}
 ## Jupyter commands
 * ``make remove-kernel`` will remove the project's kernel
-* ``make nbbuild-%`` will execute all notebooks
+* ``make nb-run-%`` will execute all notebooks
 * ``make notebook`` will start a jupyter notebook
 * ``make nbconvert`` will convert all notebooks to python
 * ``make clean-notebooks`` will clean all datas in the notebooks

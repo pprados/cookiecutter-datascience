@@ -421,7 +421,7 @@ upgrade-venv: upgrade-$(VENV)
 # SNIPPET de validation des notebooks en les ré-executants.
 # L'idée est d'avoir un sous répertoire par phase, dans le répertoire `notebooks`.
 # Ainsi, il suffit d'un `make nbbuild-phase1` pour valider tous les notesbooks du répertoire `notebooks/phase1`.
-# Pour valider toutes les phases : `make nbbuild-*`.
+# Pour valider toutes les phases : `make nb-run-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
 .PHONY: nb-run-*
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
@@ -437,7 +437,7 @@ nb-run-%: $(REQUIREMENTS)
 # Ces scripts peuvent être la traduction de Notebook Jupyter, via la règle 'make nbconvert'.
 # L'idée est d'avoir un sous répertoire par phase, dans le répertoire `notebooks`.
 # Ainsi, il suffit d'un `make build-phase1` pour valider tous les scripts du répertoire `scripts/phase1`.
-# Pour valider toutes les phases : `make build-*`.
+# Pour valider toutes les phases : `make run-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
 .PHONY: run-*
 ## Invoke all script in lexical order from scripts/<% dir>
@@ -695,7 +695,7 @@ test: $(REQUIREMENTS)
 # SNIPPET pour vérifier les TU et le recalcule de tous les notebooks{% endif %}
 .PHONY: validate
 ## Validate the version before release
-validate: test build-* build/linkcheck build/html build/pdf
+validate: test run-* build/linkcheck build/html build/pdf
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.

@@ -23,6 +23,12 @@ $ conda install cookiecutter
 ```
 et répondez aux questions.
 
+## Principe des projects
+- Les projets utilisent un environnement conda pour isoler les dépendances
+- Elles doivent être déclarées dans `setup.py`
+- Le numéro de version du projet est géré automatiquement via GIT et les labels
+- Le Makefile doit pouvoir s'exécuter sur plusieurs processeurs (`make -j -O ...`)
+
 ## Impact des différents options
 Lors de la création d'un projet, des questions vous sont posées
 pour identifier les caractèristiques du projet à créer.
@@ -132,8 +138,9 @@ du Makefile](Makefile.snippet).
 - [ ] Injecter les notebooks dans la documentation
 - [ ] Gestion plusieurs fichiers datas en parallèles
 - [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
-- [ ] Execution parfaite en parallèle (-j)
 - [ ] TU du makefile
 - [ ] [Plugin](https://pypi.org/search/?q=pytest) pytest
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
 - [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
+- [ ] Execution parfaite en rejeu
+- [ ] Execution parfaite en parallèle (-j)

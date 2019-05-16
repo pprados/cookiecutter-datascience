@@ -24,12 +24,9 @@ Contents:
    source/modules
    todo
 
-* :ref:`notebooks/phase1/1_Sample.ipynb`
-
 Indices and tables
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-* :ref:`notebooks/phase1/1_Sample.ipynb`

@@ -1,0 +1,267 @@
+#!/usr/bin/env make
+
+# This is a unit test of all target of generated Makefile
+# Use a tempory copy of data and VENV
+
+SHELL=/bin/bash
+.SHELLFLAGS = -e -c
+.ONESHELL:
+
+
+PYTHON_VERSION=3.6
+CONDA_BASE=$(shell conda info --base)
+CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
+CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
+
+ifndef NLTK_DATA
+export NTLK_DATA
+# La ligne suivante ralentie le Makefile. A activer qu'avec des env. spécifiques.
+#NLTK_DATA:=$(shell python -c "import nltk.data; print(nltk.data.path[0])" 2>/dev/null || true)
+# Sinon, utiliser le code suivant
+ifeq ($(OS),Darwin)
+ifeq ($(wildcard ~/nltk_data), )
+NLTK_DATA=/usr/local/share/nltk_data
+else
+NLTK_DATA=~/nltk_data
+endif
+else ifeq ($(OS),Windows)
+NLTK_DATA=C:/nltk_data
+else
+ifeq ($(wildcard ~/nltk_data), )
+NLTK_DATA=/usr/share/nltk_data
+else
+NLTK_DATA=~/nltk_data
+endif
+endif
+endif
+
+.PHONY: dump-*
+dump-%:
+	@if [ "${${*}}" = "" ]; then
+		echo "Environment variable $* is not set";
+		exit 1;
+	else
+		echo "$*=${${*}}";
+	fi
+
+# Create a temporary VENV and DATA
+# Warning, it's not a realy isolated environment with MT because, dist, etc
+# are not cleaning. May be, duplicate all the project ?
+define do_make
+	$(MAKE) clean
+	D=$(shell mktemp -d --tmpdir --suffix _BDA)
+	V=temp_$(shell cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 5 | head -n 1)
+	cp -Rf . $$D/
+	cd $$D/
+	conda create -n $$V -y python=$(PYTHON_VERSION)
+	source $(CONDA_BASE)/bin/activate $$V
+	rm -rf data/interim/* data/processed/* data/external/*
+	VENV=$$V $(MAKE) $1
+	echo "SOURCE $(CONDA_BASE)/bin/deactivate"
+	conda deactivate
+	conda env remove -n $$V
+	rm -Rf $$D
+endef
+
+.PHONY: help
+help:
+	$(call do_make,help)
+
+.PHONY: dump
+dump:
+	$(call do_make,dump-CONDA_BASE)
+
+.PḦONY: .git
+.git:
+	$(call do_make,.git)
+
+.PHONY: .gitattributes
+.gitattributes:
+	$(call do_make,.gitattributes)
+
+.PHONY: requirements
+requirements:
+	$(call do_make,requirements)
+
+.PHONY: dependencies
+dependencies:
+	$(call do_make,dependencies)
+
+.PHONY: $(CONDA_PYTHON)
+$(CONDA_PYTHON):
+	$(call do_make,$(CONDA_PYTHON))
+
+.PHONY: $(NLTK_DATA)/tokenizers/wordnet
+$(NLTK_DATA)/tokenizers/wordnet:
+	$(call do_make,$(NLTK_DATA)/tokenizers/wordnet)
+
+.PHONY: $(NLTK_DATA)/corpora/stopwords
+$(NLTK_DATA)/corpora/stopwords:
+	$(call do_make,$(NLTK_DATA)/corpora/stopwords)
+
+.PHONY: $(CONDA_PACKAGE)/spacy/data/en
+$(CONDA_PACKAGE)/spacy/data/en:
+	$(call do_make,$(CONDA_PACKAGE)/spacy/data/en)
+
+.PHONY: configure
+configure:
+	$(call do_make,configure)
+
+.PHONY: remove-venv
+remove-venv:
+	$(call do_make,remove-venv)
+
+.PHONY: upgrade-venv
+upgrade-venv:
+	$(call do_make,upgrade-venv)
+
+.PHONY: run
+run:
+	$(call do_make,run-phase1)
+
+.PHONY: lint
+lint:
+	$(call do_make,lint)
+#-------------------
+.PHONY: docs/source
+docs/source:
+	$(call do_make,docs/source)
+
+.PHONY: build
+build:
+	$(call do_make,build/html build/pdf)
+
+# WARNING: invoke browser
+.PHONY: docs
+docs:
+	$(call do_make,docs)
+
+#-------------------
+.PHONY: remove-kernel
+remove-kernel:
+	$(call do_make,remove-kernel)
+
+
+.PHONY: nb-run
+nb-run:
+	$(call do_make,nb-run-phase1)
+
+
+.PHONY: notebook
+# notebook
+
+.PHONY: sync_data_to_s3 sync_data_from_s3
+#sync_data_to_s3
+#sync_data_from_s3
+
+.PHONY: nb-convert
+nb-convert:
+	$(call do_make,nb-convert)
+
+.PHONY: clean-notebooks
+clean-notebooks:
+	$(call do_make,clean-notebooks)
+
+#-------------------
+.PHONY: sdist bdist dist
+sdist:
+	$(call do_make,sdist)
+
+bdist:
+	$(call do_make,bdist)
+
+dist:
+	$(call do_make,dist)
+
+#-------------------
+.PHONY: release check-twine test-twine
+release:
+	$(call do_make,release)
+
+check-twine:
+	$(call do_make,check-twine)
+
+test-twine:
+	$(call do_make,test-twine)
+#-------------------
+.PHONY: clean-pyc clean-build clean-pip clean-venv clean clean-all
+clean-pyc:
+	$(call do_make,clean-pyc)
+
+clean-build:
+	$(call do_make,clean-build)
+
+clean-pip:
+	$(call do_make,clean-pip)
+
+clean-venv:
+	$(call do_make,clean-venv)
+
+clean:
+	$(call do_make,clean)
+
+clean-all:
+	$(call do_make,clean-all)
+
+#-------------------
+.PHONY: test validate
+test:
+	$(call do_make,test)
+
+validate:
+	$(call do_make,validate)
+
+#-------------------
+ec2:
+	$(call do_make,ec2-clean)
+
+ec2-tmux:
+	$(call do_make,ec2-tmux-clean)
+ec2-detach:
+	$(call do_make,ec2-detach-clean)
+ec2-notebook:
+	$(call do_make,ec2-notebook)
+EC2: ec2 ec2-tmux ec2-detach ec2-notebook
+
+#-------------------
+.PHONY: prepare feature train evalutate visualize
+prepare:
+	$(call do_make,prepare)
+
+features:
+	$(call do_make,features)
+
+train:
+	$(call do_make,train)
+
+evaluate:
+	$(call do_make,evaluate)
+
+visualize:
+	$(call do_make,visualize)
+#-------------------
+# Group services
+STD: .git .gitattributes requirements dependencies \
+	configure remove-venv upgrade-venv remove-kernel \
+    $(NLTK_DATA)/tokenizers/wordnet $(NLTK_DATA)/corpora/stopwords \
+    $(CONDA_PYTHON)
+
+DOCS: docs/source build
+DIST: sdist bdist dist
+# clean-pip
+CLEAN: clean-pyc clean-build clean-venv clean clean-all
+TEST: test validate lint
+#BUG
+ML: prepare feature train evaluate visualize
+
+NOT_TESTED: EC2 docs $(CONDA_PACKAGE)/spacy/data/en
+
+#-------------------
+# Group of options
+DEFAULT: CLEAN STD DOCS DIST TEST ML
+JUPYTER: remove-kernel nb-run nb-convert clean-notebooks
+OPENSOURCE: check-twine test-twine dist release
+
+toto:
+	$(call do_make,dump-CONDA_PACKAGE)
+	echo ok

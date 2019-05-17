@@ -3,6 +3,7 @@
 SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
+.NOTPARALLEL:
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour détecter l'OS d'exécution.
@@ -174,20 +175,24 @@ test: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python -m pytest -s tests
 
+# Create a default generated Makefile for GIT
 Makefile.snippet: {{\ cookiecutter.project_slug\ }} $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
 	cp tmp/bdaproject/Makefile Makefile.snippet
 	git add Makefile.snippet
 
+# Install a default sample in ./tmp/bda_project
 try: $(REQUIREMENTS)
-	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
+	cookiecutter -f -o tmp --no-input .
+	cp Makefile-TU tmp/bda_project
 
 _make-%: try
 	@cd tmp/bda_project
 	@source $(CONDA_BASE)/bin/activate bda_project
 	@make $(*:_make-%=%)
 
-check-docs:
+# Check all version of documentations
+check-docs: try
 	@cd tmp/bdaproject
 	@source $(CONDA_BASE)/bin/activate bdaproject
 	#@make build/applehelp # https://github.com/miyakogi/m2r/issues/34
@@ -211,22 +216,22 @@ check-docs:
 	@make build/texinfo
 	@make build/xml
 
-check-lint: _make-lint
+## Check all generated rules
+check-makefile: try
+	JOBS="-j 20"
+	cd tmp/bda_project
+	make $(JOBS) -f Makefile-TU DEFAULT
+	#[ '"y"' = $$(jq '.["open_source_software"]' ../../cookiecutter.json) ] && make $(JOBS) -f Makefile-TU OPENSOURCE
+	#[ '"y"' = $$(jq '.["use_jupyter"]' ../../cookiecutter.json) ] && make $(JOBS) -f Makefile-TU JUPYTER
 
-check-clean: _make-clean _make-clean-notebooks
-
-check-dist: _make-sdist _make-bdist
-
-## Try all machine learning cycle
-check-all-ml: _make-train _make-evaluate _make-visualize
-
+## Check empty configure
 check-configure:
-	conda env remove -n bdaproject
-	cd tmp/bdaproject
+	conda env remove -n bda_project
+	cd tmp/bda_project
 	make configure
 
 ## Try all major make target
-check-all-make: check-configure check-all-ml check-dist check-lint check-clean _make-docs check-docs
+check-all-make: check-configure check-makefile check-docs
 
 ## Validate all before commit
 validate: Makefile.snippet test check-all-make

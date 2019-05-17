@@ -98,6 +98,8 @@ PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:={{ cookiecutter.python_version }}
 {% if cookiecutter.use_aws == 'y' %}S3_BUCKET?=s3://$(PRJ)
 PROFILE = default{% endif %}
+# Data directory (can be in other place, in VM for example)
+export DATA?=data
 {% if cookiecutter.add_makefile_comments == 'y' %}
 {% if cookiecutter.use_DVC == 'y' %}
 # Use DVC bucket. May be :
@@ -196,7 +198,7 @@ dump-%:
 #
 # Pour cela, un fichier .gitattribute est maintenu à jour.
 # Les recettes pour les notebooks se chargent de les nettoyer avant de les commiter.
-# Pour cela, elles appliquent `jupyter nbconvert` à la volée. Ainsi, les comparaisons
+# Pour cela, elles appliquent `jupyter nb-convert` à la volée. Ainsi, les comparaisons
 # de version ne sont plus parasités par les data.
 #
 # Les scripts pour les CSV utilisent le composant `daff` (pip install daff)
@@ -212,7 +214,7 @@ dump-%:
 # le paramètrage de `.gitattributes`.{% endif %}
 .PHONY: pipe_clear_jupyter_output
 pipe_clear_jupyter_output:
-	jupyter nbconvert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null
+	jupyter nb-convert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null
 {% endif %}
 # Initialiser la configuration de Git
 .gitattributes: | .git  # Configure git
@@ -427,14 +429,14 @@ upgrade-venv: upgrade-$(VENV)
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
 nb-run-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	time jupyter nbconvert \
+	time jupyter nb-convert \
 	  --ExecutePreprocessor.timeout=-1 \
 	  --execute \
 	  --inplace notebooks/$*/*.ipynb{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET de validation des scripts en les ré-executants.
-# Ces scripts peuvent être la traduction de Notebook Jupyter, via la règle 'make nbconvert'.
+# Ces scripts peuvent être la traduction de Notebook Jupyter, via la règle 'make nb-convert'.
 # L'idée est d'avoir un sous répertoire par phase, dans le répertoire `notebooks`.
 # Ainsi, il suffit d'un `make build-phase1` pour valider tous les scripts du répertoire `scripts/phase1`.
 # Pour valider toutes les phases : `make run-*`.
@@ -557,7 +559,7 @@ release: bdist sdist
 ## Start jupyter notebooks
 notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	$(VALIDATE_VENV)
-	jupyter notebook{% endif %}
+	DATA=$$DATA jupyter notebook{% endif %}
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour synchroniser les données avec un buket s3{% endif %}
@@ -565,17 +567,17 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 ## Upload Data to S3
 sync_data_to_s3:
 ifeq (default,$(PROFILE))
-	aws s3 sync data/ s3://$(S3_BUCKET)/data/
+	aws s3 sync $(DATA)/ s3://$(S3_BUCKET)/data/
 else
-	aws s3 sync data/ s3://$(S3_BUCKET)/data/ --profile $(PROFILE)
+	aws s3 sync $(DATA)/ s3://$(S3_BUCKET)/data/ --profile $(PROFILE)
 endif
 
 ## Download Data from S3
 sync_data_from_s3:
 ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(S3_BUCKET)/data/ data/
+	aws s3 sync s3://$(S3_BUCKET)/data/ $(DATA)/
 else
-	aws s3 sync s3://$(S3_BUCKET)/data/ data/ --profile $(PROFILE)
+	aws s3 sync s3://$(S3_BUCKET)/data/ $(DATA)/ --profile $(PROFILE)
 endif{% endif %}
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -584,7 +586,7 @@ endif{% endif %}
 # Le code utilise un modèle permettant d'encadrer les cellules Markdown dans des strings.
 # Les scripts possède ensuite le flag d'exécution, pour pouvoir les lancer directement
 # via un 'scripts/phase1/1_sample.py'.{% endif %}
-.PHONY: nbconvert
+.PHONY: nb-convert
 # Convert all notebooks to python scripts
 _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	@echo -e "Convert all notebooks..."
@@ -621,7 +623,7 @@ _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 # Version permettant de convertir les notebooks et de la ajouter en même temps à GIT
 # en ajouter le flag +x.{% endif %}
 ## Convert all notebooks to python scripts
-nbconvert: _nbconvert
+nb-convert: _nbconvert
 	find scripts/ -type f -iname "*.py" -exec git add "{}" \;
 	find scripts/ -type f -iname "*.py" -exec git update-index --chmod=+x  "{}" \;{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}

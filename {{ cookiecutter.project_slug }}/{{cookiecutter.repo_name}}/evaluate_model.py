@@ -17,12 +17,12 @@ from .tools import *  # pylint: disable=W0401
 logger = logging.getLogger(__name__)
 
 
-def evaluate_model(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> int:
+def evaluate_model(model_filepath: str, data_filepath: str, evaluate_filepath: str) -> int:
     """ Evaluate the model from model_filepath and data
         from data_filepath
 
-        :param data_filepath: data file path
         :param model_filepath: model file path with features
+        :param data_filepath: data file path
         :param evaluate_filepath: evaluate file path to write
         :return: 0 if ok, else error
     """
@@ -30,26 +30,26 @@ def evaluate_model(data_filepath: str, model_filepath: str, evaluate_filepath: s
         .mkdir(parents=True, exist_ok=True)
     for f in glob.glob(evaluate_filepath, recursive=True):
         pass # TODO
-    with open(evaluate_filepath,"w") as file:
-        f.write("0.90") # TODO Write AUC or others metrics
+    with open(evaluate_filepath,"w") as auc:
+        auc.write("0.90") # TODO Write AUC or others metrics
     return 0
 
 
 @click.command()
-@click.argument('data_filepath', type=click.Path(exists=True))
 @click.argument('model_filepath', type=click.Path(exists=True))
+@click.argument('data_filepath', type=click.Path(exists=True))
 @click.argument('evaluate_filepath', type=click.Path())
-def main(data_filepath: str, model_filepath: str, evaluate_filepath: str) -> int:
+def main(model_filepath: str, data_filepath: str, evaluate_filepath: str) -> int:
     """ Evaluate the model from model_filepath and data
         from data_filepath
-
-        :param data_filepath: data file path
+ PPR : c'est la doc du mode --help
         :param model_filepath: model file path with features
+        :param data_filepath: data file path
         :param evaluate_filepath: evaluate file path to write
         :return: 0 if ok, else error
     """
     logger.info('Evaludate model %s from processed data', model_filepath)
-    return evaluate_model(data_filepath, model_filepath, evaluate_filepath)
+    return evaluate_model(model_filepath, data_filepath, evaluate_filepath)
 
 
 if __name__ == '__main__':

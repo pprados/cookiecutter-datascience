@@ -13,23 +13,23 @@
 $(PRJ)/*.py : $(PRJ)/tools/*.py
 	@touch $@
 
-data/interim/datas-prepared.csv : $(REQUIREMENTS) $(PRJ)/prepare_dataset.py data/raw/*
-	python -O -m $(PRJ).prepare_dataset \
-		data/raw/datas.csv \
-		data/interim/datas-prepared.csv
+$(DATA)/interim/datas-prepared.csv : $(REQUIREMENTS) $(PRJ)/prepare_dataset.py $(DATA)/raw/*
+	python -O -m $(PRJ).prepare_$(DATA)set \
+		$(DATA)/raw/datas.csv \
+		$(DATA)/interim/datas-prepared.csv
 ## Prepare the dataset
-prepare: data/interim/datas-prepared.csv
+prepare: $(DATA)/interim/datas-prepared.csv
 
-data/processed/datas-features.csv : $(REQUIREMENTS) $(PRJ)/build_features.py data/interim/datas-prepared.csv
+$(DATA)/processed/datas-features.csv : $(REQUIREMENTS) $(PRJ)/build_features.py $(DATA)/interim/datas-prepared.csv
 	python -O -m $(PRJ).build_features \
-		data/interim/datas-prepared.csv \
-		data/processed/datas-features.csv
+		$(DATA)/interim/datas-prepared.csv \
+		$(DATA)/processed/datas-features.csv
 ## Add features
-features: data/interim/datas-features.csv
+features: $(DATA)/processed/datas-features.csv
 
-models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py data/processed/datas-features.csv
+models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py $(DATA)/processed/datas-features.csv
 	python -O -m $(PRJ).train_model \
-		data/processed/datas-features.csv \
+		$(DATA)/processed/datas-features.csv \
 		models/model.pkl
 ## Train the model
 train: models/model.pkl
@@ -37,7 +37,7 @@ train: models/model.pkl
 reports/auc.metric: $(REQUIREMENTS) $(PRJ)/evaluate_model.py models/model.pkl
 	python -O -m $(PRJ).evaluate_model \
 		models/model.pkl \
-		data/interim/datas-features.csv \
+		$(DATA)/processed/datas-features.csv \
 		reports/auc.metric
 ## Evalutate the model
 evaluate: reports/auc.metric

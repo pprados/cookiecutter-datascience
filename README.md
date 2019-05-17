@@ -29,7 +29,7 @@ et répondez aux questions.
 - Le numéro de version du projet est géré automatiquement via GIT et les labels
 - Le Makefile doit pouvoir s'exécuter sur plusieurs processeurs (`make -j -O ...`)
 
-## Impact des différents options
+## Impact des différentes options
 Lors de la création d'un projet, des questions vous sont posées
 pour identifier les caractèristiques du projet à créer.
 Elles permettent d'alléger le project, en supprimant les règles
@@ -68,7 +68,7 @@ Et le reste, pour la gestion du projet
 - `make remove-kernel` # Pour supprimer le kernel du projet
 - `make nb-run-%` # Pour executer tous les notebooks
 - `make notebook` # pour gérer les dépendances
-- `make nbconvert` # Pour convertir les notebooks en script pythons
+- `make nb-convert` # Pour convertir les notebooks en script pythons
 - `make clean-notebooks` # Pour nettoyer les données dans les notebooks
 - `make ec2-notebook` # Si AWS, pour lancer un notebook sur une instance EC2 (via [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2))
  
@@ -138,9 +138,10 @@ du Makefile](Makefile.snippet).
 - [ ] Injecter les notebooks dans la documentation
 - [ ] Gestion plusieurs fichiers datas en parallèles
 - [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
-- [ ] TU du makefile
+- [X] TU du makefile
 - [ ] [Plugin](https://pypi.org/search/?q=pytest) pytest
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
 - [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
 - [ ] Execution parfaite en rejeu
 - [ ] Execution parfaite en parallèle (-j)
+- [ ] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)

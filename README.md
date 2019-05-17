@@ -145,3 +145,5 @@ du Makefile](Makefile.snippet).
 - [ ] Execution parfaite en rejeu
 - [ ] Execution parfaite en parallèle (-j)
 - [ ] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
+- [ ] [Koalas](https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html)
+- [ ] [Prefect](https://www.prefect.io/)

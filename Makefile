@@ -108,6 +108,14 @@ DEACTIVATE_VENV=source $(CONDA_BASE)/bin/deactivate $(VENV)
 VALIDATE_VENV=$(CHECK_VENV)
 #VALIDATE_VENV=$(ACTIVATE_VENV)
 
+.git/hooks/pre-push:
+	# Add a hook to validate the project before a git push
+	cat >>.git/hooks/pre-push <<PRE-PUSH
+	#!/usr/bin/env sh
+	# Validate the project before a push
+	[ "\$${FORCE}" == y ]] || make validate
+	PRE-PUSH
+	chmod +x .git/hooks/pre-push
 
 # Toutes les dépendances du projet à regrouper ici
 .PHONY: requirements
@@ -178,7 +186,7 @@ test: $(REQUIREMENTS)
 # Create a default generated Makefile for GIT
 Makefile.snippet: {{\ cookiecutter.project_slug\ }} $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
-	cp tmp/bdaproject/Makefile Makefile.snippet
+	cp tmp/bda_project/Makefile Makefile.snippet
 	git add Makefile.snippet
 
 # Install a default sample in ./tmp/bda_project
@@ -189,38 +197,38 @@ try: $(REQUIREMENTS)
 _make-%: try
 	@cd tmp/bda_project
 	@source $(CONDA_BASE)/bin/activate bda_project
-	@make $(*:_make-%=%)
+	@$(MAKE) $(*:_make-%=%)
 
 # Check all version of documentations
 check-docs: try
-	@cd tmp/bdaproject
-	@source $(CONDA_BASE)/bin/activate bdaproject
-	#@make build/applehelp # https://github.com/miyakogi/m2r/issues/34
-	@make build/changes
-	@make build/devhelp
-	@make build/dirhtml
-	@make build/dummy
-	@make build/epub # Error with KeyErro 'ids' in _epub_base.py
-	@make build/gettext
-	@make build/html
-	@make build/htmlhelp
-	@make build/json
-	@make build/latex
-	@make build/linkcheck
-	@make build/man
-	@make build/pickle
-	@make build/pseudoxml
-	@make build/qthelp
-	@make build/singlehtml
-	@make build/text
-	@make build/texinfo
-	@make build/xml
+	@cd tmp/bda_project
+	@source $(CONDA_BASE)/bin/activate bda_project
+	#@$(MAKE) build/applehelp # https://github.com/miyakogi/m2r/issues/34
+	@$(MAKE) build/changes
+	@$(MAKE) build/devhelp
+	@$(MAKE) build/dirhtml
+	@$(MAKE) build/dummy
+	#@$(MAKE) build/epub # Error with KeyErro 'ids' in _epub_base.py
+	@$(MAKE) build/gettext
+	@$(MAKE) build/html
+	@$(MAKE) build/htmlhelp
+	@$(MAKE) build/json
+	@$(MAKE) build/latex
+	@$(MAKE) build/linkcheck
+	@$(MAKE) build/man
+	@$(MAKE) build/pickle
+	@$(MAKE) build/pseudoxml
+	@$(MAKE) build/qthelp
+	@$(MAKE) build/singlehtml
+	@$(MAKE) build/text
+	@$(MAKE) build/texinfo
+	@$(MAKE) build/xml
 
 ## Check all generated rules
 check-makefile: try
 	JOBS="-j 20"
 	cd tmp/bda_project
-	make $(JOBS) -f Makefile-TU DEFAULT
+	make -O $(JOBS) -f Makefile-TU DEFAULT
 	#[ '"y"' = $$(jq '.["open_source_software"]' ../../cookiecutter.json) ] && make $(JOBS) -f Makefile-TU OPENSOURCE
 	#[ '"y"' = $$(jq '.["use_jupyter"]' ../../cookiecutter.json) ] && make $(JOBS) -f Makefile-TU JUPYTER
 
@@ -228,7 +236,7 @@ check-makefile: try
 check-configure:
 	conda env remove -n bda_project
 	cd tmp/bda_project
-	make configure
+	$(MAKE) configure
 
 ## Try all major make target
 check-all-make: check-configure check-makefile check-docs

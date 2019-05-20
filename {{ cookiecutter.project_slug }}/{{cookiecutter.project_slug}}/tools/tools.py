@@ -4,7 +4,7 @@ Tools for machine learning pipeline.
 """
 
 
-# TODO: add shared python tools heres, and expose API in __init__.py
+# TODO: Ajoutez le code communs ici, et exposez les dans __init__.py
 def tools(x: str) -> str:
     """
     A tools

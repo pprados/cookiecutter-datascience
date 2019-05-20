@@ -2,8 +2,7 @@
 {{cookiecutter.project_slug}}
 ==============================================================
 .. todo::
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+   {{cookiecutter.project_short_description}}
 
 .. ifconfig:: version.find("dev")
 .. warning::

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def build_features(input_prepared_filepath: str, output_featured_filepath: str) -> int:
     pathlib.Path(os.path.dirname(output_featured_filepath)) \
         .mkdir(parents=True, exist_ok=True)
-    # TODO: remove this sample line
+    # TODO: Remplacez la ligne suivante pour un enrichissement du dataset
     shutil.copyfile(input_prepared_filepath, output_featured_filepath)
     return 0
 

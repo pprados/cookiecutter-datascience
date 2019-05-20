@@ -1,0 +1,29 @@
+stages:
+  - build
+  - deploy
+
+image: fabiena/full_stack_aws:latest
+
+variables:
+  AWS_DEFAULT_REGION: "eu-west-1"
+
+services: []
+
+# This folder is cached between builds
+# http://docs.gitlab.com/ce/ci/yaml/README.html#cache
+cache:
+  paths:
+  - node_modules/
+
+dist:
+  stage: build
+  script:
+   - scripts/dist.sh
+
+deploy:
+  stage: deploy
+  script:
+    - scripts/deploy.sh
+  when: manual
+  tags:
+    - prod

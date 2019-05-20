@@ -28,7 +28,7 @@ def prepare_dataset(input_raw_filepath: str, output_interim_filepath: str) -> in
     """
     pathlib.Path(os.path.dirname(output_interim_filepath)) \
         .mkdir(parents=True, exist_ok=True)
-    # TODO: remove this sample line
+    # TODO: Remplacez la ligne suivante par une préparation du dataset
     shutil.copyfile(input_raw_filepath, output_interim_filepath)
 
     return 0
@@ -55,7 +55,7 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # not used in this stub but often useful for finding various files
-    PROJECT_DIR = pathlib.Path(__file__).resolve().parents[1]
+    PROJECT_DIR = pathlib.Path(__file__).resolve().parents[1]  # PPR : Pas visible par le code
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables

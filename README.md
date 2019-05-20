@@ -74,6 +74,7 @@ Et le reste, pour la gestion du projet
  
 ### use_tensorflow
 - une dépendance à Tensorflow, avec ou sans GPU suivant la plateforme
+- L'utilisation de l'environement 'tensorflow_p36' en cas d'utilisation de ssh-ec2
 
 ### use_text_processing
 - une dépendance à [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
@@ -121,25 +122,25 @@ du Makefile](Makefile.snippet).
 # TODO
 - [X] Pipeline datascience
 - [X] Test unitaires
+- [X] TU du makefile
 - [X] [Jupyter](https://jupyter.org/)
 - [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
 - [X] [Tensorflow](https://www.tensorflow.org/)
 - [X] [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
 - [X] [pylint](https://www.pylint.org/) et [flake8](http://flake8.pycqa.org/)
+- [X] Documentation et [Sphinx](http://www.sphinx-doc.org/)
 - [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
 - [X] [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2)
 - [X] [LFS](https://git-lfs.github.com/)
 - [X] [DVC](https://dvc.org/)
 - [ ] [MLFlow](https://mlflow.org/) (alternative a DVC))
-- [X] Documentation et [Sphinx](http://www.sphinx-doc.org/)
-- [ ] [Coverage](https://coverage.readthedocs.io/)
+- [ ] [Coverage](https://coverage.readthedocs.io/) et voir Sphinx coverage comment l'activer)
 - [ ] [Hypothesis](https://hypothesis.readthedocs.io/)
 - [ ] [Airflow](https://airflow.apache.org/)
 - [ ] Injecter les notebooks dans la documentation
 - [ ] Gestion plusieurs fichiers datas en parallèles
 - [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
-- [X] TU du makefile
-- [ ] [Plugin](https://pypi.org/search/?q=pytest) pytest
+- [ ] [Plugin Pytest](https://pypi.org/search/?q=pytest)
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
 - [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
 - [ ] Execution parfaite en rejeu
@@ -147,3 +148,13 @@ du Makefile](Makefile.snippet).
 - [ ] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
 - [ ] [Koalas](https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html)
 - [ ] [Prefect](https://www.prefect.io/)
+- [ ] Tox
+- [ ] Jenkins
+- [ ] [Github Travis](https://notes.farcellier.com/travisci/index.html)
+- [ ] Gitlab CI
+- [ ] Docker
+- [ ] [Structured logs](https://github.com/FabienArcellier/spike_json_formatter_for_logging_python)
+- [ ] [Retry](https://notes.farcellier.com/python/index.html#retrying)
+- [ ] [Test isolation](https://notes.farcellier.com/blog/20190315_ecrire_des_tests_isoles_avec_des_effets_de_bords_sur_le_filesystem_en_python/page.html)
+- [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
+

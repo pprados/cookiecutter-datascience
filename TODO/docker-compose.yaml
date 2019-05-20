@@ -1,0 +1,132 @@
+version: '3.1'
+services:
+
+  redis:
+    image: 'redis:3.2.7'
+    restart: always
+
+  postgres:
+    image: postgres:9.6
+    restart: always
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+
+  dd_database:
+    image: postgres:9.6
+    restart: always
+    environment:
+      - POSTGRES_USER=datadriver
+      - POSTGRES_PASSWORD=datadriver
+      - POSTGRES_DB=datadriver
+    volumes:
+      - ./docker/dd_database:/docker-entrypoint-initdb.d
+      - ./data/results/contextual_data:/tmp/contextual_data
+      - ./data/reference:/tmp/reference
+
+  webserver:
+    build:
+      context: .
+      dockerfile: ./docker/factory/Dockerfile
+    image: azepnl-ap14:5000/rotating/factory:deploy
+    restart: always
+    depends_on:
+      - postgres
+      - dd_database
+      - minio
+      - worker
+    environment:
+      - EXECUTOR=Celery
+      - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      - AIRFLOW__WEBSERVER__WORKERS=1
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgres://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT=86400
+    ports:
+      - "8443:8080"
+    command: webserver
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: ./docker/factory/Dockerfile
+    image: azepnl-ap14:5000/rotating/factory:deploy
+    restart: always
+    depends_on:
+      - postgres
+      - dd_database
+      - minio
+      - redis
+    environment:
+      - EXECUTOR=Celery
+      - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgres://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT=86400
+    command: scheduler
+
+  worker:
+    build:
+      context: .
+      dockerfile: ./docker/factory/Dockerfile
+    image: azepnl-ap14:5000/rotating/factory:deploy
+    restart: always
+    depends_on:
+      - dd_database
+      - postgres
+      - minio
+      - redis
+    environment:
+      - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      - EXECUTOR=Celery
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgres://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT=86400
+    volumes:
+      - ./data/whisper:/var/lib/rotating/whisper
+    ports:
+      - "8793"
+    command: worker
+
+  flower:
+    image: puckel/docker-airflow:1.10.2
+    restart: always
+    depends_on:
+      - redis
+      - postgres
+      - dd_database
+    environment:
+      - EXECUTOR=Celery
+    ports:
+      - "5555:5555"
+    command: flower
+
+  grafana:
+    build:
+      context: .
+      dockerfile: ./docker/grafana/Dockerfile
+    image: localhost:5000/demo/grafana:deploy
+    restart: always
+    depends_on:
+      - graphite
+      - dd_database
+    ports:
+      - "2310:3000"
+
+  graphite:
+    image: graphiteapp/graphite-statsd
+    restart: always
+    volumes:
+      - ./data/whisper:/opt/graphite/storage/whisper/efa
+    ports:
+      - "80"
+
+  minio:
+    image: minio/minio
+    restart: always
+    environment:
+        - MINIO_ACCESS_KEY=key_minio
+        - MINIO_SECRET_KEY=secret_minio
+    volumes:
+      - ./data/minio:/data
+    ports:
+          - "9000:9000"
+    command: server /data

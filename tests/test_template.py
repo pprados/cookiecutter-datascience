@@ -9,7 +9,6 @@ def context():
         "project_name": "bda_project",
         "project_slug": "bda_project",
         "project_short_description": "Test",
-        "repo_name": "bda_project"
     }
 
 

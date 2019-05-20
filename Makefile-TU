@@ -47,16 +47,19 @@ dump-%:
 # Create a temporary VENV and DATA
 # Warning, it's not a realy isolated environment with MT because, dist, etc
 # are not cleaning. May be, duplicate all the project ?
+# PPR NLTK_DATA=~/tmp/ntlkXXX ?
 define do_make
+    echo "---------------------------- $1"
 	$(MAKE) clean
 	D=$(shell mktemp -d --tmpdir --suffix _BDA)
+	NLTK_DATA=$(D)_nltk_data
 	V=temp_$(shell cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 5 | head -n 1)
 	cp -Rf . $$D/
 	cd $$D/
 	conda create -n $$V -y python=$(PYTHON_VERSION)
 	source $(CONDA_BASE)/bin/activate $$V
 	rm -rf data/interim/* data/processed/* data/external/*
-	VENV=$$V $(MAKE) $1
+	VENV=$$V NLTK_DATA=$$NLTK_DATA $(MAKE) $1
 	echo "SOURCE $(CONDA_BASE)/bin/deactivate"
 	conda deactivate
 	conda env remove -n $$V
@@ -91,16 +94,15 @@ dependencies:
 $(CONDA_PYTHON):
 	$(call do_make,$(CONDA_PYTHON))
 
-.PHONY: $(NLTK_DATA)/tokenizers/wordnet
-$(NLTK_DATA)/tokenizers/wordnet:
-	$(call do_make,$(NLTK_DATA)/tokenizers/wordnet)
+.PHONY: $(NLTK_DATA)
+$(NLTK_DATA):
+	# $(call do_make,$(NLTK_DATA)/tokenizers/wordnet)
+	# $(call do_make,$(NLTK_DATA)/tokenizers/punkt)
+	# $(call do_make,$(NLTK_DATA)/corpora/stopwords)
+	echo empty
 
-.PHONY: $(NLTK_DATA)/corpora/stopwords
-$(NLTK_DATA)/corpora/stopwords:
-	$(call do_make,$(NLTK_DATA)/corpora/stopwords)
-
-.PHONY: $(CONDA_PACKAGE)/spacy/data/en
-$(CONDA_PACKAGE)/spacy/data/en:
+.PHONY: $(CONDA_PACKAGE)/spacy
+$(CONDA_PACKAGE)/spacy:
 	$(call do_make,$(CONDA_PACKAGE)/spacy/data/en)
 
 .PHONY: configure
@@ -241,10 +243,12 @@ visualize:
 	$(call do_make,visualize)
 #-------------------
 # Group services
-STD: .git .gitattributes requirements dependencies \
+XSTD: .git .gitattributes requirements dependencies \
 	configure remove-venv upgrade-venv remove-kernel \
-    $(NLTK_DATA)/tokenizers/wordnet $(NLTK_DATA)/corpora/stopwords \
+    $(NLTK_DATA) \
     $(CONDA_PYTHON)
+
+STD: $(CONDA_PYTHON)
 
 DOCS: docs/source build
 DIST: sdist bdist dist
@@ -254,14 +258,10 @@ TEST: test validate lint
 #BUG
 ML: prepare feature train evaluate visualize
 
-NOT_TESTED: EC2 docs $(CONDA_PACKAGE)/spacy/data/en
+NOT_TESTED: EC2 docs $(CONDA_PACKAGE)/spacy
 
 #-------------------
 # Group of options
 DEFAULT: CLEAN STD DOCS DIST TEST ML
 JUPYTER: remove-kernel nb-run nb-convert clean-notebooks
 OPENSOURCE: check-twine test-twine dist release
-
-toto:
-	$(call do_make,dump-CONDA_PACKAGE)
-	echo ok

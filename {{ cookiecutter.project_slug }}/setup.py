@@ -31,13 +31,12 @@ def _git_url():
 def _git_http_url():
     return re.sub(r".*@(.*):(.*).git", r"http://\1/\2", _git_url())
 
-print("GIT",_git_url())
-print("GIT HTTP",_git_http_url())
 setup(
     name='{{cookiecutter.project_slug}}' + USE_GPU,
     author="Octo Technology",
     author_email="bda@octo.com",
     description="{{cookiecutter.project_short_description}}",
+    # PPR bug sur ssh-ec2. A cause de l'UTF8 ?
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
     long_description_content_type='text/markdown',
     url=_git_http_url(),
@@ -66,7 +65,7 @@ setup(
     # Package nécessaires aux builds et tests mais pas au run
     extras_require={
         # FIXME Indiquer les dépendances nécessaire au build et au tests à ajuster suivant le projet
-        'tests':
+        'dev':
             [
                 'twine',  # For publish package in Pypi
                 'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # For generate doc
@@ -74,17 +73,17 @@ setup(
                 'pytest','pytest-openfiles',
                 'flake8', 'pylint',  # For lint
                 'daff',
-{% if cookiecutter.use_jupyter == "y" %}                'jupyter~=1.0',  # Ouvre les add-on Jupyter{% endif %}
+{% if cookiecutter.use_jupyter == "y" %}                'jupyter',  # Ouvre les add-on Jupyter{% endif %}
 {% if cookiecutter.use_DVC == "y"     %}                'dvc',  # Utilise DVC{% endif %}
 {% if cookiecutter.use_aws == "y"     %}                'awscli',  # Utilise AWS{% endif %}
             ]
         },
-    # TODO Indiquer les dépendances nécessaire à l'execution du composant, à ajuster suivant le projet
+    # TODO Indiquez les dépendances nécessaire à l'execution du composant, à ajuster suivant le projet
     install_requires =
     [
         'click',
         'python-dotenv',
-{% if cookiecutter.use_tensorflow == "y"      %}        'tensorflow' + USE_GPU + '~=0.5', {% endif %}
+{% if cookiecutter.use_tensorflow == "y"      %}        'tensorflow' + USE_GPU + '~=0.5', {% endif %}  # PPR: Bug a l'usage
 {% if cookiecutter.use_text_processing == "y" %}        'spacy~=2.0', {% endif %}
 {% if cookiecutter.use_text_processing == "y" %}        'nltk~=3.3', {% endif %}
         'numpy~=1.14',

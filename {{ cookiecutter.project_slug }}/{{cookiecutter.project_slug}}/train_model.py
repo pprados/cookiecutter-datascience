@@ -32,7 +32,7 @@ def train_model(input_filepath: str,
     pathlib.Path(os.path.dirname(model_filepath)) \
         .mkdir(parents=True, exist_ok=True)
     inputs = [f for f in glob.glob(input_filepath, recursive=True)]
-    # TODO: remove this sample line
+    # TODO: Remplacez la ligne suivante par un apprentissage
     shutil.copyfile(inputs[0], model_filepath)
 
     return 0

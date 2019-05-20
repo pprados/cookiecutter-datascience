@@ -8,9 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.1] - YYYY-MM-DD
 ### Added
-- TODO
-# Changed
-# Deprecated
-# Removed
-# Fixed
-# Security
+- TODO: Update CHANGELOG.md
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security

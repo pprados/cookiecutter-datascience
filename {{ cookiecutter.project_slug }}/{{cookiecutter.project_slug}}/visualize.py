@@ -18,7 +18,7 @@ def visualize(evaluate_filepath: str) -> None:
         :param evaluate_filepath: data file path
         :return: 0 if ok, else error
     """
-    # TODO: Add your code here
+    # TODO: Ajoutez le code de visualisation ici
     return 0
 
 

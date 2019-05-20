@@ -29,9 +29,9 @@ def evaluate_model(model_filepath: str, data_filepath: str, evaluate_filepath: s
     pathlib.Path(os.path.dirname(evaluate_filepath)) \
         .mkdir(parents=True, exist_ok=True)
     for f in glob.glob(evaluate_filepath, recursive=True):
-        pass # TODO
+        pass # TODO PPR Boucle d'eval de fichier ?
     with open(evaluate_filepath,"w") as auc:
-        auc.write("0.90") # TODO Write AUC or others metrics
+        auc.write("0.90") # TODO Remplacez le code pour écriture les métriques dans un fichier au format JSON
     return 0
 
 

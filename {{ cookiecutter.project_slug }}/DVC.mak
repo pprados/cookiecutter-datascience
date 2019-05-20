@@ -39,7 +39,7 @@ REQUIREMENTS += | .dvc
 # - make dvc-external-htfscache{% endif %}
 .PHONY: dvc-external-*
 ## Initialize the DVC external cache provider (dvc-external-s3cache)
-dvc-external-%:
+dvc-external-%: .dvc
 	dvc remote add ${*} $(BUCKET)/cache
 	dvc config cache.gs $*
 {% if cookiecutter.add_makefile_comments == "y" %}
@@ -48,14 +48,14 @@ dvc-external-%:
 # semble nécessaire. C'est util en phase de développement.
 # See https://dvc.org/doc/commands-reference/lock{% endif %}
 # Lock DVC file
-lock-%:
+lock-%: .dvc
 	dvc lock $(*:lock-%=%)
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour afficher les métrics gérées par DVC.
 # See https://dvc.org/doc/commands-reference/metrics{% endif %}
 ## show the DVC metrics
-metrics:
+metrics: .dvc
 	dvc metrics show
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
@@ -77,12 +77,12 @@ clean-dvc:
 .PHONY: prepare features train evaluate visualize
 
 # Rule to declare dependencies from tools modules for all project files
-$(PRJ)/*.py : $(PRJ)/tools/*.py
+{{ cookiecutter.project_slug }}/*.py : {{ cookiecutter.project_slug }}/tools/*.py
 	@touch $@
 
-data/interim/datas-prepared.csv: $(REQUIREMENTS) $(PRJ)/prepare_dataset.py data/raw/*
+data/interim/datas-prepared.csv: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/prepare_dataset.py data/raw/*
 	$(call dvc_run,prepare.dvc,\
-	python -O -m $(PRJ).prepare_dataset \
+	python -O -m {{ cookiecutter.project_slug }}.prepare_dataset \
 		data/raw/datas.csv \
 		data/interim/datas-prepared.csv\
 	)
@@ -90,18 +90,18 @@ prepare.dvc: data/interim/datas-prepared.csv
 ## Prepare the dataset
 prepare: prepare.dvc
 
-data/interim/datas-features.csv : $(REQUIREMENTS) $(PRJ)/build_features.py data/interim/datas-prepared.csv
+data/interim/datas-features.csv : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/build_features.py data/interim/datas-prepared.csv
 	$(call dvc_run,feature.dvc,\
-	python -O -m $(PRJ).build_features \
+	python -O -m {{ cookiecutter.project_slug }}.build_features \
 		data/interim/datas-prepared.csv \
 		data/interim/datas-features.csv\
 	)
 ## Add features
 features: data/interim/datas-features.csv
 
-models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py data/interim/datas-features.csv
+models/model.pkl : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/train_model.py data/interim/datas-features.csv
 	$(call dvc_run,train.dvc,\
-	python -O -m $(PRJ).train_model \
+	python -O -m {{ cookiecutter.project_slug }}.train_model \
 		data/interim/datas-features.csv \
 		models/model.pkl \
 	)
@@ -109,9 +109,9 @@ models/model.pkl : $(REQUIREMENTS) $(PRJ)/train_model.py data/interim/datas-feat
 train: models/model.pkl
 
 
-reports/auc.metric: $(REQUIREMENTS) $(PRJ)/evaluate_model.py models/model.pkl
+reports/auc.metric: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/evaluate_model.py models/model.pkl
 	$(call dvc_run,evaluate.dvc,\
-	python -O -m $(PRJ).evaluate_model \
+	python -O -m {{ cookiecutter.project_slug }}.evaluate_model \
 		models/model.pkl \
 		data/interim/datas-features.csv \
 		reports/auc.metric \
@@ -121,9 +121,9 @@ reports/auc.metric: $(REQUIREMENTS) $(PRJ)/evaluate_model.py models/model.pkl
 evaluate: reports/auc.metric
 
 ## Visualize the result
-visualize: $(REQUIREMENTS) $(PRJ)/visualize.py models/model.pkl
+visualize: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/visualize.py models/model.pkl
 	$(call dvc_run,visualize.dvc,\
-	python -O -m $(PRJ).visualize \
+	python -O -m {{ cookiecutter.project_slug }}.visualize \
 		reports/ \
 	)
 {% if cookiecutter.add_makefile_comments == "y" %}

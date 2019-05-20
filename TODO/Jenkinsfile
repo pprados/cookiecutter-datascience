@@ -1,0 +1,113 @@
+#!groovy
+
+node {
+    pollSCM('* * * * *')
+    checkout scm
+
+    def total_factory_instance_ssh = 'azepnl-ap21'
+    def remote_project_folder = '/mnt/data2/rotating_deploy'
+    def total_docker_repository = 'localhost:5000'
+    def imageNameFactory = "rotating/factory"
+    def imageNameGrafana = "rotating/grafana"
+    def tag = 'deploy'
+
+
+    // stage('Login to AWS DD') {
+    //     withEnv(['AWS_DEFAULT_REGION=eu-west-1']) {
+    //         withCredentials([[$class          : 'UsernamePasswordMultiBinding', credentialsId: 'aws_access',
+    //                           usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+    //             sh 'docker login -u AWS -p \
+    //                $(aws ecr get-authorization-token --output text --query authorizationData[].authorizationToken \
+    //                | base64 -d | cut -d: -f2) \
+    //                https://969076149354.dkr.ecr.eu-west-1.amazonaws.com'
+    //             docker.image('969076149354.dkr.ecr.eu-west-1.amazonaws.com/dd/factory').pull()
+    //         }
+    //     }
+    // }
+
+    stage('Install') {
+        factoryImg = docker.build(imageNameFactory,
+                "--no-cache=true " +
+                "-f docker/factory/Dockerfile " +
+                "./")
+        grafanaImg = docker.build(imageNameGrafana,
+                "--no-cache=true " +
+                "-f docker/grafana/Dockerfile " +
+                "./")
+    }
+
+    // dbTest = docker.image('postgres:9.6')
+
+    // dbTest.withRun() { c->
+    //     factoryImg.inside("--link ${c.id}:postgres") {
+
+    //         stage('Setup Connexion to TestDB') {
+    //             // Waiting the database until it's ready
+    //             sh 'dockerize -wait tcp://postgres:5432'
+
+    //             withEnv(['AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgres://ddadmin@dd_database:5432/airflow',
+    //                      'DD_DATABASE_DEFAULT=postgres://ddadmin@dd_database:5432/datadriver']) {
+    //                 // setup Datadriver's connexion into airflow meta-database
+    //                 sh '/opt/datadriver/bin/init_datadriver'
+    //             }
+    //         }
+    //         // stage('Unit Tests') {
+    //         //     sh 'make unittest'
+    //         // }
+    //         // stage('Acceptance Tests') {
+    //         //     sh 'make acceptance_test'
+    //         // }
+    //     }
+    // }
+
+    stage('Publish on local registry') {
+
+        docker.withRegistry("http://${total_docker_repository}") {
+            factoryImg.push(tag)
+            grafanaImg.push(tag)
+        }
+    }
+
+    stage('Create project repo on remote server') {
+        sshagent(credentials: ['deploy_creds']) {
+            sh "ssh -o StrictHostKeyChecking=no -l ddadmin ${total_factory_instance_ssh} \
+                'mkdir -p ${remote_project_folder}/docker/factory; \
+                 mkdir -p ${remote_project_folder}/docker/dd_database; \
+                 mkdir -p ${remote_project_folder}/data/results/contextual_data; \
+                 mkdir -p ${remote_project_folder}/data/reference; \
+                 mkdir -p ${remote_project_folder}/docker/grafana;' "
+
+            sh "scp -o StrictHostKeyChecking=no ./docker-compose.yaml ddadmin@${total_factory_instance_ssh}:${remote_project_folder}"
+            sh "scp -o StrictHostKeyChecking=no ./.dockerignore ddadmin@${total_factory_instance_ssh}:${remote_project_folder}"
+            sh "scp -o StrictHostKeyChecking=no ./docker/factory/Dockerfile ddadmin@${total_factory_instance_ssh}:${remote_project_folder}/docker/factory"
+            sh "scp -o StrictHostKeyChecking=no ./docker/grafana/Dockerfile ddadmin@${total_factory_instance_ssh}:${remote_project_folder}/docker/grafana"
+            sh "scp -o StrictHostKeyChecking=no ./docker/grafana/grafana.db ddadmin@${total_factory_instance_ssh}:${remote_project_folder}/docker/grafana"
+            sh "scp -o StrictHostKeyChecking=no ./docker/dd_database/initdb.sql ddadmin@${total_factory_instance_ssh}:${remote_project_folder}/docker/dd_database"
+            sh "scp -o StrictHostKeyChecking=no ./data/results/contextual_data/all_texts.csv ddadmin@${total_factory_instance_ssh}:${remote_project_folder}/data/results/contextual_data"
+            sh "scp -o StrictHostKeyChecking=no ./data/reference/patch_rotating.csv ddadmin@${total_factory_instance_ssh}:${remote_project_folder}/data/reference"
+            sh "scp -o StrictHostKeyChecking=no ./data/reference/sensor_referential.csv ddadmin@${total_factory_instance_ssh}:${remote_project_folder}/data/reference"
+        }
+    }
+
+    stage('Deploy') {
+        withCredentials([[$class          : 'UsernamePasswordMultiBinding', credentialsId: 'azure_access',
+                              usernameVariable: 'AZURE_ACCESS_KEY_ID', passwordVariable: 'AZURE_SECRET_ACCESS_KEY']]) {
+            sshagent(credentials: ['deploy_creds']) {
+                sh "ssh -o StrictHostKeyChecking=no -l ddadmin ${total_factory_instance_ssh} \
+                    'cd ${remote_project_folder}; \
+                     docker-compose -p rotating rm -fs worker scheduler webserver; \
+                     docker-compose -p rotating pull worker scheduler webserver; \
+                     docker-compose -p rotating up -d; \
+                     sleep 120; \
+                     docker-compose -p rotating exec -T webserver make create_dd_database_connection;\
+                     docker-compose -p rotating exec -T webserver make create_azure_connection -e AZURE_ACCESS_KEY_ID=${AZURE_ACCESS_KEY_ID} AZURE_SECRET_ACCESS_KEY=${AZURE_SECRET_ACCESS_KEY};\
+                     docker-compose -p rotating exec -T webserver make create_minio_connection;\
+                     docker-compose -p rotating exec -T -u 0 worker chown -R airflow data; \
+                     docker-compose -p rotating exec -T -u 0 worker make download_sensors_to_minio -e AZURE_ACCESS_KEY_ID=${AZURE_ACCESS_KEY_ID} AZURE_SECRET_ACCESS_KEY=${AZURE_SECRET_ACCESS_KEY}; \
+                     docker-compose -p rotating exec -T -u 0 worker make download_operators_to_minio -e AZURE_ACCESS_KEY_ID=${AZURE_ACCESS_KEY_ID} AZURE_SECRET_ACCESS_KEY=${AZURE_SECRET_ACCESS_KEY}; \
+                     docker-compose -p rotating ps;'"
+            }
+        }
+
+    }
+}

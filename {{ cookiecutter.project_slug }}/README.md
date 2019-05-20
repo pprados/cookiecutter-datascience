@@ -1,5 +1,42 @@
 # {{ cookiecutter.project_name }}
 
+## Motivation
+
+TODO: A short description of the motivation behind the creation and maintenance of the project. This should explain **why** the project exists.
+
+{{ cookiecutter.project_short_description }}
+
+## Synopsis
+
+TODO: At the top of the file there should be a short introduction and/ or overview that 
+explains **what** the project is. This description should match descriptions added 
+for package managers (Gemspec, package.json, etc.)
+
+## The latest version
+
+Clone the git repository (see upper button)
+
+## Installation
+
+Go inside the directory and
+```bash
+$ make configure
+$ conda activate {{cookiecutter.project_slug}}
+$ make docs
+```
+
+## Tests
+
+To test the project
+```bash
+$ make test
+```
+
+To validate all the project
+```bash
+$ make validate
+```
+
 ## Project Organization
 
     ├── Makefile              <- Makefile with commands like `make data` or `make train`
@@ -25,7 +62,7 @@
     │
     ├── setup.py              <- makes project pip installable (pip install -e .[tests]) 
     │                            so sources can be imported and dependencies installed
-    ├── {{cookiecutter.repo_name}}                <- Source code for use in this project
+    ├── {{cookiecutter.project_slug}}                <- Source code for use in this project
     │   ├── __init__.py       <- Makes src a Python module
     │   ├── build_dataset.py  <- Scripts to download or generate data
     │   ├── build_features.py <- Scripts to turn raw data into features for modeling
@@ -38,11 +75,3 @@
     └── tests                 <- Unit and integrations tests ((Mark directory as a sources root).
 
 
-## Build
-Clone the git repository, go inside the directory and
-```bash
-$ make configure
-$ conda activate {{cookiecutter.repo_name}}
-$ make evaluate
-$ make help
-```

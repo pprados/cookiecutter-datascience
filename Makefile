@@ -93,8 +93,34 @@ help:
 .git:
 	@git init -q
 
+.git/hooks/pre-push:
+	@cat >>.git/hooks/pre-push <<PRE-PUSH
+	#!/usr/bin/env sh
+	# Validate the project before a push
+	if test -t 1; then
+		ncolors=$$(tput colors)
+		if test -n "\$$ncolors" && test \$$ncolors -ge 8; then
+			normal="\$$(tput sgr0)"
+			red="\$$(tput setaf 1)"
+	        green="\$$(tput setaf 2)"
+			yellow="\$$(tput setaf 3)"
+		fi
+	fi
+	if [ "\$${FORCE}" != y ] ; then
+		printf "\$${green}Validate the project before push the commit... (\$${yellow}make validate\$${green})\$${normal}\n"
+		make validate
+		ERR=\$$?
+		if [ \$${ERR} -ne 0 ] ; then
+			printf "\$${red}'\$${yellow}make validate\$${red}' failed before git push.\$${normal}\n"
+			printf "Use \$${yellow}FORCE=y git push\$${normal} to force.\n"
+			exit \$${ERR}
+		fi
+	fi
+	PRE-PUSH
+	chmod +x .git/hooks/pre-push
+
 # Initialiser la configuration de Git
-.gitattributes: | .git  # Configure git
+.gitattributes: | .git .git/hooks/pre-push # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
@@ -107,15 +133,6 @@ DEACTIVATE_VENV=source $(CONDA_BASE)/bin/deactivate $(VENV)
 
 VALIDATE_VENV=$(CHECK_VENV)
 #VALIDATE_VENV=$(ACTIVATE_VENV)
-
-.git/hooks/pre-push:
-	# Add a hook to validate the project before a git push
-	cat >>.git/hooks/pre-push <<PRE-PUSH
-	#!/usr/bin/env sh
-	# Validate the project before a push
-	[ "\$${FORCE}" == y ]] || make validate
-	PRE-PUSH
-	chmod +x .git/hooks/pre-push
 
 # Toutes les dépendances du projet à regrouper ici
 .PHONY: requirements

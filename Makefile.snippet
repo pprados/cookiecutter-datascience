@@ -747,14 +747,14 @@ ec2-%:
 ## Call 'make %' recipe on EC2 with a tmux session (`make ec2-tmux-train`)
 ec2-tmux-%:
 	$(VALIDATE_VENV)
-	NO_RSYNC_END=n ssh-ec2 --multi tmux --leave "source activate $(VENV_AWS) ; VENV=$(VENV_AWS) make $(*:ec2-tmux-%=%)"
+	NO_RSYNC_END=n ssh-ec2 --multi tmux --leave "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-tmux-%=%)"
 
 # Recette permettant un 'make ec2-detach-test'
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-detach-%:
 	$(VALIDATE_VENV)
-	ssh-ec2 --detach $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; VENV=$(VENV_AWS) make $(*:ec2-detach-%=%)"
+	ssh-ec2 --detach $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-detach-%=%)"
 
 ## Start jupyter notebook on EC2
 ec2-notebook:

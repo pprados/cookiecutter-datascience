@@ -217,14 +217,9 @@ dump-%:
 pipe_clear_jupyter_output:
 	jupyter nb-convert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null
 {% endif %}
-
-# Initialiser la configuration de Git
-.gitattributes: | .git  # Configure git
-	@git config --local core.autocrlf input
-	# Set tabulation to 4 when use 'git diff'
-	@git config --local core.page 'less -x4'
-
 {% if cookiecutter.use_git_LFS == 'y' %}{% if cookiecutter.use_DVC != 'y' %}
+
+.git/hooks/post-checkout:
 ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	# Add git lfs if possible
 	@git lfs install >/dev/null
@@ -235,17 +230,41 @@ ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	@git lfs track "*.jpeg" >/dev/null
 	@git lfs track "*.gif"  >/dev/null
 	@git lfs track "*.png"  >/dev/null
-endif
+endif{% endif %}{% endif %}
 
+.git/hooks/pre-push:{% if cookiecutter.use_git_LFS == 'y' %}{% if cookiecutter.use_DVC != 'y' %}.git/hooks/post-checkout{% endif %}{% endif %}
 	# Add a hook to validate the project before a git push
-	cat >>.git/hooks/pre-push <<PRE-PUSH
+	@cat >>.git/hooks/pre-push <<PRE-PUSH
 	#!/usr/bin/env sh
 	# Validate the project before a push
-	[ "\$${FORCE}" == y ]] || make validate
+	if test -t 1; then
+		ncolors=$$(tput colors)
+		if test -n "\$$ncolors" && test \$$ncolors -ge 8; then
+			normal="\$$(tput sgr0)"
+			red="\$$(tput setaf 1)"
+	        green="\$$(tput setaf 2)"
+			yellow="\$$(tput setaf 3)"
+		fi
+	fi
+	if [ "\$${FORCE}" != y ] ; then
+		printf "\$${green}Validate the project before push the commit... (\$${yellow}make validate\$${green})\$${normal}\n"
+		make validate
+		ERR=\$$?
+		if [ \$${ERR} -ne 0 ] ; then
+			printf "\$${red}'\$${yellow}make validate\$${red}' failed before git push.\$${normal}\n"
+			printf "Use \$${yellow}FORCE=y git push\$${normal} to force.\n"
+			exit \$${ERR}
+		fi
+	fi
 	PRE-PUSH
 	chmod +x .git/hooks/pre-push
 
-{% endif %}{% endif %}
+# Initialiser la configuration de Git
+.gitattributes: | .git .git/hooks/pre-push # Configure git
+	@git config --local core.autocrlf input
+	# Set tabulation to 4 when use 'git diff'
+	@git config --local core.page 'less -x4'
+
 {% if cookiecutter.use_jupyter == 'y' %}ifeq ($(shell which jupyter >/dev/null ; echo "$$?"),0)
 	# Add rules to manage the output data of notebooks
 	@git config --local filter.dropoutput_jupyter.clean "make --silent pipe_clear_jupyter_output"

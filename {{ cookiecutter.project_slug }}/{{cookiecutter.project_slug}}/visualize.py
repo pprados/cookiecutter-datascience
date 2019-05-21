@@ -2,46 +2,47 @@
 """
     Traitement en charge de visualiser l'évolution du modèle.
 """
-
-import pathlib
+import glob
 import logging
 import sys
+from typing import List
 
 import click
 import dotenv
 
+LOGGER = logging.getLogger(__name__)
 
-def visualize(evaluate_filepath: str) -> None:
-    """ Predict with using the model from model_filepath and data
-        from data_filepath
 
-        :param evaluate_filepath: data file path
+def visualize(files: List[str]) -> None:
+    """ Visualize the results
+
+        :param list of files
         :return: 0 if ok, else error
     """
-    # TODO: Ajoutez le code de visualisation ici
-    return 0
+    for a_file in files:
+        pass  # TODO: Ajoutez le code de visualisation ici
 
 
 @click.command()
 @click.argument('evaluate_filepath', type=click.Path(exists=True))
 def main(evaluate_filepath: str) -> None:
-    """ Predict with using the model from model_filepath and data
-        from data_filepath
+    """ Visualize the results
 
-        :param evaluate_filepath: data file path
+        :param evaluate_filepath: glob data file path
         :return: 0 if ok, else error
     """
-    logger = logging.getLogger(__name__)
-    logger.info('Visualize the results')
-    return visualize(evaluate_filepath)
+    LOGGER.info('Visualize the results')
+
+    inputs = [str(a_file)
+              for a_file in glob.glob(evaluate_filepath, recursive=True)]
+    visualize(inputs)
+    return 0
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # not used in this stub but often useful for finding various files
-    PROJECT_DIR = pathlib.Path(__file__).resolve().parents[1]
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables

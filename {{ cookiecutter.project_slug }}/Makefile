@@ -594,23 +594,32 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	DATA=$$DATA jupyter notebook{% endif %}
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour synchroniser les données avec un buket s3{% endif %}
+# SNIPPET pour synchroniser les données avec un buket s3.
+# Si le repertoire data/raw est ajouté dans .gitignore, il n'est alors plus
+# sauvegardé dans .git. Il sera alors récupéré via s3.{% endif %}
 .PHONY: sync_data_to_s3 sync_data_from_s3
 ## Upload Data to S3
-sync_data_to_s3:
+sync_data_to_s3/%:
+	F=$(*:sync_data_to_s3/%=%)
 ifeq (default,$(PROFILE))
-	aws s3 sync $(DATA)/ s3://$(S3_BUCKET)/data/
+	aws s3 sync $(DATA)/$$F s3://$(S3_BUCKET)/data/$$F
 else
-	aws s3 sync $(DATA)/ s3://$(S3_BUCKET)/data/ --profile $(PROFILE)
+	aws s3 sync $(DATA)/$$F s3://$(S3_BUCKET)/data/$$F --profile $(PROFILE)
 endif
 
 ## Download Data from S3
-sync_data_from_s3:
+sync_data_from_s3/%:
+	F=$(*:sync_data_from_s3/%=%)
 ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(S3_BUCKET)/data/ $(DATA)/
+	aws s3 sync s3://$(S3_BUCKET)/data/$$F $(DATA)/$$F
 else
-	aws s3 sync s3://$(S3_BUCKET)/data/ $(DATA)/ --profile $(PROFILE)
-endif{% endif %}
+	aws s3 sync s3://$(S3_BUCKET)/data/$$F $(DATA)/$$F --profile $(PROFILE)
+endif
+
+## Download raw data if necessary
+$(DATA)/raw: sync_data_from_s3/raw
+{% endif %}
+
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour convertir tous les notebooks du repertoire 'notebooks' en script
@@ -727,7 +736,8 @@ test: $(REQUIREMENTS)
 	#ADDOPTS=--addopts '...'
 	python setup.py test $(ADDOPTS)
 {% if cookiecutter.add_makefile_comments == 'y' %}
-# SNIPPET pour vérifier les TU et le recalcule de tous les notebooks{% endif %}
+# SNIPPET pour vérifier les TU et le recalcule de tous les notebooks.
+# Il peut etre judicieux d'ajouter lint, pour valider le respect des normes Pythons{% endif %}
 .PHONY: validate
 ## Validate the version before release
 validate: test run-* build/linkcheck build/html build/pdf

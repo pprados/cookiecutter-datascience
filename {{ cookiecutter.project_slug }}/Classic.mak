@@ -44,4 +44,5 @@ evaluate: reports/auc.metric
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/visualize.py models/model.pkl
-	python -O -m {{ cookiecutter.project_slug }}.visualize reports/
+	python -O -m {{ cookiecutter.project_slug }}.visualize \
+	    reports/

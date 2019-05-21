@@ -22,7 +22,7 @@ def _git_url():
     try:
         with open(os.devnull, "wb") as devnull:
             out = subprocess.check_output(
-                ["git", "remote", "get-url","origin"],
+                ["git", "remote", "get-url", "origin"],
                 cwd=".",
                 universal_newlines=True,
                 stderr=devnull,
@@ -35,10 +35,11 @@ def _git_url():
         # git command not found, probably
         return "TODO"
 
+
 # For git clone ...
-git_url=_git_url()
+git_url = _git_url()
 # Project home
-home_url=re.sub(r".*@(.*):(.*).git", r"http://\1/\2", _git_url())
+home_url = re.sub(r".*@(.*):(.*).git", r"http://\1/\2", _git_url())
 
 {% if cookiecutter.add_makefile_comments == 'y' %}# If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -197,7 +198,7 @@ html_show_sourcelink = False
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.{% endif %}
 html_show_copyright = True
-copyright='{{cookiecutter.author}}'
+copyright = '{{cookiecutter.author}}'
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
@@ -231,9 +232,9 @@ latex_documents = [
         '{{cookiecutter.project_slug.replace('_', '')}}.tex',  # targetname
         '{{cookiecutter.project_name}} Documentation',  # title
         '{{cookiecutter.project_slug.replace('_', '')}}',  # author
-#        'manual',  # documentclass
-        'howto',  # documentclass
-        False, # toctree_only
+        'manual',  # documentclass
+        # 'howto',  # documentclass
+        False,  # toctree_only
     ),
 ]
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -297,11 +298,11 @@ texinfo_documents = [
 
 # -- Options for todo output --------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/todo.html{% endif %}
-todo_include_todos=True
+todo_include_todos = True
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # -- Options for applehelp output --------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/builders/index.html?highlight=pdf#sphinxcontrib.applehelp.AppleHelpBuilder{% endif %}
-applehelp_disable_external_tools=False
+applehelp_disable_external_tools = False
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Add project variables{% endif %}
 rst_prolog = f"""

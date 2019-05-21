@@ -134,6 +134,7 @@ du Makefile](Makefile.snippet).
 - [X] [LFS](https://git-lfs.github.com/)
 - [X] [DVC](https://dvc.org/)
 - [ ] [MLFlow](https://mlflow.org/) (alternative a DVC))
+- [ ] Typing check
 - [ ] [Coverage](https://coverage.readthedocs.io/) et voir Sphinx coverage comment l'activer)
 - [ ] [Hypothesis](https://hypothesis.readthedocs.io/)
 - [ ] [Airflow](https://airflow.apache.org/)

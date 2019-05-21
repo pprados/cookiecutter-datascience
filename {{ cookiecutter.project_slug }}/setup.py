@@ -11,11 +11,12 @@ USE_GPU = "-gpu" if (os.environ['GPU'].lower() in 'yes'
                      if "GPU" in os.environ
                      else os.path.isdir("/proc/driver/nvidia")
                           or "CUDA_PATH" in os.environ) else ""
+
 def _git_url():
     try:
         with open(os.devnull, "wb") as devnull:
             out = subprocess.check_output(
-                ["git", "remote", "get-url","origin"],
+                ["git", "remote", "get-url", "origin"],
                 cwd=".",
                 universal_newlines=True,
                 stderr=devnull,
@@ -28,8 +29,10 @@ def _git_url():
         # git command not found, probably
         return ""
 
+
 def _git_http_url():
     return re.sub(r".*@(.*):(.*).git", r"http://\1/\2", _git_url())
+
 
 setup(
     name='{{cookiecutter.project_slug}}' + USE_GPU,
@@ -42,7 +45,7 @@ setup(
     url=_git_http_url(),
 
     license={% if cookiecutter.open_source_software == 'y' %}'Apache License'{% else %}'Private usage'{% endif %},
-    keywords = "data science",
+    keywords= "data science",
     classifiers=[  # See https://pypi.org/classifiers/
         'Development Status :: 2 - PRE-ALPHA',
         # Before release
@@ -70,7 +73,7 @@ setup(
                 'twine',  # For publish package in Pypi
                 'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # For generate doc
                 'unittest2', 'mock',  # For unit tests
-                'pytest','pytest-openfiles',
+                'pytest', 'pytest-openfiles',
                 'flake8', 'pylint',  # For lint
                 'daff',
 {% if cookiecutter.use_jupyter == "y" %}                'jupyter',  # Ouvre les add-on Jupyter{% endif %}
@@ -79,11 +82,11 @@ setup(
             ]
         },
     # TODO Indiquez les dépendances nécessaire à l'execution du composant, à ajuster suivant le projet
-    install_requires =
+    install_requires=
     [
         'click',
         'python-dotenv',
-{% if cookiecutter.use_tensorflow == "y"      %}        'tensorflow' + USE_GPU + '~=0.5', {% endif %}  # PPR: Bug a l'usage
+{% if cookiecutter.use_tensorflow == "y"      %}        'tensorflow' + USE_GPU + '~=0.5', {% endif %}        # PPR: Bug a l'usage
 {% if cookiecutter.use_text_processing == "y" %}        'spacy~=2.0', {% endif %}
 {% if cookiecutter.use_text_processing == "y" %}        'nltk~=3.3', {% endif %}
         'numpy~=1.14',

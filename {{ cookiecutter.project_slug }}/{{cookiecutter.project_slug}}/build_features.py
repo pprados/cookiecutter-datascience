@@ -4,49 +4,57 @@
 """
 # pylint: disable-msg=R0801
 
+import logging
 import os
 import pathlib
-import logging
-import shutil
 import sys
 
 import click
 import dotenv
+import pandas as pd
 
-from .tools import *  # pylint: disable=W0401
-
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
-def build_features(input_prepared_filepath: str, output_featured_filepath: str) -> int:
-    pathlib.Path(os.path.dirname(output_featured_filepath)) \
-        .mkdir(parents=True, exist_ok=True)
+def build_features(input_prepared: pd.DataFrame) -> pd.DataFrame:
+    """ Add features to turn input_prepared data into
+        extended data.
+
+        :param input_prepared_filepath: input prepared file path
+        :return: 0 if ok, else error
+    """
     # TODO: Remplacez la ligne suivante pour un enrichissement du dataset
-    shutil.copyfile(input_prepared_filepath, output_featured_filepath)
-    return 0
+    output_feature = input_prepared
+    return output_feature
 
 
 @click.command()
 @click.argument('input_prepared_filepath', type=click.Path(exists=True))
 @click.argument('output_featured_filepath', type=click.Path())
-def main(input_prepared_filepath: str, output_featured_filepath: str) -> int:
-    """ Runs data processing scripts to turn raw data from (../interim) into
-        extended data (saved in ../processed).
+def main(input_prepared_filepath: str,
+         output_featured_filepath: str) -> int:
+    """ Runs data processing scripts to turn add features from raw data
+        into extended data.
 
         :param input_prepared_filepath: input prepared file path
         :param output_featured_filepath: output file path with features
         :return: 0 if ok, else error
     """
-    logger.info('add features from prepared data')
-    return build_features(input_prepared_filepath, output_featured_filepath)
+    LOGGER.info('add features from prepared data')
+
+    pathlib.Path(os.path.dirname(output_featured_filepath)) \
+        .mkdir(parents=True, exist_ok=True)
+
+    input_prepared = pd.read_csv(input_prepared_filepath)
+    output_feature = build_features(input_prepared)
+    output_feature.to_csv(output_featured_filepath)
+    return 0
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # not used in this stub but often useful for finding various files
-    PROJECT_DIR = pathlib.Path(__file__).resolve().parents[1]
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables

@@ -3,61 +3,63 @@
     Traitement en charge d'évaluer le modèle.
 """
 import glob
-import os
-import pathlib
+import json
 import logging
-import shutil
+import pickle
 import sys
+from typing import List
 
 import click
 import dotenv
 
-from .tools import *  # pylint: disable=W0401
-
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
-def evaluate_model(model_filepath: str, data_filepath: str, evaluate_filepath: str) -> int:
-    """ Evaluate the model from model_filepath and data
+def evaluate_model(model: str,
+                   files: List[str]) -> dict:
+    """ Evaluate the model from model and data
         from data_filepath
 
-        :param model_filepath: model file path with features
+        :param model: model
         :param data_filepath: data file path
         :param evaluate_filepath: evaluate file path to write
-        :return: 0 if ok, else error
+        :return: dictionary with metrics
     """
-    pathlib.Path(os.path.dirname(evaluate_filepath)) \
-        .mkdir(parents=True, exist_ok=True)
-    for f in glob.glob(evaluate_filepath, recursive=True):
-        pass # TODO PPR Boucle d'eval de fichier ?
-    with open(evaluate_filepath,"w") as auc:
-        auc.write("0.90") # TODO Remplacez le code pour écriture les métriques dans un fichier au format JSON
-    return 0
+    metrics = {}
+    for a_file in files:
+        pass  # TODO Code d'evaluation de chaque fichier
+    metrics['auc'] = 0.99
+    return metrics
 
 
 @click.command()
 @click.argument('model_filepath', type=click.Path(exists=True))
 @click.argument('data_filepath', type=click.Path(exists=True))
 @click.argument('evaluate_filepath', type=click.Path())
-def main(model_filepath: str, data_filepath: str, evaluate_filepath: str) -> int:
+def main(model_filepath: str,
+         data_filepath: str,
+         evaluate_filepath: str) -> int:
     """ Evaluate the model from model_filepath and data
         from data_filepath
- PPR : c'est la doc du mode --help
         :param model_filepath: model file path with features
         :param data_filepath: data file path
         :param evaluate_filepath: evaluate file path to write
         :return: 0 if ok, else error
     """
-    logger.info('Evaludate model %s from processed data', model_filepath)
-    return evaluate_model(model_filepath, data_filepath, evaluate_filepath)
+    LOGGER.info('Evaluate model %s from processed data', model_filepath)
+
+    model = pickle.load(open(model_filepath, 'rb'))
+    files = [str(f) for f in glob.glob(data_filepath, recursive=True)]
+    metrics = evaluate_model(model, files)
+    with open(evaluate_filepath, 'w') as evaluate_file:
+        json.dump(metrics, evaluate_file, indent=4)
+    return 0
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # not used in this stub but often useful for finding various files
-    PROJECT_DIR = pathlib.Path(__file__).resolve().parents[1]
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables

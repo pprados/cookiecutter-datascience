@@ -3,7 +3,9 @@
     Test.
 """
 import unittest
-from typing import List
+
+import pandas as pd
+from typing import List, Any
 
 from bda_project.train_model import train_model
 
@@ -16,12 +18,12 @@ class TestTrainModel(unittest.TestCase):
         """ Test train_model() with no data.
         """
         # Given
-        inputs: List[str] = []
+        train_inputs: List[pd.DataFrame] = []
 
         # When
-        model = train_model(inputs=inputs,
-                            epoch=1,
-                            batch_size=1)
+        model: Any = train_model(inputs=train_inputs,
+                                 epoch=1,
+                                 batch_size=1)
 
         # Then
         self.assertIsNotNone(model)

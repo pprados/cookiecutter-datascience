@@ -114,14 +114,16 @@ venv.bak/
 # mkdocs documentation
 site/
 
-
-# Project
-datas/interim/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
 # Database
 *.db
 *.rdb
+
+# Project
+datas/interim/
+{% if cookiecutter.use_aws == 'y' %}
+# A activer les données peuvent venir d'un bucket s3
+#data/raw{% endif %}
+
+# Jupyter Notebook
+.ipynb_checkpoints
 

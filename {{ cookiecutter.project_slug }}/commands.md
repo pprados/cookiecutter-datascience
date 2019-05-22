@@ -40,8 +40,8 @@ The Makefile contains the central entry points for common tasks related to this 
 {% endif %}
 {% if cookiecutter.use_aws == 'y' %}
 ## AWS commands
-* ``make sync_data_to_s3`` will send :file:`data/` to S3
-* ``make sync_data_from_s3`` will pull :file:`data/` from S3
+* ``make sync_to_s3/data`` will send :file:`data/` to S3
+* ``make sync_from_s3/data`` will pull :file:`data/` from S3
 * ``make ec2-%`` will execute make rules in EC2 instance
 * ``make ec2-tmux-%`` will execute make rules with Tmux in EC2 instance
 * ``make ec2-detach-%`` will execute make rule and detach terminal
@@ -49,7 +49,7 @@ The Makefile contains the central entry points for common tasks related to this 
 {% if cookiecutter.open_source_software == 'y' %}
 ## Twine commands
 * ``make check-twine`` will check the packaging before publication
-* ``make test-twine`` will publish the package in `test.pypi.org <http://test.pypi.org>`_)
-* ``make twine`` will publish the package in `pypi.org <http://pypi.org>`_)
+* ``make test-twine`` will publish the package in `test.pypi.org <https://test.pypi.org>`_)
+* ``make twine`` will publish the package in `pypi.org <https://pypi.org>`_)
 {% endif %}
 

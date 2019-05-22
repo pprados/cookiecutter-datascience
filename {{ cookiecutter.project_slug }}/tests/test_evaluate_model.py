@@ -5,6 +5,7 @@
 import unittest
 from typing import List, Any
 
+import pandas as pd
 from bda_project.evaluate_model import evaluate_model
 
 
@@ -17,10 +18,10 @@ class TestEvaluateModel(unittest.TestCase):
         """
         # Given
         model: Any = "TODO"
-        files: List[str] = []
+        validate_files: List[pd.DataFrame] = []
 
         # When
-        output_feature = evaluate_model(model=model, files=files)
+        metrics = evaluate_model(model=model, samples=validate_files)
 
         # Then
-        self.assertIsNotNone(output_feature)
+        self.assertGreater(metrics['auc'], 0.8)

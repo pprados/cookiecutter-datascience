@@ -95,8 +95,8 @@ Et le reste, pour la gestion du projet
 ### use_aws (utilisation de [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2))
 - une dépendance à `awscli` et `boto3`
 - une variable `S3_BUCKET` pour le bucket du projet
-- `make sync_data_to_s3` # Pour envoyer une copie des `data/\ vers S3
-- `make sync_data_from_s3` # Pour récupérer une copie des `data/` depuis S3
+- `make sync_to_s3/data` # Pour envoyer une copie des `data/\ vers S3
+- `make sync_from_s3/data` # Pour récupérer une copie des `data/` depuis S3
 - `make ec2-%` # Pour executer une règle via `ssh-ec2`
 - `make ec2-tmux-%` # Pour executer une règle via `ssh-ec2` en mode tmux
 - `make ec2-detach-%` # Pour détacher une règle sur une instance EC2
@@ -104,8 +104,8 @@ Et le reste, pour la gestion du projet
 ### open_source_software
 - Modification des licenses dans `setup.py`
 - `make check-twine` # Pour tester le packaging avant publication
-- `make test-twine` # Pour tester la publication du package sur [test.pypi.org]((http://test.pypi.org))
-- `make twine` # Pour publier la version du package sur [pypi.org](http://pypi.org)
+- `make test-twine` # Pour tester la publication du package sur [test.pypi.org]((https://test.pypi.org))
+- `make twine` # Pour publier la version du package sur [pypi.org](https://pypi.org)
 
 ### add_makefile_comments
 - Ajout des commentaires "verbeux" dans le `Makefile`
@@ -114,48 +114,51 @@ Et le reste, pour la gestion du projet
 Il est également possible de consulter la plupart des [snippets de code
 du Makefile](Makefile.snippet).
 
-# Conseils
-- Utilisez un CHANGELOG basé sur [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-- Utilisez un format de version conforme à [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-- faite toujours un `make validate` avant de commiter le code
-
-# TODO
-- [X] Pipeline datascience
-- [X] Test unitaires
-- [X] TU du makefile
+# Fonctionnalité à faire
+- [X] Execution unique en cas de rejeu de la règle
+- [ ] Gestion de plusieurs fichiers de datas en parallèles
+- [ ] Execution compatible avec le mode parallèle (-j)
+- [X] Proposition de pipeline datascience
+- [ ] Extraction des metriques dans les différentes branches Git (à la DVC)
 - [X] [Jupyter](https://jupyter.org/)
-- [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
 - [X] [Tensorflow](https://www.tensorflow.org/)
-- [X] [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
+- [X] [Spacy](https://spacy.io/) 
+- [X] [NLTK](https://www.nltk.org/)
 - [X] [pylint](https://www.pylint.org/) et [flake8](http://flake8.pycqa.org/)
+- [ ] [PEP8](https://pep8.readthedocs.io/en/latest/)
+- [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
 - [X] Documentation et [Sphinx](http://www.sphinx-doc.org/)
-- [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
-- [X] [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2)
+- [ ] [ReadTheDoc](https://readthedocs.org/)
+- [X] Test unitaires
+- [X] Test unitaires du makefile généré
+- [ ] [pytype](https://opensource.google.com/projects/pytype)
+- [ ] [Coverage](https://coverage.readthedocs.io/) et voir Sphinx coverage comment l'activer)
+- [ ] [Test isolation](https://notes.farcellier.com/blog/20190315_ecrire_des_tests_isoles_avec_des_effets_de_bords_sur_le_filesystem_en_python/page.html)
+- [ ] [Hypothesis](https://hypothesis.readthedocs.io/)
+- [ ] [Pytest for jenkins](https://docs.pytest.org/en/latest/usage.html#creating-junitxml-format-files)
+- [ ] [Plugin Pytest](https://pypi.org/search/?q=pytest)
+- [ ] [Pytest open files](https://pypi.org/project/pytest-openfiles/)
+- [ ] [Upload sphinx](https://pythonhosted.org/an_example_pypi_project/setuptools.html#using-setup-py)
+- [ ] Injecter les notebooks dans la documentation
 - [X] [LFS](https://git-lfs.github.com/)
 - [X] [DVC](https://dvc.org/)
 - [ ] [MLFlow](https://mlflow.org/) (alternative a DVC))
-- [ ] Typing check
-- [ ] [Coverage](https://coverage.readthedocs.io/) et voir Sphinx coverage comment l'activer)
-- [ ] [Hypothesis](https://hypothesis.readthedocs.io/)
 - [ ] [Airflow](https://airflow.apache.org/)
-- [ ] Injecter les notebooks dans la documentation
-- [ ] Gestion plusieurs fichiers datas en parallèles
-- [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
-- [ ] [Plugin Pytest](https://pypi.org/search/?q=pytest)
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
-- [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
-- [ ] Execution parfaite en rejeu
-- [ ] Execution parfaite en parallèle (-j)
-- [ ] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
+- [X] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
 - [ ] [Koalas](https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html)
 - [ ] [Prefect](https://www.prefect.io/)
-- [ ] Tox
-- [ ] Jenkins
+- [ ] [Tox](https://tox.readthedocs.io/en/latest/)
+- [ ] [Jenkins](https://jenkins.io/)
 - [ ] [Github Travis](https://notes.farcellier.com/travisci/index.html)
 - [ ] Gitlab CI
-- [ ] Docker
+- [ ] Docker pour le build
+- [ ] Docker pour run
 - [ ] [Structured logs](https://github.com/FabienArcellier/spike_json_formatter_for_logging_python)
 - [ ] [Retry](https://notes.farcellier.com/python/index.html#retrying)
-- [ ] [Test isolation](https://notes.farcellier.com/blog/20190315_ecrire_des_tests_isoles_avec_des_effets_de_bords_sur_le_filesystem_en_python/page.html)
+- [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
+- [X] [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2)
+- [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
+- [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
 - [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    Traitement en charge d'ajouter des features aux données brutes.
+    Treatment in charge of adding features.
 """
 # pylint: disable-msg=R0801
 
@@ -18,10 +18,10 @@ LOGGER = logging.getLogger(__name__)
 
 def build_features(input_prepared: pd.DataFrame) -> pd.DataFrame:
     """ Add features to turn input_prepared data into
-        extended data.
+        data with new features.
 
-        :param input_prepared_filepath: input prepared file path
-        :return: 0 if ok, else error
+        :param input_prepared: data prepared
+        :return: data with features
     """
     # TODO: Remplacez la ligne suivante pour un enrichissement du dataset
     output_feature = input_prepared
@@ -34,7 +34,7 @@ def build_features(input_prepared: pd.DataFrame) -> pd.DataFrame:
 def main(input_prepared_filepath: str,
          output_featured_filepath: str) -> int:
     """ Runs data processing scripts to turn add features from raw data
-        into extended data.
+        into data with features.
 
         :param input_prepared_filepath: input prepared file path
         :param output_featured_filepath: output file path with features

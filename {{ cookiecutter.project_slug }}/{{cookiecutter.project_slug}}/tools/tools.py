@@ -4,8 +4,8 @@ Tools for machine learning pipeline.
 """
 
 
-# TODO: Ajoutez le code communs ici, et exposez les dans __init__.py
-def tools(a_parameter: str) -> str:
+# TODO: Ajoutez le code communs ici, et exposez le dans __init__.py
+def tools(a_parameter: str) -> None:
     """
     A tools
 

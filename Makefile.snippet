@@ -8,10 +8,11 @@
 # 	ln -s Makefile configure
 # 	ln -s Makefile test
 # 	ln -s Makefile train
-# 	./configure		# Execute make test
+# 	./configure		# Execute make configure
 # 	./test 			# Execute make test
 #   ./train 		# Train the model
 # Attention, il n'est pas possible de passer les paramètres aux scripts
+
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour changer le mode de gestion du Makefile.
 # Avec ces trois paramètres, toutes les lignes d'une recette sont invoquées dans le même shell.
@@ -20,7 +21,6 @@
 # pas toujours facile de savoir quel est la ligne en échec.
 # Je vous conseille dans ce cas d'ajouter au début de la recette 'set -x'
 # Attention : il faut une version > 4 de  `make` (`make -v`).
-# Sur Mac : https://stackoverflow.com/questions/38901894/how-can-i-install-a-newer-version-of-make-on-mac-os
 # Les versions CentOS d'Amazone ont une version 3.82.
 # Utilisez `conda install -n $(VENV_AWS) make>=4 -y`
 # WARNING: Use make >4.0
@@ -54,7 +54,7 @@ define BROWSER
 	import os, sys, webbrowser
 	from urllib.request import pathname2url
 
-	webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+	webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])), autoraise=True)
 	sys.exit(0)
 	'
 endef
@@ -87,10 +87,10 @@ gray:=$(shell tput setaf 8)
 endif
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour gérer le projet, le virtualenv et le kernel
+# SNIPPET pour gérer le projet, le virtualenv conda et le kernel
 # Par convention, les noms du projet, de l'environnement Conda ou le Kernel Jupyter
 # correspondent au nom du répertoire du projet.
-# Il est possible de modifier cela, en valorisant les variables VENV et/ou KERNEL
+# Il est possible de modifier cela en valorisant les variables VENV et/ou KERNEL
 # avant le lancement du Makefile (`VENV=cntk_p36 make`)
 PRJ:=$(shell basename $(shell pwd))
 VENV ?= $(PRJ)
@@ -109,7 +109,7 @@ export DATA?=data
 # Cela servira à gérer automatiquement les environnements.
 # Pour que cela fonctionne, il faut avoir un environement Conda actif,
 # identifié par la variable CONDA_PREFIX (c'est généralement le cas).
-CONDA_BASE=$(shell conda info --base)
+CONDA_BASE:=$(shell conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
@@ -174,7 +174,7 @@ help:
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour affichier la valeur d'une variable d'environnement
-# tel quelle est vue par le Makefile. Par exemple 'make dump-CONDA_PACKAGE'
+# tel quelle est vue par le Makefile. Par exemple `make dump-CONDA_PACKAGE`
 .PHONY: dump-*
 dump-%:
 	@if [ "${${*}}" = "" ]; then
@@ -200,24 +200,20 @@ dump-%:
 # Un `git diff toto.csv` est plus clair.
 
 # S'assure de la présence de git (util en cas de synchronisation sur le cloud par exemple,
-# après avoir exclus le répertoire .git -cf ssh-ec2)
+# après avoir exclus le répertoire .git (cf. ssh-ec2)
 .git:
 	@git init -q
 
-# Règle importante, invoquées lors du `git commit` d'un fichier *.ipynb via
+# Règle technique importante, invoquées lors du `git commit` d'un fichier *.ipynb via
 # le paramètrage de `.gitattributes`.
 .PHONY: pipe_clear_jupyter_output
 pipe_clear_jupyter_output:
 	jupyter nb-convert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null
 
 
-# Initialiser la configuration de Git
-.gitattributes: | .git  # Configure git
-	@git config --local core.autocrlf input
-	# Set tabulation to 4 when use 'git diff'
-	@git config --local core.page 'less -x4'
 
-
+# Règle qit install git lfs si nécessaire
+.git/hooks/post-checkout:
 ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	# Add git lfs if possible
 	@git lfs install >/dev/null
@@ -230,14 +226,49 @@ ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	@git lfs track "*.png"  >/dev/null
 endif
 
+
+# Règle qui ajoute la validation du project avant un push
+# Elle ajoute un `make validate` avant de pusher. En cas
+# d'erreur, le push n'est pas possible. Ainsi, il n'est pas possible de publier
+# un code invalide.
+# Il est possible de forcer le push, sans invocation du `make validate`
+# avec 'FORCE=y git push'.
+# Pour supprimer ce comportement, il faut modifier le fichier .git/hooks/pre-push
+# et supprimer la règle du Makefile, ou bien,
+# utiliser un fichier vide 'echo ''> .git/hooks/pre-push'
+.git/hooks/pre-push:.git/hooks/post-checkout
 	# Add a hook to validate the project before a git push
-	cat >>.git/hooks/pre-push <<PRE-PUSH
+	@cat >>.git/hooks/pre-push <<PRE-PUSH
 	#!/usr/bin/env sh
 	# Validate the project before a push
-	[ "\$${FORCE}" == y ]] || make validate
+	if test -t 1; then
+		ncolors=$$(tput colors)
+		if test -n "\$$ncolors" && test \$$ncolors -ge 8; then
+			normal="\$$(tput sgr0)"
+			red="\$$(tput setaf 1)"
+	        green="\$$(tput setaf 2)"
+			yellow="\$$(tput setaf 3)"
+		fi
+	fi
+	branch="\$$(git branch | grep \* | cut -d ' ' -f2)"
+	if [ "\$${branch}" = "master" ] && [ "\$${FORCE}" != y ] ; then
+		printf "\$${green}Validate the project before push the commit... (\$${yellow}make validate\$${green})\$${normal}\n"
+		make validate
+		ERR=\$$?
+		if [ \$${ERR} -ne 0 ] ; then
+			printf "\$${red}'\$${yellow}make validate\$${red}' failed before git push.\$${normal}\n"
+			printf "Use \$${yellow}FORCE=y git push\$${normal} to force.\n"
+			exit \$${ERR}
+		fi
+	fi
 	PRE-PUSH
 	chmod +x .git/hooks/pre-push
 
+# Init git configuration
+.gitattributes: | .git .git/hooks/pre-push # Configure git
+	@git config --local core.autocrlf input
+	# Set tabulation to 4 when use 'git diff'
+	@git config --local core.page 'less -x4'
 
 ifeq ($(shell which jupyter >/dev/null ; echo "$$?"),0)
 	# Add rules to manage the output data of notebooks
@@ -257,7 +288,6 @@ ifeq ($(shell which daff >/dev/null ; echo "$$?"),0)
 	@[ -e .gitattributes.new ] && mv .gitattributes.new .gitattributes
 	@echo "*.[tc]sv diff=daff-csv merge=daff-csv -text" >>.gitattributes
 endif
-
 ifeq ($(shell which dvc >/dev/null ; echo "$$?"),0)
 	# Add DVC/Git integration
 	dvc install
@@ -270,8 +300,9 @@ endif
 # et choisir la version à appliquer.
 # Soit :
 # - CHECK_VENV pour vérifier l'activation d'un VENV avant de commencer
-# - ACTIVATE_VENV pour activer le VENV avant le traitement (merci les 3 lignes magiques)
+# - ACTIVATE_VENV pour activer le VENV avant le traitement
 # Pour cela, sélectionnez la version de VALIDATE_VENV qui vous convient.
+# Attention, toute les règles proposées ne sont pas compatible avec le mode ACTIVATE_VENV
 CHECK_VENV=@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
   then ( echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ) ; fi
 
@@ -294,24 +325,23 @@ VALIDATE_VENV=$(CHECK_VENV)
 # pour qu'un simple `make test` garantie la mise à jour de l'environnement avant
 # le lancement des tests par exemple.
 #
-# Pour cela, il faut indiquer dans le fichier setup.py, toutes les dépendances
-# de run et de test (voir l'exemple `setup.py`)
+# Pour cela, il faut indiquer dans le fichier 'setup.py', toutes les dépendances
+# de run et de test (voir le modèle de `setup.py` proposé)
 
-# Toutes les dépendances du projet à regrouper ici
+# All dependencies of the project must be here
 .PHONY: requirements dependencies
 REQUIREMENTS=$(PIP_PACKAGE) \
-		$(NLTK_DATABASE) $(SPACY-DATABASE) \
-		.gitattributes
+	$(NLTK_DATABASE) $(SPACY-DATABASE) \
+	.gitattributes
 requirements: $(REQUIREMENTS)
 dependencies: requirements
 
-# Règle de vérification de la bonne installation de la version de python dans l'environnement Conda
+# Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
 	$(VALIDATE_VENV)
 	conda install "python=$(PYTHON_VERSION).*" -y -q
 
-# Règle de mise à jour de l'environnement actif à partir
-# des dépendances décrites dans `setup.py`
+# Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	$(VALIDATE_VENV)
 	pip install $(EXTRA_INDEX) -e '.[dev]' | grep -v 'already satisfied' || true
@@ -332,13 +362,12 @@ remove-kernel:
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de nltk.
-# Ci-dessous, la recette pour lister toutes les bases.
 # Vous pouvez valoriser NLTK_DATA https://www.nltk.org/data.html
 ifndef NLTK_DATA
 export NTLK_DATA
-# La ligne suivante ralentie le Makefile. A activer qu'avec des env. spécifiques.
+# The new line slowed the Makefile.
 #NLTK_DATA:=$(shell python -c "import nltk.data; print(nltk.data.path[0])" 2>/dev/null || true)
-# Sinon, utiliser le code suivant
+# Else
 ifeq ($(OS),Darwin)
 ifeq ($(wildcard ~/nltk_data), )
 NLTK_DATA:=/usr/local/share/nltk_data
@@ -356,13 +385,13 @@ endif
 endif
 endif
 
-# Ajoutez ici les bases de données NLTK supplémentaires.
-# Par exemple, ajoutez
+# Add here the NLTK database.
+# For example, add
 # NLTK_DATABASE= \
 # $(NLTK_DATA)/corpora/wordnet \
 # $(NLTK_DATA)/tokenizers/punkt \
 # $(NLTK_DATA)/corpora/stopwords
-# et c'est tout.
+# and that's all.
 NLTK_DATABASE=
 
 $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
@@ -377,12 +406,11 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de spacy.
-# Ci-dessous, la recette pour lister toutes les bases
-# Ajoutez les bases de données Spacy complémentaires.
-# Par exemple :
+# Add here the Spacy database.
+# For exemple :
 # SPACY-DATABASE= \
 #   $(CONDA_PACKAGE)/spacy/data/en
-# et c'est tout.
+# and that's all.
 .PHONY: spacy-database
 SPACY-DATABASE=
 
@@ -394,7 +422,7 @@ $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour préparer l'environnement d'un projet juste après un `git clone`
 .PHONY: configure
-## Prepare the environment (conda venv, kernel, ...)
+## Prepare the work environment (conda venv, kernel, ...)
 configure:
 	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y
 	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
@@ -425,31 +453,46 @@ upgrade-venv: upgrade-$(VENV)
 # ---------------------------------------------------------------------------------------
 # SNIPPET de validation des notebooks en les ré-executants.
 # L'idée est d'avoir un sous répertoire par phase, dans le répertoire `notebooks`.
-# Ainsi, il suffit d'un `make nbbuild-phase1` pour valider tous les notesbooks du répertoire `notebooks/phase1`.
+# Ainsi, il suffit d'un `make nb-run-phase1` pour valider tous les notesbooks du répertoire `notebooks/phase1`.
 # Pour valider toutes les phases : `make nb-run-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.
 .PHONY: nb-run-*
-## Invoke all notebooks in lexical order from notebooks/<% dir>
-nb-run-%: $(REQUIREMENTS)
+notebooks/.make-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	time jupyter nb-convert \
+	time jupyter nbconvert \
 	  --ExecutePreprocessor.timeout=-1 \
 	  --execute \
 	  --inplace notebooks/$*/*.ipynb
+	touch notebooks/.make-$*
+
+# All notebooks
+notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebooks/*)))
+
+## Invoke all notebooks in lexical order from notebooks/<% dir>
+nb-run-%:
+	$(MAKE) notebooks/.make-$*
+
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET de validation des scripts en les ré-executants.
-# Ces scripts peuvent être la traduction de Notebook Jupyter, via la règle 'make nb-convert'.
-# L'idée est d'avoir un sous répertoire par phase, dans le répertoire `notebooks`.
-# Ainsi, il suffit d'un `make build-phase1` pour valider tous les scripts du répertoire `scripts/phase1`.
+# SNIPPET de validation des scripts en les ré-executant.
+# Ces scripts peuvent être la traduction de Notebook Jupyter, via la règle `make nb-convert`.
+# L'idée est d'avoir un sous répertoire par phase, dans le répertoire `scripts`.
+# Ainsi, il suffit d'un `make run-phase1` pour valider tous les scripts du répertoire `scripts/phase1`.
 # Pour valider toutes les phases : `make run-*`.
-# L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.
+# L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque script d'un numéro.
 .PHONY: run-*
-## Invoke all script in lexical order from scripts/<% dir>
-run-%: $(REQUIREMENTS)
+scripts/.make-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	time ls scripts/$*/*.py | grep -v __ | sed 's/\.py//g; s/\//\./g' | \
 		xargs -L 1 -t python -O -m
+	@touch scripts/.make-$*
+
+# All phases
+scripts/phases: $(sort $(subst scripts/,scripts/.make-,$(wildcard scripts/*)))
+
+## Invoke all script in lexical order from scripts/<% dir>
+run-%:
+	$(MAKE) scripts/.make-$*
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le code avec pylint et flake8
@@ -465,6 +508,17 @@ lint: $(REQUIREMENTS) | .pylintrc
 	@pylint bda_project tests || true
 
 
+
+.PHONY: typing
+## Check python typing
+typing: .pytype/pyi/bda_project
+
+## Add infered typing in module
+add-typing: typing
+	find bda_project -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
+	
+#}
+
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer la documentation html et pdf du projet.
 # Il est possible d'indiquer build/XXX, ou XXX correspond au type de format
@@ -472,28 +526,25 @@ lint: $(REQUIREMENTS) | .pylintrc
 # Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html
 .PHONY: docs
 # Use all processors
-SPHINX_FLAGS=-j$(shell grep -c '^processor' /proc/cpuinfo)
+#SPHINX_FLAGS=-j$(shell grep -c '^processor' /proc/cpuinfo)
+SPHINX_FLAGS=
 # Generate API docs
 docs/source: $(REQUIREMENTS) bda_project/* bda_project/tools/*
 	$(VALIDATE_VENV)
 	sphinx-apidoc -f -o docs/source bda_project/
 	touch docs/source
 
-# Build the documentation in specificed format (build/html, build/pdf, build/latexpdf, ...)
-build/%: docs/* docs/source README.md CHANGELOG.md | .git
-	echo SPHINX_FLAGS=$(SPHINX_FLAGS)
-	$(VALIDATE_VENV)
-	TARGET=$(*:build/%=%)
-	[[ "$$TARGET" == "pdf" ]] && TARGET=latexpdf
-	echo "Build $$TARGET..."
-	LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_FLAGS)
-	[[ "$$TARGET" == "latexpdf" ]] && TARGET=latex
-	touch build/$$TARGET
+# Build the documentation in specificed format (build/html, build/latexpdf, ...)
+build/%: $(REQUIREMENTS) docs/source docs/* README.md CHANGELOG.md | .git
+	@$(VALIDATE_VENV)
+	@TARGET=$(*:build/%=%)
+	@echo "Build $$TARGET..."
+	@LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_FLAGS)
+	touch build/$$TARGET docs/source
 
 # Build all format of documentations
-# May be build/html build/latex
 ## Generate and show the HTML documentation
-docs: build/html build/pdf
+docs: build/html
 	$(BROWSER) build/html/index.html
 
 ## Watching for changes to compile the docs
@@ -504,10 +555,12 @@ servedocs: docs
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer une distribution des sources
 .PHONY: sdist
-# Create a source distribution
-sdist: $(REQUIREMENTS)
+dist/$(PRJ_PACKAGE)-*.tar.gz: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python setup.py sdist
+
+# Create a source distribution
+sdist: dist/$(PRJ_PACKAGE)-*.tar.gz
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer une distribution des binaires au format egg.
@@ -515,11 +568,12 @@ sdist: $(REQUIREMENTS)
 # python setup.py --version
 # Cela correspond au dernier tag d'un format 'version'
 .PHONY: bdist
-# Create a binary wheel distribution
-bdist: $(REQUIREMENTS)
+dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	python setup.py bdist_wheel
 
+# Create a binary wheel distribution
+bdist: dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl
 
 
 # ---------------------------------------------------------------------------------------
@@ -528,11 +582,13 @@ bdist: $(REQUIREMENTS)
 # python setup.py --version
 # Cela correspond au dernier tag d'un format 'version'
 .PHONY: dist
+
 ## Create a full distribution
 dist: bdist sdist
+
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour tester la publication d'une distribution avant sa publication.
-.PHONY: test-twine
+.PHONY: check-twine
 ## Check the distribution before publication
 check-twine: bdist
 	$(VALIDATE_VENV)
@@ -549,18 +605,19 @@ test-twine: bdist
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour publier la version sur pypi.org.
-.PHONY: twine
+.PHONY: release
 ## Publish distribution on pypi.org
-release: bdist sdist
+release: dist
 	$(VALIDATE_VENV)
-	ls dist --hide "*.dev*" | xargs twine upload
-	ls dist --hide "*.dev*" | xargs twine upload
+	[[ $$(ls -1 dist --hide "*.dev*" | wc -l) -ne 0 ]] || echo -e "$(red)Add a tag version in GIT to release$(normal)"
+	echo "Enter Pypi password"
+	ls $(PWD)/dist/* --hide "*.dev*" | xargs twine upload
 
 
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour executer jupyter notebook, mais en s'assurant de la bonne application des dépendances.
-# Utilisez 'make notebook' à la place de 'jupyter notebook'.
+# Utilisez `make notebook` à la place de `jupyter notebook`.
 .PHONY: notebook
 ## Start jupyter notebooks
 notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
@@ -568,23 +625,32 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	DATA=$$DATA jupyter notebook
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour synchroniser les données avec un buket s3
-.PHONY: sync_data_to_s3 sync_data_from_s3
+# SNIPPET pour synchroniser les données avec un buket s3.
+# Si le repertoire data/raw est ajouté dans .gitignore, il n'est alors plus
+# sauvegardé dans .git. Il sera alors récupéré via s3.
+.PHONY: sync_to_s3 sync_from_s3
 ## Upload Data to S3
-sync_data_to_s3:
+sync_to_s3/%:
+	F=$(*:sync_to_s3/%=%)
 ifeq (default,$(PROFILE))
-	aws s3 sync $(DATA)/ s3://$(S3_BUCKET)/data/
+	aws s3 sync $(DATA)/$$F $(S3_BUCKET)/data/$$F
 else
-	aws s3 sync $(DATA)/ s3://$(S3_BUCKET)/data/ --profile $(PROFILE)
+	aws s3 sync $(DATA)/$$F $(S3_BUCKET)/data/$$F --profile $(PROFILE)
 endif
 
 ## Download Data from S3
-sync_data_from_s3:
+sync_from_s3/%:
+	F=$(*:sync_from_s3/%=%)
 ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(S3_BUCKET)/data/ $(DATA)/
+	aws s3 sync $(S3_BUCKET)/data/$$F $(DATA)/$$F
 else
-	aws s3 sync s3://$(S3_BUCKET)/data/ $(DATA)/ --profile $(PROFILE)
+	aws s3 sync $(S3_BUCKET)/data/$$F $(DATA)/$$F --profile $(PROFILE)
 endif
+
+## Download raw data if necessary
+$(DATA)/raw: sync_from_s3/raw
+
+
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour convertir tous les notebooks du repertoire 'notebooks' en script
@@ -646,9 +712,9 @@ clean-pyc:
 .PHONY: clean-build
 # Remove build artifacts and docs
 clean-build:
-	@echo "+ $@"
+	@-/usr/bin/find . -type f -name ".make-*" -delete
 	@rm -fr build/
-	@rm -fr dist/*.dev*
+	@rm -fr dist/*
 	@rm -fr *.egg-info
 
 # ---------------------------------------------------------------------------------------
@@ -671,9 +737,9 @@ clean-pip:
 .PHONY: clean-venv clean-$(VENV)
 clean-$(VENV): remove-venv
 	@echo -e "$(cyan)Re-create virtualenv $(VENV)...$(normal)"
-	conda create -y -q -n $(VENV)
-	touch setup.py
-	echo -e "$(yellow)Warning: Conda virtualenv $(VENV) is empty.$(normal)"
+	@conda create -y -q -n $(VENV)
+	@touch setup.py
+	@echo -e "$(yellow)Warning: Conda virtualenv $(VENV) is empty.$(normal)"
 # Set the current VENV empty
 clean-venv : clean-$(VENV)
 
@@ -684,27 +750,31 @@ clean-venv : clean-$(VENV)
 clean: clean-pyc clean-build clean-notebooks
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour faire le ménage du projet (hors environnement)
+# SNIPPET pour faire le ménage du projet
 .PHONY: clean-all
 # Clean all environments
 clean-all: clean remove-venv remove-kernel
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour déclencher les tests unitaires
+# SNIPPET pour executer les tests unitaires
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite
-
-
 .PHONY: test
-## Run all unit-tests
-test: $(REQUIREMENTS)
+.make-test: $(REQUIREMENTS) tests/* bda_project/*
 	$(VALIDATE_VENV)
-	#ADDOPTS=--addopts '...'
-	python setup.py test $(ADDOPTS)
+	python setup.py test
+	touch .make-test
 
-# SNIPPET pour vérifier les TU et le recalcule de tous les notebooks
+## Run all unit-tests
+test: .make-test
+
+
+# SNIPPET pour vérifier les TU et le recalcule de tous les notebooks et scripts.
+# Il peut etre judicieux d'ajouter lint et typing, pour valider le respect des normes Pythons
 .PHONY: validate
 ## Validate the version before release
-validate: test run-* build/linkcheck build/html build/pdf
+# PPR validate: test scripts/phases notebooks/phases build/html build/latexpdf build/linkcheck
+# PPR ajouter typing et verifier le double validate
+validate: .make-test scripts/phases notebooks/phases build/html
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.
@@ -714,16 +784,14 @@ validate: test run-* build/linkcheck build/html build/pdf
 # même lorsqu'elle est exécuté sur EC2.
 # Par exemple :
 # - `make on-ec2-test` execute les TU sur EC2
-# - `make detach-build-all` détache le recalcule tous les notebooks sur EC2
+# - `make detach-train` détache le l'apprentissage
 
-# Quel venv utilisé sur l'instance EC2 ?
-
+# Conda virtual env to use in EC2
 VENV_AWS=tensorflow_p36
 
-# Initialisation de l'instance EC2
-# Les deux premières lignes permettent d'avoir une trace de l'initialisation
-# de l'instance EC2 sur /tmp/user-data.log
-# C'est pratique pour le debug
+# Initialize EC2 instance
+# The two first lines add a log of the script in /tmp/user-data.log
+# for debug
 export AWS_USER_DATA
 define AWS_USER_DATA
 #!/bin/bash -x
@@ -731,11 +799,12 @@ exec > /tmp/user-data.log 2>&1
 sudo su - ec2-user -c "conda install -n $(VENV_AWS) make>=4 -y"
 endef
 
-# Quel est le cycle de vie par défaut des instances, via ssh-ec2 ?
-#--leave --stop ou --terminate
+# What is the life cycle of EC2 instance  via ssh-ec2 ?
+#--leave --stop or --terminate
+# TODO Select the life cycle
 EC2_LIFE_CYCLE=--leave
 
-# Recette permettant un 'make ec2-test'
+# Recette permettant un `make ec2-test`
 .PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
 ## Call 'make %' recipe on EC2 (make ec2-train)
 ec2-%:
@@ -749,7 +818,7 @@ ec2-tmux-%:
 	$(VALIDATE_VENV)
 	NO_RSYNC_END=n ssh-ec2 --multi tmux --leave "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-tmux-%=%)"
 
-# Recette permettant un 'make ec2-detach-test'
+# Recette permettant un `make ec2-detach-test`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-detach-%:
@@ -764,7 +833,6 @@ ec2-notebook:
 
 
 
-
 #################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
@@ -774,10 +842,13 @@ ec2-notebook:
 # └─────────┘ └──────────┘ └───────┘ └──────────┘ └───────────┘
 #
 
+SOURCES=$(shell find bda_project/ -type f -name '*.py')
+TOOLS=$(shell find bda_project/ -mindepth 2 -type f -name '*.py')
+
 .PHONY: prepare features train evaluate visualize
 
-# Rule to declare dependencies from tools module for all project files
-bda_project/*.py : bda_project/tools/*.py
+# Rule to declare an implicite dependencies from sub module for all root project files
+bda_project/*.py : $(TOOLS)
 	@touch $@
 
 $(DATA)/interim/datas-prepared.csv : $(REQUIREMENTS) bda_project/prepare_dataset.py $(DATA)/raw/*
@@ -811,6 +882,7 @@ evaluate: reports/auc.metric
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) bda_project/visualize.py models/model.pkl
-	python -O -m bda_project.visualize reports/
+	python -O -m bda_project.visualize \
+	    reports/
 
 

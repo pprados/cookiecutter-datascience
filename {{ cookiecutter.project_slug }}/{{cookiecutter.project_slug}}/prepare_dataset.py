@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    Traitement en charge de préparer le dataset
-    (changement de format, nettoyage, etc).
+    Treatment in charge of preparing the dataset.
+    (change format, cleaning, etc).
 """
 
 import logging
@@ -17,11 +17,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 def prepare_dataset(input_raw: pd.DataFrame) -> pd.DataFrame:
-    """ Runs data processing scripts to turn raw data from (../interim) into
-        extended data (saved in ../processed).
+    """ Process to turn raw data into prepared data.
 
-        :param input_raw: input raw dataframe
-        :return: output_prepared dataframe
+        :param input_raw: Input raw dataframe
+        :return: Prepared dataframe
     """
     # TODO: Remplacez la ligne suivante pour un enrichissement du dataset
     output_prepared = input_raw
@@ -30,12 +29,10 @@ def prepare_dataset(input_raw: pd.DataFrame) -> pd.DataFrame:
 
 @click.command()
 @click.argument('input_raw_filepath', type=click.Path(exists=True))
-@click.argument('output_interim_filepath', type=click.Path())
+@click.argument('output_prepared_filepath', type=click.Path())
 def main(input_raw_filepath: str,
          output_prepared_filepath: str) -> int:
-    """ Runs data processing scripts to turn raw data from (../raw) into
-        cleaned data ready to be analyzed and extended with
-        features (saved in ../interim).
+    """ Process to turn raw data file into prepared data file.
 
         :param input_raw_filepath: data file path
         :param output_prepared_filepath: new file to write with prepared datas

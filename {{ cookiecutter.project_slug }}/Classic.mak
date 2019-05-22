@@ -7,10 +7,13 @@
 # └─────────┘ └──────────┘ └───────┘ └──────────┘ └───────────┘
 #
 
+SOURCES=$(shell find {{ cookiecutter.project_slug }}/ -type f -name '*.py')
+TOOLS=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '*.py')
+
 .PHONY: prepare features train evaluate visualize
 
-# Rule to declare dependencies from tools module for all project files
-{{ cookiecutter.project_slug }}/*.py : {{ cookiecutter.project_slug }}/tools/*.py
+# Rule to declare an implicite dependencies from sub module for all root project files
+{{ cookiecutter.project_slug }}/*.py : $(TOOLS)
 	@touch $@
 
 $(DATA)/interim/datas-prepared.csv : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/prepare_dataset.py $(DATA)/raw/*

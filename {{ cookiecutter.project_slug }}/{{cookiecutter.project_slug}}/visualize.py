@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-    Traitement en charge de visualiser l'évolution du modèle.
+    Treatment in charge of training visualize the results.
 """
 import glob
 import logging
 import sys
-from typing import List
+from typing import Sequence
 
 import click
 import dotenv
@@ -13,7 +13,8 @@ import dotenv
 LOGGER = logging.getLogger(__name__)
 
 
-def visualize(files: List[str]) -> None:
+# PPR utiliser typing io.IO ?
+def visualize(files: Sequence[str]) -> None:
     """ Visualize the results
 
         :param list of files
@@ -25,7 +26,7 @@ def visualize(files: List[str]) -> None:
 
 @click.command()
 @click.argument('evaluate_filepath', type=click.Path(exists=True))
-def main(evaluate_filepath: str) -> None:
+def main(evaluate_filepath: str) -> int:
     """ Visualize the results
 
         :param evaluate_filepath: glob data file path
@@ -33,8 +34,9 @@ def main(evaluate_filepath: str) -> None:
     """
     LOGGER.info('Visualize the results')
 
-    inputs = [str(a_file)
-              for a_file in glob.glob(evaluate_filepath, recursive=True)]
+    inputs: Sequence[str] = \
+        [str(a_file)
+         for a_file in glob.glob(evaluate_filepath, recursive=True)]
     visualize(inputs)
     return 0
 

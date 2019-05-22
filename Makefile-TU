@@ -47,21 +47,21 @@ dump-%:
 # Create a temporary VENV and DATA
 # Warning, it's not a realy isolated environment with MT because, dist, etc
 # are not cleaning. May be, duplicate all the project ?
-# PPR NLTK_DATA=~/tmp/ntlkXXX ?
 define do_make
-    echo "---------------------------- $1"
-	$(MAKE) clean
-	D=$(shell mktemp -d --tmpdir --suffix _BDA)
-	NLTK_DATA=$(D)_nltk_data
-	V=temp_$(shell cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 5 | head -n 1)
-	cp -Rf . $$D/
-	cd $$D/
+    @echo "---------------------------- $1"
+	V=CC_temp_$(shell cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n 1)
+	D=/tmp/$$V
+	NLTK_DATA=$$D_nltk_data
+	# PPR: passer par une generation à la demande ?
+	cp -Rf tmp/bda_project $$D/
+	pushd $$D/
+    echo "$1"> test.txt
 	conda create -n $$V -y python=$(PYTHON_VERSION)
 	source $(CONDA_BASE)/bin/activate $$V
 	rm -rf data/interim/* data/processed/* data/external/*
 	VENV=$$V NLTK_DATA=$$NLTK_DATA $(MAKE) $1
-	echo "SOURCE $(CONDA_BASE)/bin/deactivate"
-	conda deactivate
+	popd
+	source $(CONDA_BASE)/bin/deactivate
 	conda env remove -n $$V
 	rm -Rf $$D
 endef
@@ -125,18 +125,15 @@ run:
 lint:
 	$(call do_make,lint)
 #-------------------
-.PHONY: docs/source
-docs/source:
-	$(call do_make,docs/source)
-
 .PHONY: build
-build:
-	$(call do_make,build/html build/pdf)
+build_html:
+	$(call do_make,build/html)
+build_latexpdf:
+	$(call do_make,build/latexpdf)
 
-# WARNING: invoke browser
-.PHONY: docs
-docs:
-	$(call do_make,docs)
+build: build_html build_latexpdf
+	$(call do_make,build/html)
+	$(call do_make,build/latexpdf)
 
 #-------------------
 .PHONY: remove-kernel
@@ -152,9 +149,9 @@ nb-run:
 .PHONY: notebook
 # notebook
 
-.PHONY: sync_data_to_s3 sync_data_from_s3
-#sync_data_to_s3
-#sync_data_from_s3
+.PHONY: sync_to_s3 sync_from_s3
+#sync_to_s3/data
+#sync_from_s3/data
 
 .PHONY: nb-convert
 nb-convert:
@@ -243,25 +240,21 @@ visualize:
 	$(call do_make,visualize)
 #-------------------
 # Group services
-XSTD: .git .gitattributes requirements dependencies \
+STD: .git .gitattributes requirements dependencies \
 	configure remove-venv upgrade-venv remove-kernel \
-    $(NLTK_DATA) \
     $(CONDA_PYTHON)
 
-STD: $(CONDA_PYTHON)
-
-DOCS: docs/source build
 DIST: sdist bdist dist
-# clean-pip
 CLEAN: clean-pyc clean-build clean-venv clean clean-all
 TEST: test validate lint
-#BUG
 ML: prepare feature train evaluate visualize
-
-NOT_TESTED: EC2 docs $(CONDA_PACKAGE)/spacy
 
 #-------------------
 # Group of options
-DEFAULT: CLEAN STD DOCS DIST TEST ML
+# PPR a tester $(CONDA_PACKAGE)/spacy $(NLTK_DATA)
+NOT_TESTED: EC2 clean-pip $(CONDA_PACKAGE)/spacy $(NLTK_DATA) check-twine test-twine release
+DEFAULT: CLEAN STD DIST TEST ML
+DOCS: build
+# AWS: EC2
 JUPYTER: remove-kernel nb-run nb-convert clean-notebooks
-OPENSOURCE: check-twine test-twine dist release
+OPENSOURCE: dist

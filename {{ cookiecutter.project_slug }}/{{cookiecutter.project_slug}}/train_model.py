@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    Traitement en charge de l'apprentissage du modèle.
+    Treatment in charge of training the model.
 """
 import glob
 import logging
@@ -8,7 +8,7 @@ import os
 import pathlib
 import pickle
 import sys
-from typing import List, Any
+from typing import Any, Sequence
 
 import click
 import dotenv
@@ -16,12 +16,12 @@ import dotenv
 LOGGER = logging.getLogger(__name__)
 
 
-def train_model(inputs: List[str],
-                epoch: int,
-                batch_size: int) -> Any:
-    """ Train the model from input_filepath and save it in ../models
+def train_model(inputs: Sequence[str],
+                epoch: int = 128,
+                batch_size: int = 1024) -> Any:
+    """ Train the model from inputs
 
-        :param inputs: list of file to train the model
+        :param inputs: list of datasets to train the model
         :param epoch: Value of epoch (default 128)
         :param batch_size: Value of batch size (default 1024)
         :return: The trained model
@@ -43,7 +43,7 @@ def main(input_filepath: str,
          model_filepath: str,
          epoch: int,
          batch_size: int) -> int:
-    """ Train the model from input_filepath and save it in ../models
+    """ Train the model from input_filepath and save it in model_filepath
 
         :param input_filepath: glob data file path
         :param model_filepath: file to write the model
@@ -51,12 +51,13 @@ def main(input_filepath: str,
         :param batch_size: Value of batch size (default 1024)
         :return: 0 if ok, else error
     """
-    LOGGER.info('train model from processed and featured data')
+    LOGGER.info('Train model from processed and featured data')
 
     pathlib.Path(os.path.dirname(model_filepath)) \
         .mkdir(parents=True, exist_ok=True)
-    inputs = [f for f in glob.glob(input_filepath, recursive=True)]
-    model = train_model(inputs, epoch, batch_size)
+    inputs: Sequence[str] = \
+        [str(f) for f in glob.glob(input_filepath, recursive=True)]
+    model: Any = train_model(inputs, epoch, batch_size)
     pickle.dump(model, open(model_filepath, 'wb'))
     return 0
 

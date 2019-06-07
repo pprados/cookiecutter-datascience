@@ -54,6 +54,7 @@ Et le reste, pour la gestion du projet
 - `make lint` # Lint the code
 - `make docs` # Create and show the HTML and PDF doc in 'build/'
 - `make test` # Run all unit-tests
+- `make typing` # Check python typing
 - `make validate` # Validate the version before commit
 - `make clean` # Clean current environment
 - `make sdist` # Create a source distribution
@@ -115,10 +116,12 @@ Il est également possible de consulter la plupart des [snippets de code
 du Makefile](Makefile.snippet).
 
 # Fonctionnalité à faire
-- [X] Execution unique en cas de rejeu de la règle
+- [X] Proposition d'un pipeline datascience
+- [X] Execution unique en cas de rejeu de la règle make
+- [X] Fonctionnement Conda
+- [ ] Fonctionnement virtualenv
 - [ ] Gestion de plusieurs fichiers de datas en parallèles
 - [ ] Execution compatible avec le mode parallèle (-j)
-- [X] Proposition de pipeline datascience
 - [ ] Extraction des metriques dans les différentes branches Git (à la DVC)
 - [X] [Jupyter](https://jupyter.org/)
 - [X] [Tensorflow](https://www.tensorflow.org/)
@@ -161,4 +164,4 @@ du Makefile](Makefile.snippet).
 - [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
 - [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
 - [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
-
+- [ ] Voir [Tensorflow template](https://github.com/Mrgemy95/Tensorflow-Project-Template)

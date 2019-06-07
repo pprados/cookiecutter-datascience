@@ -18,6 +18,11 @@ rm Classic.mak DVC.mak
 {% if cookiecutter.use_jupyter == "n" %}
 rm -Rf notebooks
 {% endif %}
+{% if cookiecutter.use_s3 == "n" %}
+rm data/raw/.gitignore
+{% else %}
+rm data/raw/.gitkeep
+{% endif %}
 cat <<END
 Read README.md file.
 

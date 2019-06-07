@@ -97,11 +97,10 @@ VENV ?= $(PRJ)
 {% if cookiecutter.use_jupyter == 'y' %}KERNEL ?=$(VENV){% endif %}
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:={{ cookiecutter.python_version }}
-{% if cookiecutter.use_aws == 'y' %}S3_BUCKET?=s3://$(PRJ)
+{% if cookiecutter.use_aws == 'y' %}S3_BUCKET?=s3://$(subst _,-,$(PRJ))
 PROFILE = default{% endif %}
 # Data directory (can be in other place, in VM for example)
 export DATA?=data
-{% if cookiecutter.add_makefile_comments == 'y' %}
 {% if cookiecutter.use_DVC == 'y' %}
 # Use DVC bucket. May be :
 # DVC_BUCKET?=s3://$(PRJ)
@@ -109,7 +108,8 @@ export DATA?=data
 # DVC_BUCKET?=ssh://user@example.com:
 # DVC_BUCKET?=hdfs://user@example.com
 DVC_BUCKET?={% if cookiecutter.use_aws == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
-{% endif %}
+PYTHON_SRC=$(shell find {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
+PYTHON_TST=$(shell find tests -type f -iname '*.py' | grep -v __pycache__)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
@@ -126,7 +126,7 @@ PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
 # SNIPPET pour ajouter des repositories complémentaires à PIP.
 # A utiliser avec par exemple
 # pip $(EXTRA_INDEX) install ...{% endif %}
-EXTRA_INDEX:=--extra-index-url=https://pypi.anaconda.org/octo/label/dev/simple
+EXTRA_INDEX:=--extra-index-url=https://pypi.anaconda.org/octo
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer automatiquement l'aide du Makefile.
@@ -215,10 +215,8 @@ dump-%:
 # le paramètrage de `.gitattributes`.{% endif %}
 .PHONY: pipe_clear_jupyter_output
 pipe_clear_jupyter_output:
-	jupyter nb-convert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null
-{% endif %}
-{% if cookiecutter.use_git_LFS == 'y' %}{% if cookiecutter.use_DVC != 'y' %}
-{% if cookiecutter.add_makefile_comments == 'y' %}
+	jupyter nb-convert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null{% endif %}
+{% if cookiecutter.use_git_LFS == 'y' %}{% if cookiecutter.use_DVC != 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # Règle qit install git lfs si nécessaire{% endif %}
 .git/hooks/post-checkout:
 ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
@@ -232,14 +230,12 @@ ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	@git lfs track "*.gif"  >/dev/null
 	@git lfs track "*.png"  >/dev/null
 endif{% endif %}{% endif %}
-
 {% if cookiecutter.add_makefile_comments == 'y' %}
-# Règle qui ajoute la validation du project avant un push
-# Elle ajoute un `make validate` avant de pusher. En cas
-# d'erreur, le push n'est pas possible. Ainsi, il n'est pas possible de publier
-# un code invalide.
-# Il est possible de forcer le push, sans invocation du `make validate`
-# avec 'FORCE=y git push'.
+# Règle qui ajoute la validation du project avant un push sur la branche master.
+# Elle ajoute un hook git pour invoquer `make validate` avant de pusher. En cas
+# d'erreur, le push n'est pas possible.
+# Pour forcer le push, malgres des erreurs lors de l'exécution de 'make validate'
+# utilisez 'FORCE=y git push'.
 # Pour supprimer ce comportement, il faut modifier le fichier .git/hooks/pre-push
 # et supprimer la règle du Makefile, ou bien,
 # utiliser un fichier vide 'echo ''> .git/hooks/pre-push'{% endif %}
@@ -295,10 +291,11 @@ ifeq ($(shell which daff >/dev/null ; echo "$$?"),0)
 	@[ -e .gitattributes.new ] && mv .gitattributes.new .gitattributes
 	@echo "*.[tc]sv diff=daff-csv merge=daff-csv -text" >>.gitattributes
 endif
+{% if cookiecutter.use_DVC == 'y' %}
 ifeq ($(shell which dvc >/dev/null ; echo "$$?"),0)
 	# Add DVC/Git integration
 	dvc install
-endif
+endif{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour vérifier la présence d'un environnement Conda conforme
@@ -469,16 +466,15 @@ notebooks/.make-%: $(REQUIREMENTS)
 	time jupyter nbconvert \
 	  --ExecutePreprocessor.timeout=-1 \
 	  --execute \
-	  --inplace notebooks/$*/*.ipynb{% endif %}
+	  --inplace notebooks/$*/*.ipynb
 	touch notebooks/.make-$*
-
 # All notebooks
 notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebooks/*)))
 
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
 nb-run-%:
 	$(MAKE) notebooks/.make-$*
-
+{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET de validation des scripts en les ré-executant.
@@ -514,7 +510,6 @@ lint: $(REQUIREMENTS) | .pylintrc
 	@echo "----------------------"
 	@pylint {{ cookiecutter.project_slug }} tests || true
 
-{#
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le typage avec pytype{% endif %}
@@ -528,8 +523,11 @@ pytype.cfg:
 	$(VALIDATE_VENV)
 	set -x
 	pytype -V $(PYTHON_VERSION) {{ cookiecutter.project_slug }}
-	{# PPR phase1
-	( cd scripts/phase1 ; pytype -V $(PYTHON_VERSION) . ) #}
+	for phase in scripts/*
+	do
+	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype -V $(PYTHON_VERSION) {} \; )
+	done
+	touch .pytype/pyi/{{ cookiecutter.project_slug }}
 
 .PHONY: typing
 ## Check python typing
@@ -538,9 +536,11 @@ typing: .pytype/pyi/{{ cookiecutter.project_slug }}
 ## Add infered typing in module
 add-typing: typing
 	find {{ cookiecutter.project_slug }} -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
-	{# PPR phase1
-	( cd scripts/phase1 ; find . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; ) #}
-#}
+	for phase in scripts/*
+	do
+	  ( cd $$phase ; find . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
+	done
+
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer la documentation html et pdf du projet.
@@ -552,7 +552,7 @@ add-typing: typing
 #SPHINX_FLAGS=-j$(shell grep -c '^processor' /proc/cpuinfo)
 SPHINX_FLAGS=
 # Generate API docs
-docs/source: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/* {{ cookiecutter.project_slug }}/tools/*
+docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	sphinx-apidoc -f -o docs/source {{ cookiecutter.project_slug }}/
 	touch docs/source
@@ -563,7 +563,7 @@ build/%: $(REQUIREMENTS) docs/source docs/* README.md CHANGELOG.md | .git
 	@TARGET=$(*:build/%=%)
 	@echo "Build $$TARGET..."
 	@LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_FLAGS)
-	touch build/$$TARGET docs/source
+	touch build/$$TARGET
 
 # Build all format of documentations
 ## Generate and show the HTML documentation
@@ -646,7 +646,7 @@ release: dist
 notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	$(VALIDATE_VENV)
 	DATA=$$DATA jupyter notebook{% endif %}
-{% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
+{% if cookiecutter.use_s3 == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour synchroniser les données avec un buket s3.
 # Si le repertoire data/raw est ajouté dans .gitignore, il n'est alors plus
@@ -654,24 +654,23 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 .PHONY: sync_to_s3 sync_from_s3
 ## Upload Data to S3
 sync_to_s3/%:
-	F=$(*:sync_to_s3/%=%)
 ifeq (default,$(PROFILE))
-	aws s3 sync $(DATA)/$$F $(S3_BUCKET)/data/$$F
+	aws s3 sync $(DATA)/$(*:sync_to_s3/%=%) $(S3_BUCKET)/data/$(*:sync_to_s3/%=%)
 else
-	aws s3 sync $(DATA)/$$F $(S3_BUCKET)/data/$$F --profile $(PROFILE)
+	aws s3 sync $(DATA)/$(*:sync_to_s3/%=%) $(S3_BUCKET)/data/$(*:sync_to_s3/%=%) --profile $(PROFILE)
 endif
 
 ## Download Data from S3
 sync_from_s3/%:
-	F=$(*:sync_from_s3/%=%)
 ifeq (default,$(PROFILE))
-	aws s3 sync $(S3_BUCKET)/data/$$F $(DATA)/$$F
+	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%)
 else
-	aws s3 sync $(S3_BUCKET)/data/$$F $(DATA)/$$F --profile $(PROFILE)
+	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%) --profile $(PROFILE)
 endif
 
 ## Download raw data if necessary
-$(DATA)/raw: sync_from_s3/raw
+$(DATA)/raw:
+	make sync_from_s3/raw
 {% endif %}
 
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -782,7 +781,7 @@ clean: clean-pyc clean-build {% if cookiecutter.use_jupyter == 'y' %}clean-noteb
 # SNIPPET pour executer les tests unitaires
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite{% endif %}
 .PHONY: test
-.make-test: $(REQUIREMENTS) tests/* {{ cookiecutter.project_slug }}/*
+.make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	python setup.py test
 	touch .make-test
@@ -795,9 +794,7 @@ test: .make-test
 # Il peut etre judicieux d'ajouter lint et typing, pour valider le respect des normes Pythons{% endif %}
 .PHONY: validate
 ## Validate the version before release
-# PPR validate: test scripts/phases {% if cookiecutter.use_jupyter == 'y' %}notebooks/phases {% endif %}build/html build/latexpdf build/linkcheck
-# PPR ajouter typing et verifier le double validate
-validate: .make-test scripts/phases {% if cookiecutter.use_jupyter == 'y' %}notebooks/phases {% endif %}build/html
+validate: .make-test $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.

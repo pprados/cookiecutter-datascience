@@ -261,8 +261,7 @@ check-docs: .make-check-docs
 # PPR: verifier en code clean total du projet bda_project.
 # Il faut probablement lancer des builds avants, pour remetre l'état valide
 ## Check all generated rules
-# PPR: BUG si OPT
-#OPT=-j -O
+OPT=-j -O
 check-makefile: clean_check-makefile try Makefile-TU {{\ cookiecutter.project_slug\ }}/Makefile
 	@pushd tmp/bda_project
 	source $(CONDA_BASE)/bin/activate bda_project
@@ -273,12 +272,9 @@ check-makefile: clean_check-makefile try Makefile-TU {{\ cookiecutter.project_sl
 	source $(CONDA_BASE)/bin/deactivate
 	popd
 
-	make $(OPT) -f Makefile-TU DEFAULT
-	# Not parallel jobs
-	make -f Makefile-TU DOCS
+	make $(OPT) -f Makefile-TU DEFAULT DOCS
 	[ '"y"' = $$(jq '.["open_source_software"]' cookiecutter.json) ] && make $(OPT) -f Makefile-TU OPENSOURCE
 	[ '"y"' = $$(jq '.["use_jupyter"]' cookiecutter.json) ] && make $(OPT) -f Makefile-TU JUPYTER
-	touch .make-check-makefile
 
 ## Check empty configure
 check-configure:

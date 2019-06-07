@@ -97,12 +97,19 @@ VENV ?= $(PRJ)
 KERNEL ?=$(VENV)
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:=3.6
-S3_BUCKET?=s3://$(PRJ)
+S3_BUCKET?=s3://$(subst _,-,$(PRJ))
 PROFILE = default
 # Data directory (can be in other place, in VM for example)
 export DATA?=data
 
-
+# Use DVC bucket. May be :
+# DVC_BUCKET?=s3://$(PRJ)
+# DVC_BUCKET?=gs://$(PRJ)
+# DVC_BUCKET?=ssh://user@example.com:
+# DVC_BUCKET?=hdfs://user@example.com
+DVC_BUCKET?=$(S3_BUCKET)
+PYTHON_SRC=$(shell find bda_project -type f -iname '*.py' | grep -v __pycache__)
+PYTHON_TST=$(shell find tests -type f -iname '*.py' | grep -v __pycache__)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
@@ -119,7 +126,7 @@ JUPYTER_DATA_DIR:=$(shell jupyter --data-dir 2>/dev/null || echo "~/.local/share
 # SNIPPET pour ajouter des repositories complémentaires à PIP.
 # A utiliser avec par exemple
 # pip $(EXTRA_INDEX) install ...
-EXTRA_INDEX:=--extra-index-url=https://pypi.anaconda.org/octo/label/dev/simple
+EXTRA_INDEX:=--extra-index-url=https://pypi.anaconda.org/octo
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer automatiquement l'aide du Makefile.
@@ -211,32 +218,15 @@ pipe_clear_jupyter_output:
 	jupyter nb-convert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null
 
 
-
-# Règle qit install git lfs si nécessaire
-.git/hooks/post-checkout:
-ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
-	# Add git lfs if possible
-	@git lfs install >/dev/null
-	# Add some extensions in lfs
-	@git lfs track "*.pkl"  >/dev/null
-	@git lfs track "*.bin"  >/dev/null
-	@git lfs track "*.jpg"  >/dev/null
-	@git lfs track "*.jpeg" >/dev/null
-	@git lfs track "*.gif"  >/dev/null
-	@git lfs track "*.png"  >/dev/null
-endif
-
-
-# Règle qui ajoute la validation du project avant un push
-# Elle ajoute un `make validate` avant de pusher. En cas
-# d'erreur, le push n'est pas possible. Ainsi, il n'est pas possible de publier
-# un code invalide.
-# Il est possible de forcer le push, sans invocation du `make validate`
-# avec 'FORCE=y git push'.
+# Règle qui ajoute la validation du project avant un push sur la branche master.
+# Elle ajoute un hook git pour invoquer `make validate` avant de pusher. En cas
+# d'erreur, le push n'est pas possible.
+# Pour forcer le push, malgres des erreurs lors de l'exécution de 'make validate'
+# utilisez 'FORCE=y git push'.
 # Pour supprimer ce comportement, il faut modifier le fichier .git/hooks/pre-push
 # et supprimer la règle du Makefile, ou bien,
 # utiliser un fichier vide 'echo ''> .git/hooks/pre-push'
-.git/hooks/pre-push:.git/hooks/post-checkout
+.git/hooks/pre-push:
 	# Add a hook to validate the project before a git push
 	@cat >>.git/hooks/pre-push <<PRE-PUSH
 	#!/usr/bin/env sh
@@ -288,6 +278,7 @@ ifeq ($(shell which daff >/dev/null ; echo "$$?"),0)
 	@[ -e .gitattributes.new ] && mv .gitattributes.new .gitattributes
 	@echo "*.[tc]sv diff=daff-csv merge=daff-csv -text" >>.gitattributes
 endif
+
 ifeq ($(shell which dvc >/dev/null ; echo "$$?"),0)
 	# Add DVC/Git integration
 	dvc install
@@ -464,7 +455,6 @@ notebooks/.make-%: $(REQUIREMENTS)
 	  --execute \
 	  --inplace notebooks/$*/*.ipynb
 	touch notebooks/.make-$*
-
 # All notebooks
 notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebooks/*)))
 
@@ -508,6 +498,23 @@ lint: $(REQUIREMENTS) | .pylintrc
 	@pylint bda_project tests || true
 
 
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour valider le typage avec pytype
+$(CONDA_PACKAGE)/pytype:
+	@pip install pytype
+
+pytype.cfg:
+	pytype --generate-config pytype.cfg
+
+.pytype/pyi/bda_project: $(REQUIREMENTS) $(CONDA_PACKAGE)/pytype pytype.cfg
+	$(VALIDATE_VENV)
+	set -x
+	pytype -V $(PYTHON_VERSION) bda_project
+	for phase in scripts/*
+	do
+	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype -V $(PYTHON_VERSION) {} \; )
+	done
+	touch .pytype/pyi/bda_project
 
 .PHONY: typing
 ## Check python typing
@@ -516,8 +523,11 @@ typing: .pytype/pyi/bda_project
 ## Add infered typing in module
 add-typing: typing
 	find bda_project -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
-	
-#}
+	for phase in scripts/*
+	do
+	  ( cd $$phase ; find . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
+	done
+
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer la documentation html et pdf du projet.
@@ -529,7 +539,7 @@ add-typing: typing
 #SPHINX_FLAGS=-j$(shell grep -c '^processor' /proc/cpuinfo)
 SPHINX_FLAGS=
 # Generate API docs
-docs/source: $(REQUIREMENTS) bda_project/* bda_project/tools/*
+docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	sphinx-apidoc -f -o docs/source bda_project/
 	touch docs/source
@@ -540,7 +550,7 @@ build/%: $(REQUIREMENTS) docs/source docs/* README.md CHANGELOG.md | .git
 	@TARGET=$(*:build/%=%)
 	@echo "Build $$TARGET..."
 	@LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_FLAGS)
-	touch build/$$TARGET docs/source
+	touch build/$$TARGET
 
 # Build all format of documentations
 ## Generate and show the HTML documentation
@@ -586,33 +596,6 @@ bdist: dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl
 ## Create a full distribution
 dist: bdist sdist
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour tester la publication d'une distribution avant sa publication.
-.PHONY: check-twine
-## Check the distribution before publication
-check-twine: bdist
-	$(VALIDATE_VENV)
-	twine check dist/*
-
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour tester la publication d'une distribution
-# sur test.pypi.org.
-.PHONY: test-twine
-## Publish distribution on test.pypi.org
-test-twine: bdist
-	$(VALIDATE_VENV)
-	ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
-
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour publier la version sur pypi.org.
-.PHONY: release
-## Publish distribution on pypi.org
-release: dist
-	$(VALIDATE_VENV)
-	[[ $$(ls -1 dist --hide "*.dev*" | wc -l) -ne 0 ]] || echo -e "$(red)Add a tag version in GIT to release$(normal)"
-	echo "Enter Pypi password"
-	ls $(PWD)/dist/* --hide "*.dev*" | xargs twine upload
-
 
 
 # ---------------------------------------------------------------------------------------
@@ -623,32 +606,6 @@ release: dist
 notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	$(VALIDATE_VENV)
 	DATA=$$DATA jupyter notebook
-
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour synchroniser les données avec un buket s3.
-# Si le repertoire data/raw est ajouté dans .gitignore, il n'est alors plus
-# sauvegardé dans .git. Il sera alors récupéré via s3.
-.PHONY: sync_to_s3 sync_from_s3
-## Upload Data to S3
-sync_to_s3/%:
-	F=$(*:sync_to_s3/%=%)
-ifeq (default,$(PROFILE))
-	aws s3 sync $(DATA)/$$F $(S3_BUCKET)/data/$$F
-else
-	aws s3 sync $(DATA)/$$F $(S3_BUCKET)/data/$$F --profile $(PROFILE)
-endif
-
-## Download Data from S3
-sync_from_s3/%:
-	F=$(*:sync_from_s3/%=%)
-ifeq (default,$(PROFILE))
-	aws s3 sync $(S3_BUCKET)/data/$$F $(DATA)/$$F
-else
-	aws s3 sync $(S3_BUCKET)/data/$$F $(DATA)/$$F --profile $(PROFILE)
-endif
-
-## Download raw data if necessary
-$(DATA)/raw: sync_from_s3/raw
 
 
 
@@ -759,7 +716,7 @@ clean-all: clean remove-venv remove-kernel
 # SNIPPET pour executer les tests unitaires
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite
 .PHONY: test
-.make-test: $(REQUIREMENTS) tests/* bda_project/*
+.make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	python setup.py test
 	touch .make-test
@@ -772,9 +729,7 @@ test: .make-test
 # Il peut etre judicieux d'ajouter lint et typing, pour valider le respect des normes Pythons
 .PHONY: validate
 ## Validate the version before release
-# PPR validate: test scripts/phases notebooks/phases build/html build/latexpdf build/linkcheck
-# PPR ajouter typing et verifier le double validate
-validate: .make-test scripts/phases notebooks/phases build/html
+validate: .make-test $(DATA)/raw scripts/* notebooks/* build/html build/linkcheck
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.
@@ -833,6 +788,73 @@ ec2-notebook:
 
 
 
+
+
+# ---------------------------------------------------------------------------------------
+# Function to invoke DVC run
+# $1 : dvc file
+# $2 : cmd to invoke (python ...)
+# $3 : empty or -M
+define dvc_run
+	if [ -e $1 ] ; then dvc remove $1 ; fi
+	rm -f $1
+	#dvc remove $(addsuffix .dvc,$@)
+	#	--no-commit
+	dvc run -f $1 \
+		$(addprefix -d ,$(filter-out .%,$?)) \
+		$(if $3,-M $@,-o $@) \
+	$2
+	if [ -e $(@D)/.gitignore ] ; then git add $(@D)/.gitignore ; fi
+	if [ -e $1 ] ; then git add $1 ; fi
+endef
+
+
+# ---------------------------------------------------------------------------------------
+# Initialize DVC
+.dvc: | .git
+	dvc init
+	dvc config cache.protected true
+	dvc remote add -d origin $(DVC_BUCKET)
+	git add .dvc/config
+REQUIREMENTS += | .dvc
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour initialiser DVC avec la production de fichiers distants dans des buckets
+# Voir: https://dvc.org/doc/user-guide/external-outputs
+# Use :
+# - make dvc-external-s3cache
+# - make dvc-external-gscache
+# - make dvc-external-azurecache
+# - make dvc-external-sshcache
+# - make dvc-external-htfscache
+.PHONY: dvc-external-*
+## Initialize the DVC external cache provider (dvc-external-s3cache)
+dvc-external-%: .dvc
+	dvc remote add ${*} $(BUCKET)/cache
+	dvc config cache.gs $*
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour vérouiller un fichier DVC pour ne plus le reconstruire, meme si cela
+# semble nécessaire. C'est util en phase de développement.
+# See https://dvc.org/doc/commands-reference/lock
+# Lock DVC file
+lock-%: .dvc
+	dvc lock $(*:lock-%=%)
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour afficher les métrics gérées par DVC.
+# See https://dvc.org/doc/commands-reference/metrics
+## show the DVC metrics
+metrics: .dvc
+	dvc metrics show
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour supprimer les fichiers de DVC du projet
+# Remove all .dvc files
+clean-dvc:
+	rm -Rf .dvc
+	-/usr/bin/find . -type f -name "*.dvc" -delete
+
 #################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
@@ -842,47 +864,65 @@ ec2-notebook:
 # └─────────┘ └──────────┘ └───────┘ └──────────┘ └───────────┘
 #
 
-SOURCES=$(shell find bda_project/ -type f -name '*.py')
 TOOLS=$(shell find bda_project/ -mindepth 2 -type f -name '*.py')
-
 .PHONY: prepare features train evaluate visualize
 
 # Rule to declare an implicite dependencies from sub module for all root project files
 bda_project/*.py : $(TOOLS)
 	@touch $@
 
-$(DATA)/interim/datas-prepared.csv : $(REQUIREMENTS) bda_project/prepare_dataset.py $(DATA)/raw/*
-	python -O -m bda_project.prepare_$(DATA)set \
-		$(DATA)/raw/datas.csv \
-		$(DATA)/interim/datas-prepared.csv
+data/interim/datas-prepared.csv: $(REQUIREMENTS) bda_project/prepare_dataset.py data/raw/*
+	$(call dvc_run,prepare.dvc,\
+	python -O -m bda_project.prepare_dataset \
+		data/raw/datas.csv \
+		data/interim/datas-prepared.csv\
+	)
+prepare.dvc: data/interim/datas-prepared.csv
 ## Prepare the dataset
-prepare: $(DATA)/interim/datas-prepared.csv
+prepare: prepare.dvc
 
-$(DATA)/processed/datas-features.csv : $(REQUIREMENTS) bda_project/build_features.py $(DATA)/interim/datas-prepared.csv
+data/interim/datas-features.csv : $(REQUIREMENTS) bda_project/build_features.py data/interim/datas-prepared.csv
+	$(call dvc_run,feature.dvc,\
 	python -O -m bda_project.build_features \
-		$(DATA)/interim/datas-prepared.csv \
-		$(DATA)/processed/datas-features.csv
+		data/interim/datas-prepared.csv \
+		data/interim/datas-features.csv\
+	)
 ## Add features
-features: $(DATA)/processed/datas-features.csv
+features: data/interim/datas-features.csv
 
-models/model.pkl : $(REQUIREMENTS) bda_project/train_model.py $(DATA)/processed/datas-features.csv
+models/model.pkl : $(REQUIREMENTS) bda_project/train_model.py data/interim/datas-features.csv
+	$(call dvc_run,train.dvc,\
 	python -O -m bda_project.train_model \
-		$(DATA)/processed/datas-features.csv \
-		models/model.pkl
+		data/interim/datas-features.csv \
+		models/model.pkl \
+	)
 ## Train the model
 train: models/model.pkl
 
+
 reports/auc.metric: $(REQUIREMENTS) bda_project/evaluate_model.py models/model.pkl
+	$(call dvc_run,evaluate.dvc,\
 	python -O -m bda_project.evaluate_model \
 		models/model.pkl \
-		$(DATA)/processed/datas-features.csv \
-		reports/auc.metric
+		data/interim/datas-features.csv \
+		reports/auc.metric \
+	,-M \
+	)
 ## Evalutate the model
 evaluate: reports/auc.metric
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) bda_project/visualize.py models/model.pkl
+	$(call dvc_run,visualize.dvc,\
 	python -O -m bda_project.visualize \
-	    reports/
+		reports/ \
+	)
+
+# See https://dvc.org/doc/commands-reference/repro
+.PHONY: repro
+## 	Re-run commands recorded in the last DVC stages in the same order.
+repro: evaluate.dvc
+	dvc repro $<
+
 
 

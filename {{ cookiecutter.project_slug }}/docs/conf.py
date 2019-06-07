@@ -36,6 +36,7 @@ def _git_url():
         return "TODO"
 
 
+s3_bucket = "{{cookiecutter.project_slug}}".replace('_','-')
 # For git clone ...
 git_url = _git_url()
 # Project home
@@ -308,4 +309,5 @@ applehelp_disable_external_tools = False
 rst_prolog = f"""
 .. |giturl| replace:: {git_url}
 .. |homeurl| replace:: {home_url}
+.. |s3_bucket| replace:: {s3_bucket}
 """

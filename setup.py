@@ -6,8 +6,7 @@ from distutils.core import setup
 setup(
     name='cookiecutter-bda',
     packages=[],
-    # Pour utiliser Git pour extraire les numéros des versions
-    use_scm_version=True,  # Gestion des versions à partir des commits Git
+    use_scm_version=True,
     setup_requires=['setuptools_scm'],
     description='Cookiecutter template for BDA',
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),

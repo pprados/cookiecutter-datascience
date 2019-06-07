@@ -19,11 +19,11 @@ USE_GPU = "-gpu" if (os.environ['GPU'].lower() in 'yes'
 requirements = [
     'click',
     'python-dotenv',
-{% if cookiecutter.use_tensorflow == "y"      %}    'tensorflow' + USE_GPU + '~=0.5', {% endif %}
+{% if cookiecutter.use_tensorflow == "y"      %}    'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0 {% endif %}
 {% if cookiecutter.use_text_processing == "y" %}    'spacy~=2.0', {% endif %}
 {% if cookiecutter.use_text_processing == "y" %}    'nltk~=3.3', {% endif %}
-        'numpy~=1.14',
-        'pandas~=0.22',
+    'numpy~=1.14',
+    'pandas~=0.22',
 ]
 
 # Package nécessaires aux tests

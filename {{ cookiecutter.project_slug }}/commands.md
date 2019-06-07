@@ -15,6 +15,8 @@ The Makefile contains the central entry points for common tasks related to this 
 * ``make run-%`` will invoke all script in lexical order from scripts/<% dir>
 * ``make lint`` will lint the code
 * ``make test`` will run all unit-tests
+* ``make typing`` will check the typing
+* ``make add-typing`` will add annotation for typing
 * ``make validate`` will validate the version before commit
 * ``make clean`` will clean current environment
 

@@ -32,6 +32,15 @@ To test the project
 $ make test
 ```
 
+To validate the typing
+```bash
+$ make typing
+```
+or to add type in code
+```bash
+$ make add-typing
+```
+
 To validate all the project
 ```bash
 $ make validate

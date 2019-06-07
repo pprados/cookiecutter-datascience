@@ -124,6 +124,14 @@ run:
 .PHONY: lint
 lint:
 	$(call do_make,lint)
+
+.PHONY: typing
+typing:
+	$(call do_make,typing)
+
+.PHONY: add-typing
+add-typing:
+	$(call do_make,typing)
 #-------------------
 .PHONY: build
 build_html:
@@ -246,7 +254,7 @@ STD: .git .gitattributes requirements dependencies \
 
 DIST: sdist bdist dist
 CLEAN: clean-pyc clean-build clean-venv clean clean-all
-TEST: test validate lint
+TEST: test validate lint typing add-typing
 ML: prepare feature train evaluate visualize
 
 #-------------------

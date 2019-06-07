@@ -116,6 +116,8 @@ du Makefile](Makefile.snippet).
 
 # Fonctionnalité à faire
 - [X] Execution unique en cas de rejeu de la règle
+- [X] Fonctionnement Conda
+- [ ] Fonctionnement virtualenv
 - [ ] Gestion de plusieurs fichiers de datas en parallèles
 - [ ] Execution compatible avec le mode parallèle (-j)
 - [X] Proposition de pipeline datascience
@@ -161,4 +163,4 @@ du Makefile](Makefile.snippet).
 - [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
 - [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
 - [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
-
+- [ ] Voir [Tensorflow template](https://github.com/Mrgemy95/Tensorflow-Project-Template)

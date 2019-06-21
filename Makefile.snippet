@@ -711,6 +711,7 @@ clean-venv : clean-$(VENV)
 .PHONY: clean
 ## Clean current environment
 clean: clean-pyc clean-build clean-notebooks
+	find . -type f -name ".make-*" -delete
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour faire le ménage du projet

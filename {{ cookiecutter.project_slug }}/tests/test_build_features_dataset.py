@@ -13,7 +13,7 @@ class TestBuildFeatures(unittest.TestCase):
     """ Unit test of prepare_dataset.
     """
 
-    def test_build_features_with_none(self):  # pylint: disable=R0201
+    def test_build_features_with_none(self) -> None:  # pylint: disable=R0201
         """ Test build_features() with no data.
         """
         # Given

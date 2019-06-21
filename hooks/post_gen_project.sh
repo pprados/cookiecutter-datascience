@@ -27,19 +27,19 @@ cat <<END
 Read README.md file.
 
 The project {% if cookiecutter.open_source_software == "y" %}is open source and {% endif %}use:
-- Python {{ cookiecutter.python_version }}
-{% if cookiecutter.use_tensorflow == "y" %}- Tensorflow with or without GPU{% endif %}
-{% if cookiecutter.use_text_processing == "y" %}- Text processing (NLTK and/or Spacy){% endif %}
-{% if cookiecutter.use_aws == "y" %}- AWS and ssh-ec2{% endif %}
-{% if cookiecutter.use_DVC == "y" %}- DVC to manage datas{% endif %}
+- Python {{ cookiecutter.python_version }}{% if cookiecutter.use_tensorflow == "y" %}
+- Tensorflow with or without GPU{% endif %}{% if cookiecutter.use_text_processing == "y" %}
+- Text processing (NLTK and/or Spacy){% endif %}{% if cookiecutter.use_aws == "y" %}
+- AWS and ssh-ec2{% endif %}{% if cookiecutter.use_DVC == "y" %}
+- DVC to manage datas{% endif %}
 
 Use can use:
 - ${yellow}make prepare${normal}    # To prepare datas
 - ${yellow}make feature${normal}    # To add features
 - ${yellow}make train${normal}      # To train the model
 - ${yellow}make evaluate${normal}   # To validate the model
-- ${yellow}make visualize${normal}  # To visualize the results
-{% if cookiecutter.use_DVC == "y" %}- ${yellow}make repro${normal}      # To rebuild DVC dependencies{% endif %}
+- ${yellow}make visualize${normal}  # To visualize the results{% if cookiecutter.use_DVC == "y" %}
+{# PPR - ${yellow}make repro${normal}      # To rebuild DVC dependencies #}{% endif %}
 
 Now, check if the make version is 4+:
 $ ${green}make -v${normal}

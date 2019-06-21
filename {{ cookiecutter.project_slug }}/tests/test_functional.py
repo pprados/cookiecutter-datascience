@@ -5,7 +5,7 @@
 import unittest
 
 import pandas as pd
-from typing import List, Any
+from typing import List, Any, Dict
 
 import pytest
 
@@ -14,13 +14,13 @@ from bda_project.evaluate_model import evaluate_model
 from bda_project.prepare_dataset import prepare_dataset
 from bda_project.train_model import train_model
 
-
+#@pytest.mark.skip(reason="no way of currently testing this")
 @pytest.mark.functional
 class TestFunctional(unittest.TestCase):
     """ Functional test of pipeline.
     """
 
-    def test_all_pipeline_with_none(self):  # pylint: disable=R0201
+    def test_all_pipeline_with_none(self) -> None:  # pylint: disable=R0201
         """ Test prepare_dataset() with no data.
         """
         # Given
@@ -31,8 +31,10 @@ class TestFunctional(unittest.TestCase):
 
         # When
         train_inputs.append(build_features(prepare_dataset(input_raw=input_raw)))
-        model: Any = train_model(inputs=train_inputs, epoch=1, batch_size=1)
-        metrics = evaluate_model(model, validate_files)
+        model: Any = train_model(inputs=train_inputs,
+                                 epoch=1,
+                                 batch_size=1)
+        metrics:Dict[str,Any] = evaluate_model(model, validate_files)
 
         # Then
         self.assertGreater(metrics['auc'], 0.8)

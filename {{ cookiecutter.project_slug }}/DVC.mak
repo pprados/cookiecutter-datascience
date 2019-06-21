@@ -123,10 +123,9 @@ evaluate: reports/auc.metric
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/visualize.py models/model.pkl
-	$(call dvc_run,visualize.dvc,\
 	python -O -m {{ cookiecutter.project_slug }}.visualize \
-		reports/ \
-	)
+	    reports/
+
 {% if cookiecutter.add_makefile_comments == "y" %}
 # See https://dvc.org/doc/commands-reference/repro{% endif %}
 .PHONY: repro

@@ -17,7 +17,6 @@ import subprocess
 import sys
 
 
-# PPR: Fix du git_url
 def _git_url():
     try:
         with open(os.devnull, "wb") as devnull:

@@ -29,6 +29,8 @@ requirements = [
 # Package nécessaires aux tests
 test_requirements = [
     'pytest>=2.8.0',
+    'pytest-cookies',
+    'pytest-xdist',
     'pytest-httpbin==0.0.7',
     'unittest2',
     #'pytest-cov',
@@ -37,16 +39,16 @@ test_requirements = [
 ]
 
 # Package nécessaires aux builds et tests mais pas au run
+# FIXME Indiquer les dépendances nécessaire au build et au tests à ajuster suivant le projet
 dev_requirements = [
     'twine',  # To publish package in Pypi
     'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # To generate doc
-    'unittest2', 'mock',  # For unit tests
-    'pytest', 'pytest-openfiles',
+    'unittest2', 'mock', 'pytest', 'pytest-openfiles', # For tests
     'flake8', 'pylint',  # For lint
     'daff',
-{% if cookiecutter.use_jupyter == "y" %}    'jupyter',  # Ouvre les add-on Jupyter{% endif %}
-{% if cookiecutter.use_DVC == "y"     %}    'dvc',  # Utilise DVC{% endif %}
-{% if cookiecutter.use_aws == "y"     %}    'awscli',  # Utilise AWS{% endif %}
+{% if cookiecutter.use_jupyter == "y" %}    'jupyter',  # Use Jupyter{% endif %}
+{% if cookiecutter.use_DVC == "y"     %}    'dvc',  # Use DVC{% endif %}
+{% if cookiecutter.use_aws == "y"     %}    'awscli',  # Use AWS{% endif %}
 ]
 
 
@@ -126,7 +128,6 @@ setup(
     tests_require=test_requirements,
 {#     #cmdclass={'test': PyTest}, #}
     extras_require={
-        # FIXME Indiquer les dépendances nécessaire au build et au tests à ajuster suivant le projet
         'dev': dev_requirements,
         },
     packages=find_packages(),

@@ -5,6 +5,7 @@ SHELL=/bin/bash
 .ONESHELL:
 .NOTPARALLEL:
 
+
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour détecter l'OS d'exécution.
 ifeq ($(OS),Windows_NT)
@@ -14,12 +15,16 @@ else
 endif
 
 # ---------------------------------------------------------------------------------------
+# SNIPPET pour identifier le nombre de processeur{% endif %}
+NB_CORE?=$(shell grep -c '^processor' /proc/cpuinfo)
+
+# ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les séquences de caractères pour les couleurs
 # A utiliser avec un
 # echo -e "Use '$(cyan)make$(normal)' ..."
 # Si vous n'utilisez pas ce snippet, les variables de couleurs non initialisés
 # sont simplement ignorées.
-ifdef TERM
+ifneq ($(TERM),)
 normal:=$(shell tput sgr0)
 bold:=$(shell tput bold)
 red:=$(shell tput setaf 1)
@@ -42,9 +47,12 @@ CONDA_BASE=$(shell conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
+ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV)
+DEACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda deactivate
 
 .PHONY: help
 .DEFAULT: help
+
 
 ## Print all majors target
 help:
@@ -90,10 +98,19 @@ help:
 	echo -e "Use '$(cyan)make -B ...$(normal)' to force the target"
 	echo -e "Use '$(cyan)make -n ...$(normal)' to simulate the build"
 
+.PHONY: dump-*
+dump-%:
+	@if [ "${${*}}" = "" ]; then
+		echo "Environment variable $* is not set";
+		exit 1;
+	else
+		echo "$*=${${*}}";
+	fi
+
 .git:
 	@git init -q
 
-.git/hooks/pre-push:
+.git/hooks/pre-push: | .git
 	@cat >>.git/hooks/pre-push <<PRE-PUSH
 	#!/usr/bin/env sh
 	# Validate the project before a push
@@ -133,8 +150,8 @@ help:
 CHECK_VENV=@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
   then ( echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ) ; fi
 CONDA_BASE:=$(shell conda info --base)
-ACTIVATE_VENV=source $(CONDA_BASE)/bin/activate $(VENV)
-DEACTIVATE_VENV=source $(CONDA_BASE)/bin/deactivate $(VENV)
+ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV)
+DEACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda deactivate
 
 VALIDATE_VENV=$(CHECK_VENV)
 #VALIDATE_VENV=$(ACTIVATE_VENV)
@@ -206,23 +223,47 @@ clean: clean-pyc
 clean-all: clean remove-venv
 
 .PHONY: test
-.make-test: $(REQUIREMENTS) tests/*
-	$(VALIDATE_VENV)
-	python -m pytest -s tests
+.make-test: $(REQUIREMENTS) tests/* Makefile-TU
+	@$(VALIDATE_VENV)
+	python -m pytest -n $(NB_CORE) -s tests -m "not slow"
 	touch .make-test
 ## Run all tests
 test: .make-test
 
 # Create a default generated Makefile for GIT
-Makefile.snippet: {{\ cookiecutter.project_slug\ }} $(REQUIREMENTS)
+Makefile.snippet: $(REQUIREMENTS)
 	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
 	cp tmp/bda_project/Makefile Makefile.snippet
 	git add Makefile.snippet
 
-# Install a default sample in ./tmp/bda_project
+try_jupyter: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
+	python tests/try_cookiecutter.py use_jupyter=y
+	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+
+try_text_processing: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
+	python tests/try_cookiecutter.py use_text_processing=y
+	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+
+try_DVC: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
+	python tests/try_cookiecutter.py use_DVC=y
+	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+
+try_aws: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
+	python tests/try_cookiecutter.py use_aws=y use_s3=y
+	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+
+try_opensource: $(REQUIREMENTS)
+	$(VALIDATE_VENV)
+	python tests/try_cookiecutter.py open_source_software=y
+	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+
 try: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
-	cookiecutter -f -o tmp --no-input .
+	python tests/try_cookiecutter.py use_DVC=y
 	ln -f Makefile-TU tmp/bda_project/Makefile-TU
 
 _make-%: try
@@ -258,23 +299,19 @@ _make-%: try
 
 check-docs: .make-check-docs
 
-# PPR: verifier en code clean total du projet bda_project.
 # Il faut probablement lancer des builds avants, pour remetre l'état valide
-## Check all generated rules
-OPT=-j -O
-check-makefile: clean_check-makefile try Makefile-TU {{\ cookiecutter.project_slug\ }}/Makefile
+.make-check-makefile: clean_check-makefile try Makefile-TU {{\ cookiecutter.project_slug\ }}/Makefile
 	@pushd tmp/bda_project
-	source $(CONDA_BASE)/bin/activate bda_project
+	$(ACTIVATE_VENV)
 	# Check double make validate
 	make clean-build
 	make validate
 	LANG="en_US.UTF-8" make validate | grep 'Nothing' || ( echo "Error in double make validate" ; exit -1 )
-	source $(CONDA_BASE)/bin/deactivate
+	$(DEACTIVATE_VENV)
 	popd
-
-	make $(OPT) -f Makefile-TU DEFAULT DOCS
-	[ '"y"' = $$(jq '.["open_source_software"]' cookiecutter.json) ] && make $(OPT) -f Makefile-TU OPENSOURCE
-	[ '"y"' = $$(jq '.["use_jupyter"]' cookiecutter.json) ] && make $(OPT) -f Makefile-TU JUPYTER
+	@touch .make-check-makefile
+## Check all generated rules
+check-makefile: .make-check-makefile
 
 ## Check empty configure
 check-configure:
@@ -282,9 +319,11 @@ check-configure:
 	cd tmp/bda_project
 	$(MAKE) configure
 
-# PPR .make-check-all-make: check-configure check-makefile check-docs
-.make-check-all-make: check-configure check-makefile
+.make-check-all-make: check-configure .make-check-makefile check-docs
+	make -f Makefile-TU clean-test
+	python -m pytest -s tests -n $(NB_CORE) -m slow
 	touch .make-check-all-make
+
 ## Try all major make target
 check-all-make: .make-check-all-make
 

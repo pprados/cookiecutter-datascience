@@ -4,5 +4,4 @@
     nécessaires aux différentes phases du projet.
 
 """
-# PPR tester from tools import *
 __all__ = ["tools"]

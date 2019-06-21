@@ -1,12 +1,14 @@
 #!/usr/bin/env make
 
 # This is a unit test of all target of generated Makefile
-# Use a tempory copy of data and VENV
+# Use a temporay copy of data and VENV
 
 SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
 
+# OPT=-j
+OPT=
 
 PYTHON_VERSION=3.6
 CONDA_BASE=$(shell conda info --base)
@@ -15,7 +17,7 @@ CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
 
 ifndef NLTK_DATA
 export NTLK_DATA
-# La ligne suivante ralentie le Makefile. A activer qu'avec des env. spécifiques.
+# La ligne suivante ralenti le Makefile. A activer qu'avec des env. spécifiques.
 #NLTK_DATA:=$(shell python -c "import nltk.data; print(nltk.data.path[0])" 2>/dev/null || true)
 # Sinon, utiliser le code suivant
 ifeq ($(OS),Darwin)
@@ -51,22 +53,29 @@ define do_make
     @echo "---------------------------- $1"
 	V=CC_temp_$(shell cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n 1)
 	D=/tmp/$$V
-	NLTK_DATA=$$D_nltk_data
-	# PPR: passer par une generation à la demande ?
-	cp -Rf tmp/bda_project $$D/
+	export NLTK_DATA=$${D}_nltk_data
+	mkdir $$NLTK_DATA
+	cp -Rf . $$D/
 	pushd $$D/
     echo "$1"> test.txt
+	source $(CONDA_BASE)/etc/profile.d/conda.sh
 	conda create -n $$V -y python=$(PYTHON_VERSION)
-	source $(CONDA_BASE)/bin/activate $$V
+	conda activate $$V
 	rm -rf data/interim/* data/processed/* data/external/*
-	VENV=$$V NLTK_DATA=$$NLTK_DATA $(MAKE) $1
+	CONDA_PACKAGE=$${CONDA_PREFIX}/lib/python$(PYTHON_VERSION)/site-packages
+	export EC2_LIFE_CYCLE=--terminate
+	export S3_BUCKET=s3://pprados
+	export SPACY_DATABASE="$${CONDA_PACKAGE}/spacy/data/en"
+	export NLTK_DATABASE="$${NLTK_DATA}/corpora/wordnet $${NLTK_DATA}/tokenizers/punkt $${NLTK_DATA}/corpora/stopwords"
+	VENV=$$V $(MAKE) $(OPT) $1
 	popd
-	source $(CONDA_BASE)/bin/deactivate
+	conda deactivate
 	conda env remove -n $$V
 	rm -Rf $$D
 endef
 
 .PHONY: help
+.DEFAULT: help
 help:
 	$(call do_make,help)
 
@@ -94,16 +103,17 @@ dependencies:
 $(CONDA_PYTHON):
 	$(call do_make,$(CONDA_PYTHON))
 
-.PHONY: $(NLTK_DATA)
-$(NLTK_DATA):
-	# $(call do_make,$(NLTK_DATA)/tokenizers/wordnet)
-	# $(call do_make,$(NLTK_DATA)/tokenizers/punkt)
-	# $(call do_make,$(NLTK_DATA)/corpora/stopwords)
+.PHONY: NLTK
+NLTK:
+	$(call do_make,$${NLTK_DATA}/corpora/wordnet)
+	$(call do_make,$${NLTK_DATA}/tokenizers/punkt)
+	$(call do_make,$${NLTK_DATA}/corpora/stopwords)
 	echo empty
 
-.PHONY: $(CONDA_PACKAGE)/spacy
-$(CONDA_PACKAGE)/spacy:
-	$(call do_make,$(CONDA_PACKAGE)/spacy/data/en)
+.PHONY: spacy
+
+spacy:
+	 $(call do_make,$${CONDA_PACKAGE}/spacy/data/en)
 
 .PHONY: configure
 configure:
@@ -139,9 +149,8 @@ build_html:
 build_latexpdf:
 	$(call do_make,build/latexpdf)
 
-build: build_html build_latexpdf
-	$(call do_make,build/html)
-	$(call do_make,build/latexpdf)
+# PPR BUG in framework latexpdf build: build_html build_latexpdf
+build: build_html
 
 #-------------------
 .PHONY: remove-kernel
@@ -157,9 +166,6 @@ nb-run:
 .PHONY: notebook
 # notebook
 
-.PHONY: sync_to_s3 sync_from_s3
-#sync_to_s3/data
-#sync_from_s3/data
 
 .PHONY: nb-convert
 nb-convert:
@@ -219,19 +225,41 @@ validate:
 	$(call do_make,validate)
 
 #-------------------
+.PHONY: sync_to_s3 sync_from_s3
+sync_to_s3:
+	$(call do_make,sync_to_s3/raw)
+
+sync_from_s3:
+	$(call do_make,sync_from_s3/raw)
+
+S3: sync_to_s3 sync_from_s3
+
+#-------------------
+.PHONY: dvc-external lock metrics
+dvc-external:
+	$(call do_make,dvc-external-s3cache)
+lock:
+	$(call do_make,lock-external)
+metrics:
+	$(call do_make,metrics)
+# PPR
+DVC=dvc-external lock metrics
+#-------------------
 ec2:
 	$(call do_make,ec2-clean)
 
 ec2-tmux:
 	$(call do_make,ec2-tmux-clean)
-ec2-detach:
-	$(call do_make,ec2-detach-clean)
+ec2-attach:
+	$(call do_make,ec2-detach-clean ec2-attach ; ssh-ec2 --terminate :)
+ec2-finish:
+	$(call do_make,ec2-detach-clean ec2-finish)
 ec2-notebook:
 	$(call do_make,ec2-notebook)
-EC2: ec2 ec2-tmux ec2-detach ec2-notebook
+EC2: ec2 ec2-tmux ec2-finish
 
 #-------------------
-.PHONY: prepare feature train evalutate visualize
+.PHONY: prepare features train evalutate visualize
 prepare:
 	$(call do_make,prepare)
 
@@ -249,20 +277,23 @@ visualize:
 #-------------------
 # Group services
 STD: .git .gitattributes requirements dependencies \
-	configure remove-venv upgrade-venv remove-kernel \
+	configure remove-venv upgrade-venv \
     $(CONDA_PYTHON)
 
 DIST: sdist bdist dist
 CLEAN: clean-pyc clean-build clean-venv clean clean-all
 TEST: test validate lint typing add-typing
-ML: prepare feature train evaluate visualize
+ML: prepare features train evaluate visualize
 
 #-------------------
 # Group of options
-# PPR a tester $(CONDA_PACKAGE)/spacy $(NLTK_DATA)
-NOT_TESTED: EC2 clean-pip $(CONDA_PACKAGE)/spacy $(NLTK_DATA) check-twine test-twine release
+NOT_TESTED: DVC clean-pip check-twine test-twine release ec2-attach ec2-notebook
+TEXT_PROCESSING:spacy NLTK
 DEFAULT: CLEAN STD DIST TEST ML
 DOCS: build
-# AWS: EC2
-JUPYTER: remove-kernel nb-run nb-convert clean-notebooks
+JUPYTER: remove-kernel nb-run nb-convert add-typing clean-notebooks
+AWS: S3 EC2
 OPENSOURCE: dist
+
+clean-test:
+	rm -Rf /tmp/CC_temp* /tmp/make-* /tmp/ssh-ec2-* temp*.sh ~/.local/share/jupyter/kernels/cc_temp*

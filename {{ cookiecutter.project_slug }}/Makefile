@@ -48,6 +48,10 @@ USE_GPU:=-gpu
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
+# SNIPPET pour identifier le nombre de processeur{% endif %}
+NB_CORE:=$(shell grep -c '^processor' /proc/cpuinfo)
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
 # SNIPPET pour pouvoir lancer un browser avec un fichier local{% endif %}
 define BROWSER
 	python -c '
@@ -73,7 +77,7 @@ endef
 # echo -e "Use '$(cyan)make$(normal)' ..."
 # Si vous n'utilisez pas ce snippet, les variables de couleurs non initialisés
 # sont simplement ignorées.{% endif %}
-ifdef TERM
+ifneq ($(TERM),)
 normal:=$(shell tput sgr0)
 bold:=$(shell tput bold)
 red:=$(shell tput setaf 1)
@@ -210,6 +214,7 @@ dump-%:
 # après avoir exclus le répertoire .git (cf. ssh-ec2){% endif %}
 .git:
 	@git init -q
+	git commit --allow-empty -m "Create project {{ cookiecutter.project_slug }}"
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # Règle technique importante, invoquées lors du `git commit` d'un fichier *.ipynb via
 # le paramètrage de `.gitattributes`.{% endif %}
@@ -239,9 +244,9 @@ endif{% endif %}{% endif %}
 # Pour supprimer ce comportement, il faut modifier le fichier .git/hooks/pre-push
 # et supprimer la règle du Makefile, ou bien,
 # utiliser un fichier vide 'echo ''> .git/hooks/pre-push'{% endif %}
-.git/hooks/pre-push:{% if cookiecutter.use_git_LFS == 'y' %}{% if cookiecutter.use_DVC != 'y' %}.git/hooks/post-checkout{% endif %}{% endif %}
-	# Add a hook to validate the project before a git push
-	@cat >>.git/hooks/pre-push <<PRE-PUSH
+.git/hooks/pre-push:{% if cookiecutter.use_git_LFS == 'y' %}{% if cookiecutter.use_DVC != 'y' %}.git/hooks/post-checkout{% endif %}{% endif %} | .git
+	@# Add a hook to validate the project before a git push
+	cat >>.git/hooks/pre-push <<PRE-PUSH
 	#!/usr/bin/env sh
 	# Validate the project before a push
 	if test -t 1; then
@@ -266,9 +271,13 @@ endif{% endif %}{% endif %}
 	fi
 	PRE-PUSH
 	chmod +x .git/hooks/pre-push
-
+{% if cookiecutter.use_DVC != 'y' %}
+# Init DVC
+.dvc:
+	@dvc init
+{% endif %}
 # Init git configuration
-.gitattributes: | .git .git/hooks/pre-push # Configure git
+.gitattributes: | .git .git/hooks/pre-push .dvc # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
@@ -294,7 +303,7 @@ endif
 {% if cookiecutter.use_DVC == 'y' %}
 ifeq ($(shell which dvc >/dev/null ; echo "$$?"),0)
 	# Add DVC/Git integration
-	dvc install
+	@dvc install
 endif{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -310,15 +319,15 @@ endif{% endif %}
 CHECK_VENV=@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
   then ( echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ) ; fi
 
-ACTIVATE_VENV=source $(CONDA_BASE)/bin/activate $(VENV)
-DEACTIVATE_VENV=source $(CONDA_BASE)/bin/deactivate $(VENV)
+ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV)
+DEACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda deactivate
 
 VALIDATE_VENV=$(CHECK_VENV)
 #VALIDATE_VENV=$(ACTIVATE_VENV)
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour gérer correctement toute les dépendances python du projet.
-# La cible `requirements` se charge de gérer toutes les dépendances
+# SNIPPET pour gérer correctement toute les dépendences python du projet.
+# La cible `requirements` se charge de gérer toutes les dépendences
 # d'un projet Python. Dans le SNIPPET présenté, il y a de quoi gérer :
 # - les dépendances PIP{% if cookiecutter.use_text_processing == 'y' %}
 # - l'import de données pour spacy
@@ -335,27 +344,27 @@ VALIDATE_VENV=$(CHECK_VENV)
 # All dependencies of the project must be here
 .PHONY: requirements dependencies
 REQUIREMENTS=$(PIP_PACKAGE) \
-{% if cookiecutter.use_text_processing == 'y' %}	$(NLTK_DATABASE) $(SPACY-DATABASE) \
+{% if cookiecutter.use_text_processing == 'y' %}	$(NLTK_DATABASE) $(SPACY_DATABASE) \
 {% endif %}	.gitattributes
 requirements: $(REQUIREMENTS)
 dependencies: requirements
 
 # Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
-	$(VALIDATE_VENV)
-	conda install "python=$(PYTHON_VERSION).*" -y -q
+	@$(VALIDATE_VENV)
+	conda install -q "python=$(PYTHON_VERSION).*" -y -q
 
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
-	$(VALIDATE_VENV)
-	pip install $(EXTRA_INDEX) -e '.[dev]' | grep -v 'already satisfied' || true
+	@$(VALIDATE_VENV)
+	pip install -q $(EXTRA_INDEX) -e '.[dev]' | grep -v 'already satisfied' || true
 	@touch $(PIP_PACKAGE)
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer les kernels Jupyter{% endif %}
 # Intall a Jupyter kernel
-$(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(PIP_PACKAGE)
-	$(VALIDATE_VENV)
+$(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(REQUIREMENTS)
+	@$(VALIDATE_VENV)
 	python -O -m ipykernel install --user --name $(KERNEL)
 
 # Remove the kernel
@@ -412,11 +421,11 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 # SNIPPET pour récupérer les bases de données de spacy.{% endif %}
 # Add here the Spacy database.
 # For exemple :
-# SPACY-DATABASE= \
+# SPACY_DATABASE= \
 #   $(CONDA_PACKAGE)/spacy/data/en
 # and that's all.
 .PHONY: spacy-database
-SPACY-DATABASE=
+SPACY_DATABASE=
 
 $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 	$(VALIDATE_VENV)
@@ -461,7 +470,7 @@ upgrade-venv: upgrade-$(VENV)
 # Pour valider toutes les phases : `make nb-run-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
 .PHONY: nb-run-*
-notebooks/.make-%: $(REQUIREMENTS)
+notebooks/.make-%: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	$(VALIDATE_VENV)
 	time jupyter nbconvert \
 	  --ExecutePreprocessor.timeout=-1 \
@@ -472,7 +481,7 @@ notebooks/.make-%: $(REQUIREMENTS)
 notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebooks/*)))
 
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
-nb-run-%:
+nb-run-%: $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	$(MAKE) notebooks/.make-$*
 {% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -513,15 +522,14 @@ lint: $(REQUIREMENTS) | .pylintrc
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le typage avec pytype{% endif %}
-$(CONDA_PACKAGE)/pytype:
-	@pip install pytype
+$(CONDA_PACKAGE)/bin/pytype:
+	@pip install -q pytype
 
 pytype.cfg:
 	pytype --generate-config pytype.cfg
 
-.pytype/pyi/{{ cookiecutter.project_slug }}: $(REQUIREMENTS) $(CONDA_PACKAGE)/pytype pytype.cfg
+.pytype/pyi/{{ cookiecutter.project_slug }}: $(REQUIREMENTS) $(CONDA_PACKAGE)/bin/pytype pytype.cfg
 	$(VALIDATE_VENV)
-	set -x
 	pytype -V $(PYTHON_VERSION) {{ cookiecutter.project_slug }}
 	for phase in scripts/*
 	do
@@ -549,7 +557,7 @@ add-typing: typing
 # Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html{% endif %}
 .PHONY: docs
 # Use all processors
-#SPHINX_FLAGS=-j$(shell grep -c '^processor' /proc/cpuinfo)
+#PPR SPHINX_FLAGS=-j$(NB_CORE)
 SPHINX_FLAGS=
 # Generate API docs
 docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
@@ -645,7 +653,14 @@ release: dist
 ## Start jupyter notebooks
 notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	$(VALIDATE_VENV)
-	DATA=$$DATA jupyter notebook{% endif %}
+	DATA=$$DATA jupyter notebook --ExecutePreprocessor.kernel_name=$(KERNEL) {% endif %}
+{% if (cookiecutter.use_aws == 'y' or cookiecutter.use_s3 == 'y') %}{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour installer aws cli.{% endif %}
+$(CONDA_PREFIX)/bin/aws:
+	pip install -q awscli
+{% endif %}
+
 {% if cookiecutter.use_s3 == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour synchroniser les données avec un buket s3.
@@ -653,7 +668,7 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 # sauvegardé dans .git. Il sera alors récupéré via s3.{% endif %}
 .PHONY: sync_to_s3 sync_from_s3
 ## Upload Data to S3
-sync_to_s3/%:
+sync_to_s3/%: $(CONDA_PREFIX)/bin/aws
 ifeq (default,$(PROFILE))
 	aws s3 sync $(DATA)/$(*:sync_to_s3/%=%) $(S3_BUCKET)/data/$(*:sync_to_s3/%=%)
 else
@@ -661,7 +676,7 @@ else
 endif
 
 ## Download Data from S3
-sync_from_s3/%:
+sync_from_s3/%: $(CONDA_PREFIX)/bin/aws
 ifeq (default,$(PROFILE))
 	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%)
 else
@@ -670,7 +685,7 @@ endif
 
 ## Download raw data if necessary
 $(DATA)/raw:
-	make sync_from_s3/raw
+	make sync_from_s3/data/raw
 {% endif %}
 
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -708,7 +723,8 @@ _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	while IFS= read -r -d '' filename; do
 		target=$$(echo $$filename | sed "s/^$${notebook_path}/$${script_path}/g; s/ipynb$$/py/g ; s/[ -]/_/g" )
 		mkdir -p $$(dirname $${target})
-		jupyter nbconvert --to python --template=$${tmpfile} --stdout "$${filename}" >"$${target}"
+		jupyter nbconvert --to python --ExecutePreprocessor.kernel_name=$(KERNEL) \
+		  --template=$${tmpfile} --stdout "$${filename}" >"$${target}"
 		chmod +x $${target}
 		@echo -e "Convert $${filename} to $${target}"
 	done < <(find notebooks -name '*.ipynb' -type f -not -path '*/\.*' -prune -print0)
@@ -778,15 +794,30 @@ clean: clean-pyc clean-build {% if cookiecutter.use_jupyter == 'y' %}clean-noteb
 {% if cookiecutter.use_jupyter == 'y' %}clean-all: clean remove-venv remove-kernel{% else %}clean-all: clean remove-venv{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour executer les tests unitaires
+# SNIPPET pour executer les tests unitaires et les tests fonctionnels
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite{% endif %}
-.PHONY: test
-.make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
+PYTEST_PARALLEL ?=-n $(NB_CORE)
+.PHONY: test unittest functionaltest
+.make-unit-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
-	python setup.py test
-	touch .make-test
+	#python setup.py test
+	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "not functional"
+	touch .make-unit-test
+# Run only unit tests
+unit-test: .make-unit-test
 
-## Run all unit-tests
+.make-functional-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
+	$(VALIDATE_VENV)
+	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "functional"
+	touch .make-functional-test
+# Run only functional tests
+functional-test: .make-functional-test
+
+## Run all tests (unit and functional)
+.make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
+	# python setup.py test
+	python -m pytest  -s tests $(PYTEST_PARALLEL)
+	touch .make-test .make-unit-test .make-functional-test
 test: .make-test
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -822,31 +853,46 @@ endef
 # What is the life cycle of EC2 instance  via ssh-ec2 ?
 #--leave --stop or --terminate
 # TODO Select the life cycle
-EC2_LIFE_CYCLE=--leave
+EC2_LIFE_CYCLE?=--terminate
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-test`{% endif %}
 .PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
 ## Call 'make %' recipe on EC2 (make ec2-train)
-ec2-%:
+ec2-%: $(CONDA_PREFIX)/bin/aws
 	$(VALIDATE_VENV)
 	ssh-ec2 $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-%=%)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant d'exécuter une recette avec un tmux activé.
 # Par exemple `make ec2-tmux-train`{% endif %}
 ## Call 'make %' recipe on EC2 with a tmux session (`make ec2-tmux-train`)
-ec2-tmux-%:
+ec2-tmux-%: $(CONDA_PREFIX)/bin/aws
 	$(VALIDATE_VENV)
 	NO_RSYNC_END=n ssh-ec2 --multi tmux --leave "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-tmux-%=%)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-detach-test`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
-ec2-detach-%:
+ec2-detach-%: $(CONDA_PREFIX)/bin/aws
 	$(VALIDATE_VENV)
+	set -x
 	ssh-ec2 --detach $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-detach-%=%)"
-{% if cookiecutter.use_jupyter == 'y' %}
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# Recette permettant un `make ec2-attach`
+# Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
+## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
+ec2-attach: $(CONDA_PREFIX)/bin/aws
+	$(VALIDATE_VENV)
+	ssh-ec2 --attach
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# Recette permettant un `make ec2-finish`
+# Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
+## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
+ec2-finish: $(CONDA_PREFIX)/bin/aws
+	$(VALIDATE_VENV)
+	ssh-ec2 --finish
+{% if cookiecutter.use_aws == 'y' %}
 ## Start jupyter notebook on EC2
-ec2-notebook:
+ec2-notebook: $(CONDA_PREFIX)/bin/aws
 	$(VALIDATE_VENV)
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 {% endif %}{% endif %}

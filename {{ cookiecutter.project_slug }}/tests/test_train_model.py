@@ -3,6 +3,7 @@
     Test.
 """
 import unittest
+import pytest
 
 import pandas as pd
 from typing import List, Any
@@ -14,7 +15,9 @@ class TestTrainModel(unittest.TestCase):
     """ Unit test of prepare_dataset.
     """
 
-    def test_train_model_with_empty_list(self):  # pylint: disable=R0201
+    @pytest.mark.slow
+    @pytest.mark.gpu
+    def test_train_model_with_empty_list(self) -> None:  # pylint: disable=R0201
         """ Test train_model() with no data.
         """
         # Given

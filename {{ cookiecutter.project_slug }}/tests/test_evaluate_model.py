@@ -13,7 +13,7 @@ class TestEvaluateModel(unittest.TestCase):
     """ Unit test of prepare_dataset.
     """
 
-    def test_evaluate_model_with_empty_list(self):  # pylint: disable=R0201
+    def test_evaluate_model_with_empty_list(self) -> None:  # pylint: disable=R0201
         """ Test train_model() with no data.
         """
         # Given

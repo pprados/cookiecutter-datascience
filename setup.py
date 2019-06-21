@@ -30,7 +30,7 @@ setup(
         'tests':
             [
                 'unittest2', 'mock',  # For unit tests
-                'pytest', 'pytest-openfiles', 'pytest-cookies',
+                'pytest', 'pytest-openfiles', 'pytest-cookies', 'pytest-xdist',
             ]
     },
     install_requires=

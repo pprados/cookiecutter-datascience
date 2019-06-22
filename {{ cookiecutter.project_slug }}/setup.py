@@ -22,6 +22,7 @@ requirements = [
 {% if cookiecutter.use_tensorflow == "y"      %}    'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0 {% endif %}
 {% if cookiecutter.use_text_processing == "y" %}    'spacy~=2.0', {% endif %}
 {% if cookiecutter.use_text_processing == "y" %}    'nltk~=3.3', {% endif %}
+{% if cookiecutter.use_DVC == "y" %}    'appdirs', {% endif %}
     'numpy~=1.14',
     'pandas~=0.22',
 ]
@@ -29,13 +30,13 @@ requirements = [
 # Package nécessaires aux tests
 test_requirements = [
     'pytest>=2.8.0',
+    'pytest-openfiles', # For tests
     'pytest-cookies',
     'pytest-xdist',
     'pytest-httpbin==0.0.7',
-    'unittest2',
-    #'pytest-cov',
     'pytest-mock',
-    #'pytest-xdist',
+    #'pytest-cov',
+    'unittest2',
 ]
 
 # Package nécessaires aux builds et tests mais pas au run
@@ -43,7 +44,6 @@ test_requirements = [
 dev_requirements = [
     'twine',  # To publish package in Pypi
     'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # To generate doc
-    'unittest2', 'mock', 'pytest', 'pytest-openfiles', # For tests
     'flake8', 'pylint',  # For lint
     'daff',
 {% if cookiecutter.use_jupyter == "y" %}    'jupyter',  # Use Jupyter{% endif %}
@@ -129,6 +129,7 @@ setup(
 {#     #cmdclass={'test': PyTest}, #}
     extras_require={
         'dev': dev_requirements,
+        'test': test_requirements,
         },
     packages=find_packages(),
     # Pour utiliser Git pour extraire les numéros des versions

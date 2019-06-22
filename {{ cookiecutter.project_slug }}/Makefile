@@ -59,6 +59,7 @@ define BROWSER
 	from urllib.request import pathname2url
 
 	webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])), autoraise=True)
+	print("")
 	sys.exit(0)
 	'
 endef
@@ -357,7 +358,7 @@ $(CONDA_PYTHON):
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
-	pip install -q $(EXTRA_INDEX) -e '.[dev]' | grep -v 'already satisfied' || true
+	pip install -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
 	@touch $(PIP_PACKAGE)
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -366,6 +367,7 @@ $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 $(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(REQUIREMENTS)
 	@$(VALIDATE_VENV)
 	python -O -m ipykernel install --user --name $(KERNEL)
+	echo -e "$(cyan)Kernel $(KERNEL) installed$(normal)"
 
 # Remove the kernel
 .PHONY: remove-kernel
@@ -413,7 +415,8 @@ $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
 	touch $(NLTK_DATA)/tokenizers/$*
 
 $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	echo -e "$(cyan)Download $*...$(normal)"
 	python -O -m nltk.downloader $* || true
 	touch $(NLTK_DATA)/corpora/$*{% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -428,7 +431,8 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 SPACY_DATABASE=
 
 $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	echo -e "$(cyan)Download $*...$(normal)"
 	python -O -m spacy download $*
 	@touch $(CONDA_PACKAGE)/spacy/data/$*{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -456,7 +460,7 @@ remove-venv : remove-$(VENV)
 # pour tenir compte des mises à jours{% endif %}
 .PHONY: upgrade-venv
 upgrade-$(VENV):
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
 	conda update --all
 	pip list --format freeze --outdated | sed 's/(.*//g' | xargs -r -n1 pip install $(EXTRA_INDEX) -U
 	echo -e "$(cyan)After validation, upgrade the setup.py$(normal)"
@@ -515,6 +519,7 @@ run-%:
 ## Lint the code
 lint: $(REQUIREMENTS) | .pylintrc
 	$(VALIDATE_VENV)
+	# PPR: modifier la largeur de ligne
 	@flake8 {{ cookiecutter.project_slug }} tests || true
 	@echo "----------------------"
 	@pylint {{ cookiecutter.project_slug }} tests || true
@@ -576,10 +581,10 @@ build/%: $(REQUIREMENTS) docs/source docs/* README.md CHANGELOG.md | .git
 # Build all format of documentations
 ## Generate and show the HTML documentation
 docs: build/html
-	$(BROWSER) build/html/index.html
+	@$(BROWSER) build/html/index.html
 
 ## Watching for changes to compile the docs
-servedocs: docs
+servedocs: build/html
 	watchmedo shell-command -p '*' -c '$(MAKE) build/html' -R -D docs
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -587,7 +592,7 @@ servedocs: docs
 # SNIPPET pour créer une distribution des sources{% endif %}
 .PHONY: sdist
 dist/$(PRJ_PACKAGE)-*.tar.gz: $(REQUIREMENTS)
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
 	python setup.py sdist
 
 # Create a source distribution
@@ -600,7 +605,7 @@ sdist: dist/$(PRJ_PACKAGE)-*.tar.gz
 # Cela correspond au dernier tag d'un format 'version'{% endif %}
 .PHONY: bdist
 dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl: $(REQUIREMENTS)
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
 	python setup.py bdist_wheel
 
 # Create a binary wheel distribution
@@ -639,7 +644,7 @@ test-twine: bdist
 .PHONY: release
 ## Publish distribution on pypi.org
 release: dist
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
 	[[ $$(ls -1 dist --hide "*.dev*" | wc -l) -ne 0 ]] || echo -e "$(red)Add a tag version in GIT to release$(normal)"
 	echo "Enter Pypi password"
 	ls $(PWD)/dist/* --hide "*.dev*" | xargs twine upload
@@ -652,13 +657,13 @@ release: dist
 .PHONY: notebook
 ## Start jupyter notebooks
 notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
 	DATA=$$DATA jupyter notebook --ExecutePreprocessor.kernel_name=$(KERNEL) {% endif %}
 {% if (cookiecutter.use_aws == 'y' or cookiecutter.use_s3 == 'y') %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour installer aws cli.{% endif %}
 $(CONDA_PREFIX)/bin/aws:
-	pip install -q awscli
+	@pip install -q awscli
 {% endif %}
 
 {% if cookiecutter.use_s3 == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -682,10 +687,10 @@ ifeq (default,$(PROFILE))
 else
 	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%) --profile $(PROFILE)
 endif
-
-## Download raw data if necessary
+{% endif %}
+# Download raw data if necessary
 $(DATA)/raw:
-	make sync_from_s3/data/raw
+{% if cookiecutter.use_s3 == 'y' %}	make sync_from_s3/data/raw
 {% endif %}
 
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -734,26 +739,27 @@ _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 # en ajouter le flag +x.{% endif %}
 ## Convert all notebooks to python scripts
 nb-convert: _nbconvert
-	find scripts/ -type f -iname "*.py" -exec git add "{}" \;
-	find scripts/ -type f -iname "*.py" -exec git update-index --chmod=+x  "{}" \;{% endif %}
+	@find scripts/ -type f -iname "*.py" -exec git add "{}" \;
+	@find scripts/ -type f -iname "*.py" -exec git update-index --chmod=+x  "{}" \;{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer tous les fichiers générés par le compilateur Python.{% endif %}
 .PHONY: clean-pyc
 # Clean pre-compiled files
 clean-pyc:
-	-/usr/bin/find . -type f -name "*.py[co]" -delete
-	-/usr/bin/find . -type d -name "__pycache__" -delete
+	@/usr/bin/find . -type f -name "*.py[co]" -delete
+	@/usr/bin/find . -type d -name "__pycache__" -delete
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer les fichiers de builds (package et docs).{% endif %}
 .PHONY: clean-build
 # Remove build artifacts and docs
 clean-build:
-	@-/usr/bin/find . -type f -name ".make-*" -delete
+	@/usr/bin/find . -type f -name ".make-*" -delete
 	@rm -fr build/
 	@rm -fr dist/*
 	@rm -fr *.egg-info
+	@echo -e "$(cyan)Build cleaned$(normal)"
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer tous les notebooks{% endif %}
@@ -761,14 +767,15 @@ clean-build:
 ## Remove all results of notebooks
 clean-notebooks:
 	@[ -e notebooks ] && find notebooks -name '*.ipynb' -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
-	@echo "Notebooks cleaned"{% endif %}
+	@echo -e "$(cyan)Notebooks cleaned$(normal)"{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------{% endif %}
 .PHONY: clean-pip
 # Remove all the pip package
 clean-pip:
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
 	pip freeze | grep -v "^-e" | xargs pip uninstall -y
+	@echo -e "$(cyan)Virtual env cleaned$(normal)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer complètement l'environnement Conda{% endif %}
@@ -799,25 +806,26 @@ clean: clean-pyc clean-build {% if cookiecutter.use_jupyter == 'y' %}clean-noteb
 PYTEST_PARALLEL ?=-n $(NB_CORE)
 .PHONY: test unittest functionaltest
 .make-unit-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
-	$(VALIDATE_VENV)
-	#python setup.py test
+	@$(VALIDATE_VENV)
+	@echo -e "$(cyan)Run unit tests...$(normal)"
 	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "not functional"
-	touch .make-unit-test
+	@touch .make-unit-test
 # Run only unit tests
 unit-test: .make-unit-test
 
 .make-functional-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	@echo -e "$(cyan)Run functional tests...$(normal)"
 	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "functional"
-	touch .make-functional-test
+	@touch .make-functional-test
 # Run only functional tests
 functional-test: .make-functional-test
 
-## Run all tests (unit and functional)
 .make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
-	# python setup.py test
-	python -m pytest  -s tests $(PYTEST_PARALLEL)
-	touch .make-test .make-unit-test .make-functional-test
+	@echo -e "$(cyan)Run all tests...$(normal)"
+	python -m pytest $(PYTEST_PARALLEL) -s tests
+	@touch .make-test .make-unit-test .make-functional-test
+## Run all tests (unit and functional)
 test: .make-test
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -859,21 +867,23 @@ EC2_LIFE_CYCLE?=--terminate
 .PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
 ## Call 'make %' recipe on EC2 (make ec2-train)
 ec2-%: $(CONDA_PREFIX)/bin/aws
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	set -x
 	ssh-ec2 $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-%=%)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant d'exécuter une recette avec un tmux activé.
 # Par exemple `make ec2-tmux-train`{% endif %}
 ## Call 'make %' recipe on EC2 with a tmux session (`make ec2-tmux-train`)
 ec2-tmux-%: $(CONDA_PREFIX)/bin/aws
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	set -x
 	NO_RSYNC_END=n ssh-ec2 --multi tmux --leave "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-tmux-%=%)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-detach-test`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-detach-%: $(CONDA_PREFIX)/bin/aws
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 --detach $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-detach-%=%)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -881,19 +891,22 @@ ec2-detach-%: $(CONDA_PREFIX)/bin/aws
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-attach: $(CONDA_PREFIX)/bin/aws
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	set -x
 	ssh-ec2 --attach
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-finish`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-finish: $(CONDA_PREFIX)/bin/aws
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	set -x
 	ssh-ec2 --finish
 {% if cookiecutter.use_aws == 'y' %}
 ## Start jupyter notebook on EC2
 ec2-notebook: $(CONDA_PREFIX)/bin/aws
-	$(VALIDATE_VENV)
+	@$(VALIDATE_VENV)
+	set -x
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 {% endif %}{% endif %}
 

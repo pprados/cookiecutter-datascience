@@ -5,13 +5,13 @@
 import glob
 import json
 import logging
-import pandas as pd
 import pickle
 import sys
 from typing import Any, Sequence
 
 import click
 import dotenv
+import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,8 @@ def main(model_filepath: str,
 
     model: Any = pickle.load(open(model_filepath, 'rb'))
 
-    datasets: Sequence[pd.DataFrame] = [pd.read_csv(f) for f in glob.glob(sample_filepath, recursive=True)]
+    datasets: Sequence[pd.DataFrame] = \
+        [pd.read_csv(f) for f in glob.glob(sample_filepath, recursive=True)]
     metrics: dict = evaluate_model(model, datasets)
     with open(evaluate_filepath, 'w') as evaluate_file:
         json.dump(metrics, evaluate_file, indent=4)

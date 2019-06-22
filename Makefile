@@ -3,27 +3,25 @@
 SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
+
+# Run PARALLEL=True make validate to check in serial mode
 .NOTPARALLEL:
+NB_CORE?=$(shell grep -c '^processor' /proc/cpuinfo)
+export PARALLEL?=False
+ifeq ($(PARALLEL),True)
+export MAKE_PARALLEL?=-j $(NB_CORE) -O
+export PYTEST_PARALLEL?=-n $(NB_CORE)
+else
+export MAKE_PARALLEL?=
+export PYTEST_PARALLEL?=
+endif
 
-
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour détecter l'OS d'exécution.
 ifeq ($(OS),Windows_NT)
     OS := Windows
 else
     OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
 endif
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour identifier le nombre de processeur{% endif %}
-NB_CORE?=$(shell grep -c '^processor' /proc/cpuinfo)
-
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour récupérer les séquences de caractères pour les couleurs
-# A utiliser avec un
-# echo -e "Use '$(cyan)make$(normal)' ..."
-# Si vous n'utilisez pas ce snippet, les variables de couleurs non initialisés
-# sont simplement ignorées.
 ifneq ($(TERM),)
 normal:=$(shell tput sgr0)
 bold:=$(shell tput bold)
@@ -158,8 +156,7 @@ VALIDATE_VENV=$(CHECK_VENV)
 
 # Toutes les dépendances du projet à regrouper ici
 .PHONY: requirements
-REQUIREMENTS=$(PIP_PACKAGE) \
-		.gitattributes
+REQUIREMENTS=$(PIP_PACKAGE)
 requirements: $(REQUIREMENTS)
 
 # Règle de vérification de la bonne installation de la version de python dans l'environnement Conda
@@ -217,6 +214,7 @@ clean_check-makefile:
 
 .PHONY: clean
 clean: clean-pyc
+	find . -type f -name ".make-*" -delete
 
 .PHONY: clean-all
 ## Clean all environments
@@ -225,7 +223,7 @@ clean-all: clean remove-venv
 .PHONY: test
 .make-test: $(REQUIREMENTS) tests/* Makefile-TU
 	@$(VALIDATE_VENV)
-	python -m pytest -n $(NB_CORE) -s tests -m "not slow"
+	python -m pytest $(PYTEST_PARALLEL) -s tests -m "not slow"
 	touch .make-test
 ## Run all tests
 test: .make-test
@@ -266,41 +264,48 @@ try: $(REQUIREMENTS)
 	python tests/try_cookiecutter.py use_DVC=y
 	ln -f Makefile-TU tmp/bda_project/Makefile-TU
 
-_make-%: try
-	@cd tmp/bda_project
+_make-%:
+	$(MAKE) try
+	@pushd tmp/bda_project
 	@source $(CONDA_BASE)/bin/activate bda_project
 	@$(MAKE) $(*:_make-%=%)
+	popd
 
 # Check all version of documentations
-.make-check-docs: try {{\ cookiecutter.project_slug\ }}/Makefile {{\ cookiecutter.project_slug\ }}/docs
-	@cd tmp/bda_project
-	source $(CONDA_BASE)/bin/activate bda_project
-#@$(MAKE) build/applehelp # https://github.com/miyakogi/m2r/issues/34
-	@$(MAKE) build/changes
-	@$(MAKE) build/devhelp
-	@$(MAKE) build/dirhtml
-	@$(MAKE) build/dummy
-#@$(MAKE) build/epub # Error with KeyErro 'ids' in _epub_base.py
-	@$(MAKE) build/gettext
-	@$(MAKE) build/html
-	@$(MAKE) build/htmlhelp
-	@$(MAKE) build/json
-	@$(MAKE) build/latex
-#@$(MAKE) build/linkcheck
-	@$(MAKE) build/man
-	@$(MAKE) build/pickle
-	@$(MAKE) build/pseudoxml
-	@$(MAKE) build/qthelp
-	@$(MAKE) build/singlehtml
-	@$(MAKE) build/text
-	@$(MAKE) build/texinfo
-	@$(MAKE) build/xml
+.make-check-docs: {{\ cookiecutter.project_slug\ }}/Makefile {{\ cookiecutter.project_slug\ }}/docs
+	$(MAKE) try
+	# PPR
+#	@source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate bda_project
+#	@pushd tmp/bda_project
+##@$(MAKE) build/applehelp # https://github.com/miyakogi/m2r/issues/34
+#	@$(MAKE) build/changes
+#	@$(MAKE) build/devhelp
+#	@$(MAKE) build/dirhtml
+#	@$(MAKE) build/dummy
+##@$(MAKE) build/epub # Error with KeyErro 'ids' in _epub_base.py
+#	@$(MAKE) build/gettext
+#	@$(MAKE) build/html
+#	@$(MAKE) build/htmlhelp
+#	@$(MAKE) build/json
+#	@$(MAKE) build/latex
+##@$(MAKE) build/linkcheck
+#	@$(MAKE) build/man
+#	@$(MAKE) build/pickle
+#	@$(MAKE) build/pseudoxml
+#	@$(MAKE) build/qthelp
+#	@$(MAKE) build/singlehtml
+#	@$(MAKE) build/text
+#	@$(MAKE) build/texinfo
+#	@$(MAKE) build/xml
+#	popd
 	touch .make-check-docs
 
+.PHONY: check-docs
 check-docs: .make-check-docs
 
 # Il faut probablement lancer des builds avants, pour remetre l'état valide
-.make-check-makefile: clean_check-makefile try Makefile-TU {{\ cookiecutter.project_slug\ }}/Makefile
+.make-check-makefile: Makefile-TU {{\ cookiecutter.project_slug\ }}/Makefile
+	$(MAKE) try
 	@pushd tmp/bda_project
 	$(ACTIVATE_VENV)
 	# Check double make validate
@@ -310,22 +315,36 @@ check-docs: .make-check-docs
 	$(DEACTIVATE_VENV)
 	popd
 	@touch .make-check-makefile
+.PHONY: check-makefile
 ## Check all generated rules
 check-makefile: .make-check-makefile
 
 ## Check empty configure
-check-configure:
+.make-check-configure:
 	conda env remove -n bda_project
-	cd tmp/bda_project
+	pushd tmp/bda_project
 	$(MAKE) configure
+	popd
+	@touch .make-check-configure
 
-.make-check-all-make: check-configure .make-check-makefile check-docs
-	make -f Makefile-TU clean-test
-	python -m pytest -s tests -n $(NB_CORE) -m slow
-	touch .make-check-all-make
+.PHONY: check-configure
+check-configure: .make-check-configure
 
+# PPR .make-check-all-make: .make-check-configure .make-check-makefile .make-check-docs
+.make-check-all-make:
+	$(MAKE) clean-test
+	python -m pytest -s tests $(PYTEST_PARALLEL) -m slow
+	@touch .make-check-all-make
+
+.PHONY: check-all-make
 ## Try all major make target
 check-all-make: .make-check-all-make
 
+.PHONY: validate
+.make-validate: Makefile Makefile.snippet test check-all-make
 ## Validate all before commit
-validate: try Makefile.snippet test check-all-make
+validate: .make-validate
+
+.PHONY: clean-test
+clean-test:
+	rm -Rf /tmp/CC_temp* /tmp/make-* /tmp/ssh-ec2-* temp*.sh ~/.local/share/jupyter/kernels/cc_temp*

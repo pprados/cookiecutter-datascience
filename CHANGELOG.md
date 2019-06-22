@@ -5,14 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Update CHANGELOG.md
-
 ### Added
+- TU in parallel
 ### Changed
 ### Deprecated
 ### Removed
 ### Fixed
+- setup.py
 ### Security
 
-## [0.0.X] - YYYY-MM-DD
+## [0.0.0] - 2019-06-XX
 First public version (see [README](README.md) )

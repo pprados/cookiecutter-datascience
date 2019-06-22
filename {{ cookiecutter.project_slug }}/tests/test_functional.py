@@ -3,18 +3,17 @@
     Test.
 """
 import unittest
-
-import pandas as pd
 from typing import List, Any, Dict
 
+import pandas as pd
 import pytest
-
 from bda_project.build_features import build_features
 from bda_project.evaluate_model import evaluate_model
 from bda_project.prepare_dataset import prepare_dataset
 from bda_project.train_model import train_model
 
-#@pytest.mark.skip(reason="no way of currently testing this")
+
+# @pytest.mark.skip(reason="no way of currently testing this")
 @pytest.mark.functional
 class TestFunctional(unittest.TestCase):
     """ Functional test of pipeline.
@@ -34,7 +33,7 @@ class TestFunctional(unittest.TestCase):
         model: Any = train_model(inputs=train_inputs,
                                  epoch=1,
                                  batch_size=1)
-        metrics:Dict[str,Any] = evaluate_model(model, validate_files)
+        metrics: Dict[str, Any] = evaluate_model(model, validate_files)
 
         # Then
         self.assertGreater(metrics['auc'], 0.8)

@@ -1,20 +1,35 @@
+import os
 import subprocess
 
 import pytest
 
-OPT = "" # PPR
+# Use PARALLEL=True make ...
+PARALLEL=os.getenv("PARALLEL","False").lower() in ("yes", "true")
+MAKE_PARALLEL = os.getenv("MAKE_PARALLEL","-j -O" if PARALLEL else "")
+PYTEST_PARALLEL=os.getenv("PYTEST_PARALLEL","-n 10" if PARALLEL else "")
 
+# PPR
+print("--------------------------------------------------------")
+print("PARALLEL=",PARALLEL)
+print("MAKE_PARALLEL=",MAKE_PARALLEL)
+print("PYTEST_PARALLEL=",PYTEST_PARALLEL)
+print("--------------------------------------------------------")
 
 def _run_make_cmd(dirname: str, cmd: str):
     print(f"Execute '{cmd}'...")
     return subprocess.call(f"""
+        set -e
         . "$(conda info --base)/etc/profile.d/conda.sh"
-        conda activate bda_project
+    	V=CC_temp_$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n 1)
+	    D=/tmp/$V
+    	conda create -n $V -y
+	    conda activate $V
         export AWS_INSTANCE_TYPE=t2.small
         ln -f Makefile-TU {dirname}/bda_project/Makefile-TU
-        set -x
-        cd {dirname}/bda_project
+        cd "{dirname}/bda_project"
         {cmd}
+        conda deactivate
+        conda env remove -n $V
         """, shell=True)
 
 
@@ -43,8 +58,9 @@ def test_template_default_values(cookies, context):
     assert result.project.basename == 'bda_project'
     assert result.project.isdir()
 
-    # PPR assert 0 == _run_make_cmd(result.project.dirname, f"make {OPT} -f Makefile-TU DEFAULT DOCS")
-    assert 0 == _run_make_cmd(result.project.dirname, f"make {OPT} -f Makefile-TU DIST")
+    # PPR assert 0 == _run_make_cmd(result.project.dirname, f"make {PYTEST_PARALLEL} make {MAKE_PARALLEL} -f Makefile-TU DEFAULT DOCS")
+    assert 0 == _run_make_cmd(result.project.dirname,
+                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU DIST")
 
 
 @pytest.mark.slow
@@ -74,7 +90,8 @@ def test_template_with_aws_and_s3(cookies, context):
     assert result.project.basename == 'bda_project'
     assert result.project.isdir()
 
-    assert 0 == _run_make_cmd(result.project.dirname, f"make {OPT} -f Makefile-TU AWS")
+    assert 0 == _run_make_cmd(result.project.dirname,
+                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU AWS")
 
 
 @pytest.mark.slow
@@ -104,7 +121,8 @@ def test_template_with_jupyter(cookies, context):
     assert result.project.basename == 'bda_project'
     assert result.project.isdir()
 
-    assert 0 == _run_make_cmd(result.project.dirname, f"make {OPT} -f Makefile-TU JUPYTER")
+    assert 0 == _run_make_cmd(result.project.dirname,
+                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU JUPYTER")
 
 
 @pytest.mark.slow
@@ -134,7 +152,8 @@ def test_template_with_text_processing(cookies, context):
     assert result.project.basename == 'bda_project'
     assert result.project.isdir()
 
-    assert 0 == _run_make_cmd(result.project.dirname, f"make {OPT} -f Makefile-TU TEXT_PROCESSING")
+    assert 0 == _run_make_cmd(result.project.dirname,
+                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU TEXT_PROCESSING")
 
 
 @pytest.mark.slow
@@ -164,5 +183,6 @@ def test_template_with_open_source(cookies, context):
     assert result.project.basename == 'bda_project'
     assert result.project.isdir()
 
-    assert 0 == _run_make_cmd(result.project.dirname, f"make {OPT} -f Makefile-TU OPENSOURCE")
+    assert 0 == _run_make_cmd(result.project.dirname,
+                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU OPENSOURCE")
 

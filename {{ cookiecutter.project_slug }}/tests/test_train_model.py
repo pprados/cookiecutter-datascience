@@ -3,11 +3,10 @@
     Test.
 """
 import unittest
-import pytest
+from typing import Any, List
 
 import pandas as pd
-from typing import List, Any
-
+import pytest
 from bda_project.train_model import train_model
 
 

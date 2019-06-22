@@ -1,14 +1,10 @@
 #!/usr/bin/env make
 
 # This is a unit test of all target of generated Makefile
-# Use a temporay copy of data and VENV
-
-SHELL=/bin/bash
-.SHELLFLAGS = -e -c
+# Use a temporay coTS = -e -c
 .ONESHELL:
 
-# OPT=-j
-OPT=
+MAKE_PARALLEL?=-j
 
 PYTHON_VERSION=3.6
 CONDA_BASE=$(shell conda info --base)
@@ -51,14 +47,16 @@ dump-%:
 # are not cleaning. May be, duplicate all the project ?
 define do_make
     @echo "---------------------------- $1"
+    set -e
 	V=CC_temp_$(shell cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n 1)
 	D=/tmp/$$V
 	export NLTK_DATA=$${D}_nltk_data
 	mkdir $$NLTK_DATA
 	cp -Rf . $$D/
-	pushd $$D/
+	oldpath=`pwd`
+	cd $$D/
     echo "$1"> test.txt
-	source $(CONDA_BASE)/etc/profile.d/conda.sh
+	. $(CONDA_BASE)/etc/profile.d/conda.sh
 	conda create -n $$V -y python=$(PYTHON_VERSION)
 	conda activate $$V
 	rm -rf data/interim/* data/processed/* data/external/*
@@ -67,8 +65,8 @@ define do_make
 	export S3_BUCKET=s3://pprados
 	export SPACY_DATABASE="$${CONDA_PACKAGE}/spacy/data/en"
 	export NLTK_DATABASE="$${NLTK_DATA}/corpora/wordnet $${NLTK_DATA}/tokenizers/punkt $${NLTK_DATA}/corpora/stopwords"
-	VENV=$$V $(MAKE) $(OPT) $1
-	popd
+	VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1
+	cd "$$oldpath"
 	conda deactivate
 	conda env remove -n $$V
 	rm -Rf $$D
@@ -245,17 +243,18 @@ metrics:
 # PPR
 DVC=dvc-external lock metrics
 #-------------------
+# FIXME: S'assurer de bien détruire les instances
 ec2:
 	$(call do_make,ec2-clean)
 
 ec2-tmux:
-	$(call do_make,ec2-tmux-clean)
+	$(call do_make,ec2-tmux-clean ; ssh-ec2 --terminate :)
 ec2-attach:
 	$(call do_make,ec2-detach-clean ec2-attach ; ssh-ec2 --terminate :)
 ec2-finish:
 	$(call do_make,ec2-detach-clean ec2-finish)
 ec2-notebook:
-	$(call do_make,ec2-notebook)
+	$(call do_make,ec2-notebook ; ssh-ec2 --terminate :)
 EC2: ec2 ec2-tmux ec2-finish
 
 #-------------------
@@ -295,5 +294,3 @@ JUPYTER: remove-kernel nb-run nb-convert add-typing clean-notebooks
 AWS: S3 EC2
 OPENSOURCE: dist
 
-clean-test:
-	rm -Rf /tmp/CC_temp* /tmp/make-* /tmp/ssh-ec2-* temp*.sh ~/.local/share/jupyter/kernels/cc_temp*

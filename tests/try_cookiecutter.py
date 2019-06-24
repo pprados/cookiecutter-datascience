@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import List
 
@@ -45,6 +46,8 @@ def main(output_dir: str, params: List[str]):
         :return: 0 if ok, else error
     """
     try:
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
         try_cookiecutter(params, output_dir)
     except SystemExit as e:
         return e.code

@@ -7,6 +7,7 @@ import json
 import logging
 import pickle
 import sys
+from time import strftime, gmtime
 from typing import Any, Sequence
 
 import click
@@ -27,6 +28,7 @@ def evaluate_model(model: Any,
     metrics = {}
     for a_sample in samples:
         pass  # TODO Code d'evaluation de chaque dataframe
+    metrics['datetime'] = strftime("%Y-%m-%d %H:%M:%S", gmtime())
     metrics['auc'] = 0.99
     return metrics
 
@@ -44,14 +46,14 @@ def main(model_filepath: str,
         :param evaluate_filepath: json file path with metrics to write
         :return: 0 if ok, else error
     """
-    LOGGER.info('Evaluate model %s from processed data', model_filepath)
+    LOGGER.info('Evaluate model \'%s\' from processed data', model_filepath)
 
     model: Any = pickle.load(open(model_filepath, 'rb'))
 
     datasets: Sequence[pd.DataFrame] = \
         [pd.read_csv(f) for f in glob.glob(sample_filepath, recursive=True)]
     metrics: dict = evaluate_model(model, datasets)
-    with open(evaluate_filepath, 'w') as evaluate_file:
+    with open(evaluate_filepath, 'wt') as evaluate_file:
         json.dump(metrics, evaluate_file, indent=4)
     return 0
 

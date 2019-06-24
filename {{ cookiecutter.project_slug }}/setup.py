@@ -2,21 +2,21 @@
 import os
 import re
 import subprocess
-import sys
+from typing import List
 
 from setuptools import setup, find_packages
-from setuptools.command.test import test as TestCommand
 
 # USE_GPU="-gpu" ou "" si le PC possède une carte NVidia
 # ou suivant la valeur de la variable d'environnement GPU (export GPU=yes)
-USE_GPU = "-gpu" if (os.environ['GPU'].lower() in 'yes'
+USE_GPU: str = "-gpu" if (os.environ['GPU'].lower() in 'yes'
                      if "GPU" in os.environ
                      else os.path.isdir("/proc/driver/nvidia")
                           or "CUDA_PATH" in os.environ) else ""
 
 
 # Package nécessaires à l'execution
-requirements = [
+# FIXME Ajoutez et ajustez les dépendences nécessaire à l'exécution.
+requirements: List[str] = [
     'click',
     'python-dotenv',
 {% if cookiecutter.use_tensorflow == "y"      %}    'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0 {% endif %}
@@ -27,21 +27,23 @@ requirements = [
     'pandas~=0.22',
 ]
 
+setup_requirements: List[str] = ["pytest-runner","setuptools_scm"]
+
 # Package nécessaires aux tests
-test_requirements = [
+test_requirements: List[str] = [
     'pytest>=2.8.0',
     'pytest-openfiles', # For tests
     'pytest-cookies',
     'pytest-xdist',
     'pytest-httpbin==0.0.7',
     'pytest-mock',
-    #'pytest-cov',
+    {# 'pytest-cov', #}
     'unittest2',
 ]
 
-# Package nécessaires aux builds et tests mais pas au run
-# FIXME Indiquer les dépendances nécessaire au build et au tests à ajuster suivant le projet
-dev_requirements = [
+# Package nécessaires aux builds mais pas au run
+# FIXME Ajoutez les dépendances nécessaire au build et au tests à ajuster suivant le projet
+dev_requirements: List[str] = [
     'twine',  # To publish package in Pypi
     'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # To generate doc
     'flake8', 'pylint',  # For lint
@@ -52,7 +54,8 @@ dev_requirements = [
 ]
 
 
-def _git_url():
+# Return git remote url
+def _git_url() -> str:
     try:
         with open(os.devnull, "wb") as devnull:
             out = subprocess.check_output(
@@ -70,36 +73,10 @@ def _git_url():
         return ""
 
 
-def _git_http_url():
+# Return Git remote in HTTP form
+def _git_http_url() -> str:
     return re.sub(r".*@(.*):(.*).git", r"http://\1/\2", _git_url())
 
-{#
-# PPR: voir comment ajouter des params à python setup.py test pour les utiliser
-# pour differencier les tests U et fonctionnel
-# See https://github.com/kennethreitz/requests/blob/master/setup.py
-# python setup.py --help-commands
-class PyTest(TestCommand):
-    user_options = TestCommand.user_options+[('pytest-args=', 'a', "Arguments to pass into py.test")]
-
-    def initialize_options(self):
-        super().initialize_options()
-        try:
-            from multiprocessing import cpu_count
-            self.pytest_args = ['-n', str(cpu_count()), '--boxed']
-        except (ImportError, NotImplementedError):
-            self.pytest_args = ['-n', '1', '--boxed']
-
-    def finalize_options(self):
-        super().finalize_options()
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        import pytest
-
-        errno = pytest.main(self.pytest_args)
-        sys.exit(errno)
-#}
 setup(
     name='{{cookiecutter.project_slug}}' + USE_GPU,
     author="Octo Technology",
@@ -125,16 +102,13 @@ setup(
     ],
     python_requires='~={{ cookiecutter.python_version }}',  # Version de Python
     test_suite="tests",
+    setup_requires=setup_requirements,
     tests_require=test_requirements,
-{#     #cmdclass={'test': PyTest}, #}
     extras_require={
         'dev': dev_requirements,
         'test': test_requirements,
         },
     packages=find_packages(),
-    # Pour utiliser Git pour extraire les numéros des versions
-    use_scm_version=True,  # Gestion des versions à partir des commits Git
-    setup_requires=["pytest-runner","setuptools_scm"],
-    # TODO Indiquez les dépendances nécessaire à l'execution du composant, à ajuster suivant le projet
+    use_scm_version=True,  # Gestion des versions à partir des tags Git
     install_requires=requirements,
 )

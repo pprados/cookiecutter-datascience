@@ -49,7 +49,7 @@ endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour identifier le nombre de processeur{% endif %}
-NB_CORE:=$(shell grep -c '^processor' /proc/cpuinfo)
+NPROC?=$(shell nproc)
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour pouvoir lancer un browser avec un fichier local{% endif %}
@@ -59,7 +59,6 @@ define BROWSER
 	from urllib.request import pathname2url
 
 	webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])), autoraise=True)
-	print("")
 	sys.exit(0)
 	'
 endef
@@ -67,9 +66,9 @@ endef
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour supprimer le parallelisme pour certaines cibles
 # par exemple pour release
-#ifneq ($(filter release,$(MAKECMDGOALS)),)
-#.NOTPARALLEL:
-#endif
+ifneq ($(filter configure release clean% upgrade-%,$(MAKECMDGOALS)),)
+.NOTPARALLEL:
+endif
 #{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -92,10 +91,10 @@ gray:=$(shell tput setaf 8)
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour gérer le projet, le virtualenv conda et le kernel
-# Par convention, les noms du projet, de l'environnement Conda ou le Kernel Jupyter
+# SNIPPET pour gérer le projet, le virtualenv conda{% if cookiecutter.use_jupyter == 'y' %} et le kernel{% endif %}.
+# Par convention, les noms du projet, de l'environnement Conda{% if cookiecutter.use_jupyter == 'y' %} ou le Kernel Jupyter{% endif %}
 # correspondent au nom du répertoire du projet.
-# Il est possible de modifier cela en valorisant les variables VENV et/ou KERNEL
+# Il est possible de modifier cela en valorisant les variables VENV,{% if cookiecutter.use_jupyter == 'y' %} KERNEL,{% endif %} et/ou PRJ.
 # avant le lancement du Makefile (`VENV=cntk_p36 make`){% endif %}
 PRJ:=$(shell basename $(shell pwd))
 VENV ?= $(PRJ)
@@ -104,7 +103,7 @@ PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:={{ cookiecutter.python_version }}
 {% if cookiecutter.use_aws == 'y' %}S3_BUCKET?=s3://$(subst _,-,$(PRJ))
 PROFILE = default{% endif %}
-# Data directory (can be in other place, in VM for example)
+# Data directory (can be in other place, in VM or Docker for example)
 export DATA?=data
 {% if cookiecutter.use_DVC == 'y' %}
 # Use DVC bucket. May be :
@@ -113,18 +112,23 @@ export DATA?=data
 # DVC_BUCKET?=ssh://user@example.com:
 # DVC_BUCKET?=hdfs://user@example.com
 DVC_BUCKET?={% if cookiecutter.use_aws == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
+# List of source and tests files
 PYTHON_SRC=$(shell find {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
 PYTHON_TST=$(shell find tests -type f -iname '*.py' | grep -v __pycache__)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
-# Cela servira à gérer automatiquement les environnements.
+# Cela sert à gérer automatiquement les environnements.
 # Pour que cela fonctionne, il faut avoir un environement Conda actif,
 # identifié par la variable CONDA_PREFIX (c'est généralement le cas).{% endif %}
+# Conda environment
 CONDA_BASE:=$(shell conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
+CONDA_ARGS?=
+{# PIP_INDEX_URL?=https://pypi.org/simple #}
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
+PIP_ARGS?=
 {% if cookiecutter.use_jupyter == 'y' %}JUPYTER_DATA_DIR:=$(shell jupyter --data-dir 2>/dev/null || echo "~/.local/share/jupyter"){% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -229,12 +233,12 @@ ifeq ($(shell which git-lfs >/dev/null ; echo "$$?"),0)
 	# Add git lfs if possible
 	@git lfs install >/dev/null
 	# Add some extensions in lfs
-	@git lfs track "*.pkl"  >/dev/null
-	@git lfs track "*.bin"  >/dev/null
-	@git lfs track "*.jpg"  >/dev/null
-	@git lfs track "*.jpeg" >/dev/null
-	@git lfs track "*.gif"  >/dev/null
-	@git lfs track "*.png"  >/dev/null
+	@git lfs track "*.pkl" --lockable  >/dev/null
+	@git lfs track "*.bin" --lockable  >/dev/null
+	@git lfs track "*.jpg" --lockable  >/dev/null
+	@git lfs track "*.jpeg" --lockable >/dev/null
+	@git lfs track "*.gif" --lockable  >/dev/null
+	@git lfs track "*.png" --lockable  >/dev/null
 endif{% endif %}{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Règle qui ajoute la validation du project avant un push sur la branche master.
@@ -320,7 +324,7 @@ endif{% endif %}
 CHECK_VENV=@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
   then ( echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ) ; fi
 
-ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV)
+ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV) $(CONDA_ARGS)
 DEACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda deactivate
 
 VALIDATE_VENV=$(CHECK_VENV)
@@ -349,16 +353,39 @@ REQUIREMENTS=$(PIP_PACKAGE) \
 {% endif %}	.gitattributes
 requirements: $(REQUIREMENTS)
 dependencies: requirements
+{#
+# PPR: chantier OFFLINE
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour gérer le mode offline.
+# La cible `offline` permet de télécharger toutes les dépendences, pour pouvoir les utiliser
+# ensuite sans connexion. Ensuite, il faut valoriser la variable d'environnement OFFLINE
+# à True avant le lancement du make pour une utilisation sans réseau.
+# `export OFFLINE=True
+# make ...
+# unset OFFLINE`{% endif %}
 
+# TODO: faire une regle ~/.offline et un variable qui s'ajuste pour tirer la dépendances ?
+# ou bien le faire à la main ?
+# Download dependencies for offline usage
+~/.mypypi: setup.py
+	pip download '.[dev,test]' --dest ~/.mypypi
+# Download modules and packages before going offline
+offline: ~/.mypypi
+ifeq ($(OFFLINE),True)
+CONDA_ARGS+=--use-index-cache --use-local --offline
+PIP_ARGS+=--no-index --find-links ~/.mypypi
+endif
+ #}
 # Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
 	@$(VALIDATE_VENV)
-	conda install -q "python=$(PYTHON_VERSION).*" -y -q
+	conda install -q "python=$(PYTHON_VERSION).*" -y -q $(CONDA_ARGS)
 
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
-	pip install -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
+	pip install $(PIP_ARGS) -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
 	@touch $(PIP_PACKAGE)
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -369,18 +396,18 @@ $(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(REQUIREMENTS)
 	python -O -m ipykernel install --user --name $(KERNEL)
 	echo -e "$(cyan)Kernel $(KERNEL) installed$(normal)"
 
-# Remove the kernel
+# Remove the Jupyter kernel
 .PHONY: remove-kernel
-remove-kernel:
+remove-kernel: $(REQUIREMENTS)
 	@echo y | jupyter kernelspec uninstall $(KERNEL) 2>/dev/null || true
 	echo -e "$(yellow)Warning: Kernel $(KERNEL) uninstalled$(normal)"{% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de nltk.
-# Vous pouvez valoriser NLTK_DATA https://www.nltk.org/data.html{% endif %}
+# Vous devez valoriser NLTK_DATA https://www.nltk.org/data.html{% endif %}
 ifndef NLTK_DATA
 export NTLK_DATA
-# The new line slowed the Makefile.
+# The next line slowed the Makefile.
 #NLTK_DATA:=$(shell python -c "import nltk.data; print(nltk.data.path[0])" 2>/dev/null || true)
 # Else
 ifeq ($(OS),Darwin)
@@ -403,9 +430,9 @@ endif
 # Add here the NLTK database.
 # For example, add
 # NLTK_DATABASE= \
-# $(NLTK_DATA)/corpora/wordnet \
-# $(NLTK_DATA)/tokenizers/punkt \
-# $(NLTK_DATA)/corpora/stopwords
+#   $(NLTK_DATA)/corpora/wordnet \
+#   $(NLTK_DATA)/tokenizers/punkt \
+#   $(NLTK_DATA)/corpora/stopwords
 # and that's all.
 NLTK_DATABASE=
 
@@ -441,17 +468,17 @@ $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 .PHONY: configure
 ## Prepare the work environment (conda venv, kernel, ...)
 configure:
-	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y
+	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y $(CONDA_ARGS)
 	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
-	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal)" ; fi
+	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal) $(CONDA_ARGS)" ; fi
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------{% endif %}
 .PHONY: remove-venv
 remove-$(VENV):
 	@$(DEACTIVATE_VENV)
-	conda env remove --name "$(VENV)" -y
+	conda env remove --name "$(VENV)" -y 2>/dev/null
 	echo -e "Use: $(cyan)conda deactivate$(normal)"
-# Remove venv
+# Remove virtual environement
 remove-venv : remove-$(VENV)
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -461,7 +488,7 @@ remove-venv : remove-$(VENV)
 .PHONY: upgrade-venv
 upgrade-$(VENV):
 	@$(VALIDATE_VENV)
-	conda update --all
+	conda update --all $(CONDA_ARGS)
 	pip list --format freeze --outdated | sed 's/(.*//g' | xargs -r -n1 pip install $(EXTRA_INDEX) -U
 	echo -e "$(cyan)After validation, upgrade the setup.py$(normal)"
 # Upgrade packages to last versions
@@ -480,13 +507,13 @@ notebooks/.make-%: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	  --ExecutePreprocessor.timeout=-1 \
 	  --execute \
 	  --inplace notebooks/$*/*.ipynb
-	touch notebooks/.make-$*
+	date >notebooks/.make-$*
 # All notebooks
 notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebooks/*)))
 
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
 nb-run-%: $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	$(MAKE) notebooks/.make-$*
+	VENV=$(VENV) $(MAKE) notebooks/.make-$*
 {% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -501,7 +528,7 @@ scripts/.make-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	time ls scripts/$*/*.py | grep -v __ | sed 's/\.py//g; s/\//\./g' | \
 		xargs -L 1 -t python -O -m
-	@touch scripts/.make-$*
+	@date >scripts/.make-$*
 
 # All phases
 scripts/phases: $(sort $(subst scripts/,scripts/.make-,$(wildcard scripts/*)))
@@ -511,7 +538,7 @@ run-%:
 	$(MAKE) scripts/.make-$*
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour valider le code avec pylint et flake8{% endif %}
+# SNIPPET pour valider le code avec flake8 et pylint{% endif %}
 .PHONY: lint
 .pylintrc:
 	pylint --generate-rcfile > .pylintrc
@@ -519,7 +546,6 @@ run-%:
 ## Lint the code
 lint: $(REQUIREMENTS) | .pylintrc
 	$(VALIDATE_VENV)
-	# PPR: modifier la largeur de ligne
 	@flake8 {{ cookiecutter.project_slug }} tests || true
 	@echo "----------------------"
 	@pylint {{ cookiecutter.project_slug }} tests || true
@@ -527,18 +553,20 @@ lint: $(REQUIREMENTS) | .pylintrc
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le typage avec pytype{% endif %}
-$(CONDA_PACKAGE)/bin/pytype:
-	@pip install -q pytype
+$(CONDA_PREFIX)/bin/pytype:
+	@pip install $(PIP_ARGS) -q pytype
 
-pytype.cfg:
-	pytype --generate-config pytype.cfg
+pytype.cfg: $(CONDA_PREFIX)/bin/pytype
+	@[[ ! -f pytype.cfg ]] && pytype --generate-config pytype.cfg || true
+	touch pytype.cfg
 
-.pytype/pyi/{{ cookiecutter.project_slug }}: $(REQUIREMENTS) $(CONDA_PACKAGE)/bin/pytype pytype.cfg
+
+.pytype/pyi/{{ cookiecutter.project_slug }}: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg
 	$(VALIDATE_VENV)
-	pytype -V $(PYTHON_VERSION) {{ cookiecutter.project_slug }}
+	pytype {{ cookiecutter.project_slug }}
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype -V $(PYTHON_VERSION) {} \; )
+	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype {} \; )
 	done
 	touch .pytype/pyi/{{ cookiecutter.project_slug }}
 
@@ -562,7 +590,7 @@ add-typing: typing
 # Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html{% endif %}
 .PHONY: docs
 # Use all processors
-#PPR SPHINX_FLAGS=-j$(NB_CORE)
+#PPR SPHINX_FLAGS=-j$(NPROC)
 SPHINX_FLAGS=
 # Generate API docs
 docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
@@ -663,12 +691,12 @@ notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour installer aws cli.{% endif %}
 $(CONDA_PREFIX)/bin/aws:
-	@pip install -q awscli
+	@pip install $(PIP_ARGS) -q awscli
 {% endif %}
 
 {% if cookiecutter.use_s3 == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour synchroniser les données avec un buket s3.
+# SNIPPET pour synchroniser les données avec un bucket s3.
 # Si le repertoire data/raw est ajouté dans .gitignore, il n'est alors plus
 # sauvegardé dans .git. Il sera alors récupéré via s3.{% endif %}
 .PHONY: sync_to_s3 sync_from_s3
@@ -695,10 +723,10 @@ $(DATA)/raw:
 
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour convertir tous les notebooks du repertoire 'notebooks' en script
-# python dans le répertoire 'src/scripts', déjà compatible avec le mode scientifique de PyCharm Pro.
+# SNIPPET pour convertir tous les notebooks de 'notebooks/' en script
+# python dans 'scripts/', déjà compatible avec le mode scientifique de PyCharm Pro.
 # Le code utilise un modèle permettant d'encadrer les cellules Markdown dans des strings.
-# Les scripts possède ensuite le flag d'exécution, pour pouvoir les lancer directement
+# Les scripts possèdent ensuite le flag d'exécution, pour pouvoir les lancer directement
 # via un 'scripts/phase1/1_sample.py'.{% endif %}
 .PHONY: nb-convert
 # Convert all notebooks to python scripts
@@ -736,7 +764,7 @@ _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	echo -e "$(cyan)All new scripts are in $${target}$(normal)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Version permettant de convertir les notebooks et de la ajouter en même temps à GIT
-# en ajouter le flag +x.{% endif %}
+# en ajoutant le flag +x.{% endif %}
 ## Convert all notebooks to python scripts
 nb-convert: _nbconvert
 	@find scripts/ -type f -iname "*.py" -exec git add "{}" \;
@@ -764,8 +792,8 @@ clean-build:
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer tous les notebooks{% endif %}
 .PHONY: clean-notebooks
-## Remove all results of notebooks
-clean-notebooks:
+## Remove all results in notebooks
+clean-notebooks: $(REQUIREMENTS)
 	@[ -e notebooks ] && find notebooks -name '*.ipynb' -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
 	@echo -e "$(cyan)Notebooks cleaned$(normal)"{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -781,8 +809,7 @@ clean-pip:
 # SNIPPET pour nettoyer complètement l'environnement Conda{% endif %}
 .PHONY: clean-venv clean-$(VENV)
 clean-$(VENV): remove-venv
-	@echo -e "$(cyan)Re-create virtualenv $(VENV)...$(normal)"
-	@conda create -y -q -n $(VENV)
+	@conda create -y -q -n $(VENV) $(CONDA_ARGS)
 	@touch setup.py
 	@echo -e "$(yellow)Warning: Conda virtualenv $(VENV) is empty.$(normal)"
 # Set the current VENV empty
@@ -798,42 +825,50 @@ clean: clean-pyc clean-build {% if cookiecutter.use_jupyter == 'y' %}clean-noteb
 # SNIPPET pour faire le ménage du projet{% endif %}
 .PHONY: clean-all
 # Clean all environments
-{% if cookiecutter.use_jupyter == 'y' %}clean-all: clean remove-venv remove-kernel{% else %}clean-all: clean remove-venv{% endif %}
+clean-all:{% if cookiecutter.use_jupyter == 'y' %} remove-kernel{% endif %} clean remove-venv
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour executer les tests unitaires et les tests fonctionnels
+# SNIPPET pour executer les tests unitaires et les tests fonctionnels.
+# Utilisez 'NPROC=1 make unit-test' pour ne pas paralléliser les tests
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite{% endif %}
-PYTEST_PARALLEL ?=-n $(NB_CORE)
+ifeq ($(shell test $(NPROC) -gt 1; echo $$?),0)
+PYTEST_ARGS ?=-n $(NPROC)
+else
+PYTEST_ARGS ?=
+endif
 .PHONY: test unittest functionaltest
 .make-unit-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	@echo -e "$(cyan)Run unit tests...$(normal)"
-	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "not functional"
-	@touch .make-unit-test
+	python -m pytest  -s tests $(PYTEST_ARGS) -m "not functional"
+	@date >.make-unit-test
 # Run only unit tests
 unit-test: .make-unit-test
 
 .make-functional-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	@echo -e "$(cyan)Run functional tests...$(normal)"
-	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "functional"
-	@touch .make-functional-test
+	python -m pytest  -s tests $(PYTEST_ARGS) -m "functional"
+	@date >.make-functional-test
 # Run only functional tests
 functional-test: .make-functional-test
 
 .make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@echo -e "$(cyan)Run all tests...$(normal)"
-	python -m pytest $(PYTEST_PARALLEL) -s tests
-	@touch .make-test .make-unit-test .make-functional-test
+	python -m pytest $(PYTEST_ARGS) -s tests
+	#python setup.py test
+	@date >.make-test
+	@date >.make-unit-test
+	@date >.make-functional-test
 ## Run all tests (unit and functional)
 test: .make-test
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
-# SNIPPET pour vérifier les TU et le recalcule de tous les notebooks et scripts.
-# Il peut etre judicieux d'ajouter lint et typing, pour valider le respect des normes Pythons{% endif %}
+# SNIPPET pour vérifier les TU et le recalcul de tout les notebooks et scripts.
+# Cette règle est invoqué avant un commit sur la branche master de git.{% endif %}
 .PHONY: validate
 ## Validate the version before release
-validate: .make-test $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
+validate: .make-test typing $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.
@@ -842,8 +877,8 @@ validate: .make-test $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y'
 # mise en place de l'environnement nécessaire à l'exécution de la recette,
 # même lorsqu'elle est exécuté sur EC2.
 # Par exemple :
-# - `make on-ec2-test` execute les TU sur EC2
-# - `make detach-train` détache le l'apprentissage{% endif %}
+# - `make on-ec2-test` execute les TU sur EC2 (Invoque `make test`)
+# - `make detach-train` détache le l'apprentissage (Invoque `make train`){% endif %}
 
 # Conda virtual env to use in EC2
 VENV_AWS={% if cookiecutter.use_aws == 'y' %}tensorflow_p36{% else %}cntk_p36{% endif %}
@@ -855,17 +890,16 @@ export AWS_USER_DATA
 define AWS_USER_DATA
 #!/bin/bash -x
 exec > /tmp/user-data.log 2>&1
-sudo su - ec2-user -c "conda install -n $(VENV_AWS) make>=4 -y"
+sudo su - ec2-user -c "conda install -n $(VENV_AWS) make>=4 -y $(CONDA_ARGS)"
 endef
 
 # What is the life cycle of EC2 instance  via ssh-ec2 ?
 #--leave --stop or --terminate
-# TODO Select the life cycle
 EC2_LIFE_CYCLE?=--terminate
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-test`{% endif %}
 .PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
-## Call 'make %' recipe on EC2 (make ec2-train)
+## Call 'make %' recipe on EC2 (`make ec2-train`)
 ec2-%: $(CONDA_PREFIX)/bin/aws
 	@$(VALIDATE_VENV)
 	set -x
@@ -895,8 +929,7 @@ ec2-attach: $(CONDA_PREFIX)/bin/aws
 	set -x
 	ssh-ec2 --attach
 {% if cookiecutter.add_makefile_comments == 'y' %}
-# Recette permettant un `make ec2-finish`
-# Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
+# Recette permettant un `make ec2-finish`{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-finish: $(CONDA_PREFIX)/bin/aws
 	@$(VALIDATE_VENV)
@@ -910,18 +943,6 @@ ec2-notebook: $(CONDA_PREFIX)/bin/aws
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 {% endif %}{% endif %}
 
-{#
-# ---------------------------------------------------------------------------------------
-# EXPERIMENTAL SNIPPET pour calculer automatiquement les dépendances entres fichiers python.
-# Pour cela, il faut installer [importlab](https://github.com/google/importlab)
-# et ajouter pour chaque fichiers python
-# toto.py: $(call python_dep,toto.py)
-# Comme c'est très lent, je déconseille d'utiliser cette approche.
-define python_dep
-	$(shell importlab --tree $1 2>/dev/null | grep -v '::' | grep '^ .*\.py$$')
-endef
-
-#}
 {% if cookiecutter.use_DVC == 'y' %}
 {% include 'DVC.mak' %}
 {% else %}

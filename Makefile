@@ -4,17 +4,22 @@ SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
 
-# Run PARALLEL=True make validate to check in serial mode
+# Use NPROC=n
 .NOTPARALLEL:
-NB_CORE?=$(shell grep -c '^processor' /proc/cpuinfo)
-export PARALLEL?=False
-ifeq ($(PARALLEL),True)
-export MAKE_PARALLEL?=-j $(NB_CORE) -O
-export PYTEST_PARALLEL?=-n $(NB_CORE)
+export NPROC?=$(shell nproc)
+ifeq ($(shell test $(NPROC) -gt 1; echo $$?),0)
+#export MAKE_PARALLEL?=-j $(NPROC)
+# C'est pour lancer les tests slow en //
+export PYTEST_ARGS?=-n $(NPROC)
+export MAKE_PARALLEL?=
+#export PYTEST_ARGS?=
 else
 export MAKE_PARALLEL?=
-export PYTEST_PARALLEL?=
+export PYTEST_ARGS?=
 endif
+
+export CONDA_ARGS=--use-index-cache --use-local --offline
+export BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 
 ifeq ($(OS),Windows_NT)
     OS := Windows
@@ -169,7 +174,7 @@ $(CONDA_PYTHON):
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	$(VALIDATE_VENV)
 	pip install $(EXTRA_INDEX) -e '.[tests]' | grep -v 'already satisfied' || true
-	@touch $(PIP_PACKAGE)
+	@touch >$(PIP_PACKAGE)
 
 # ---------------------------------------------------------------------------------------
 .PHONY: configure
@@ -183,7 +188,7 @@ configure:
 .PHONY: remove-venv
 remove-venv remove-$(VENV):
 	@$(DEACTIVATE_VENV)
-	conda env remove --name "$(VENV)" -y
+	conda env remove --name "$(VENV)" -y  2>/dev/null
 	echo -e "Use: $(cyan)conda deactivate$(normal)"
 # Remove venv
 remove-venv : remove-$(VENV)
@@ -221,16 +226,16 @@ clean: clean-pyc
 clean-all: clean remove-venv
 
 .PHONY: test
-.make-test: $(REQUIREMENTS) tests/* Makefile-TU
+.make-test: $(REQUIREMENTS) tests/*.py Makefile-TU
 	@$(VALIDATE_VENV)
-	python -m pytest $(PYTEST_PARALLEL) -s tests -m "not slow"
-	touch .make-test
+#	python -m pytest $(PYTEST_ARGS) -s tests -m "not slow"
+	@date >.make-test
 ## Run all tests
 test: .make-test
 
 # Create a default generated Makefile for GIT
 Makefile.snippet: $(REQUIREMENTS)
-	cookiecutter -f -o ~/workspace.bda/cookiecutter-bda/tmp --no-input .
+	cookiecutter -f -o tmp --no-input .
 	cp tmp/bda_project/Makefile Makefile.snippet
 	git add Makefile.snippet
 
@@ -274,31 +279,30 @@ _make-%:
 # Check all version of documentations
 .make-check-docs: {{\ cookiecutter.project_slug\ }}/Makefile {{\ cookiecutter.project_slug\ }}/docs
 	$(MAKE) try
-	# PPR
-#	@source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate bda_project
-#	@pushd tmp/bda_project
-##@$(MAKE) build/applehelp # https://github.com/miyakogi/m2r/issues/34
-#	@$(MAKE) build/changes
-#	@$(MAKE) build/devhelp
-#	@$(MAKE) build/dirhtml
-#	@$(MAKE) build/dummy
-##@$(MAKE) build/epub # Error with KeyErro 'ids' in _epub_base.py
-#	@$(MAKE) build/gettext
-#	@$(MAKE) build/html
-#	@$(MAKE) build/htmlhelp
-#	@$(MAKE) build/json
-#	@$(MAKE) build/latex
-##@$(MAKE) build/linkcheck
-#	@$(MAKE) build/man
-#	@$(MAKE) build/pickle
-#	@$(MAKE) build/pseudoxml
-#	@$(MAKE) build/qthelp
-#	@$(MAKE) build/singlehtml
-#	@$(MAKE) build/text
-#	@$(MAKE) build/texinfo
-#	@$(MAKE) build/xml
-#	popd
-	touch .make-check-docs
+	@source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate bda_project
+	@pushd tmp/bda_project
+#@$(MAKE) build/applehelp # https://github.com/miyakogi/m2r/issues/34
+	@$(MAKE) build/changes
+	@$(MAKE) build/devhelp
+	@$(MAKE) build/dirhtml
+	@$(MAKE) build/dummy
+#@$(MAKE) build/epub # Error with KeyErro 'ids' in _epub_base.py
+	@$(MAKE) build/gettext
+	@$(MAKE) build/html
+	@$(MAKE) build/htmlhelp
+	@$(MAKE) build/json
+	@$(MAKE) build/latex
+	@$(MAKE) build/linkcheck
+	@$(MAKE) build/man
+	@$(MAKE) build/pickle
+	@$(MAKE) build/pseudoxml
+	@$(MAKE) build/qthelp
+	@$(MAKE) build/singlehtml
+	@$(MAKE) build/text
+	@$(MAKE) build/texinfo
+	@$(MAKE) build/xml
+	popd
+	@date >.make-check-docs
 
 .PHONY: check-docs
 check-docs: .make-check-docs
@@ -314,37 +318,38 @@ check-docs: .make-check-docs
 	LANG="en_US.UTF-8" make validate | grep 'Nothing' || ( echo "Error in double make validate" ; exit -1 )
 	$(DEACTIVATE_VENV)
 	popd
-	@touch .make-check-makefile
+	@date >.make-check-makefile
 .PHONY: check-makefile
 ## Check all generated rules
 check-makefile: .make-check-makefile
 
 ## Check empty configure
 .make-check-configure:
-	conda env remove -n bda_project
+	@conda env remove -n bda_project  2>/dev/null
 	pushd tmp/bda_project
 	$(MAKE) configure
 	popd
-	@touch .make-check-configure
+	@date >.make-check-configure
 
 .PHONY: check-configure
 check-configure: .make-check-configure
 
-# PPR .make-check-all-make: .make-check-configure .make-check-makefile .make-check-docs
-.make-check-all-make:
-	$(MAKE) clean-test
-	python -m pytest -s tests $(PYTEST_PARALLEL) -m slow
-	@touch .make-check-all-make
+# PPR .make-check-all-make: $(REQUIREMENTS) .make-check-configure .make-check-makefile .make-check-docs
+.make-check-all-make: $(REQUIREMENTS) .make-check-makefile
+	@python -m pytest -s tests $(PYTEST_ARGS) -m slow
+	@date >.make-check-all-make
 
 .PHONY: check-all-make
 ## Try all major make target
 check-all-make: .make-check-all-make
 
 .PHONY: validate
-.make-validate: Makefile Makefile.snippet test check-all-make
+.make-validate: Makefile Makefile.snippet .make-test .make-check-all-make
+	@date >.make-validate
 ## Validate all before commit
 validate: .make-validate
 
 .PHONY: clean-test
 clean-test:
-	rm -Rf /tmp/CC_temp* /tmp/make-* /tmp/ssh-ec2-* temp*.sh ~/.local/share/jupyter/kernels/cc_temp*
+	rm -Rf /tmp/CC_temp* /tmp/make-* /tmp/ssh-ec2-* /tmp/tmp*.sh /tmp/temp*.sh /tmp/ssh-ec2* \
+	~/.local/share/jupyter/kernels/cc_temp* $(CONDA_BASE)/envs/CC_*

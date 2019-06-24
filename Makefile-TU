@@ -3,8 +3,13 @@
 # This is a unit test of all target of generated Makefile
 # Use a temporay coTS = -e -c
 .ONESHELL:
+export CONDA_ARGS=--use-index-cache --use-local --offline
 
-MAKE_PARALLEL?=-j
+export NPROC?=$(shell nproc)
+# Ne fonctionne pas en parallelisant les make du build. (et j'ai pas testé)
+#MAKE_PARALLEL?=-j $(NPROC)
+MAKE_PARALLEL?=
+
 
 PYTHON_VERSION=3.6
 CONDA_BASE=$(shell conda info --base)
@@ -46,7 +51,8 @@ dump-%:
 # Warning, it's not a realy isolated environment with MT because, dist, etc
 # are not cleaning. May be, duplicate all the project ?
 define do_make
-    @echo "---------------------------- $1"
+	@echo ""
+    @echo "---------------------------- $$TU - $1 ---------------------------- "
     set -e
 	V=CC_temp_$(shell cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 10 | head -n 1)
 	D=/tmp/$$V
@@ -65,11 +71,17 @@ define do_make
 	export S3_BUCKET=s3://pprados
 	export SPACY_DATABASE="$${CONDA_PACKAGE}/spacy/data/en"
 	export NLTK_DATABASE="$${NLTK_DATA}/corpora/wordnet $${NLTK_DATA}/tokenizers/punkt $${NLTK_DATA}/corpora/stopwords"
-	VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1
+	export KERNEL=bda_project
+	mkdir -p $${NLTK_DATABASE} $${SPACY_DATABASE}
+	echo ""
+	echo "cd $$(pwd)"
+	echo "conda activate $$V"
+	echo "VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1"
+	VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1 || (echo ">>>>>>>>>>> ERROR WITH '$1' venv=$$V" ; read PPR )
 	cd "$$oldpath"
 	conda deactivate
-	conda env remove -n $$V
-	rm -Rf $$D
+	conda env remove -n $$V 2>/dev/null
+	#rm -Rf $$D
 endef
 
 .PHONY: help
@@ -96,10 +108,6 @@ requirements:
 .PHONY: dependencies
 dependencies:
 	$(call do_make,dependencies)
-
-.PHONY: $(CONDA_PYTHON)
-$(CONDA_PYTHON):
-	$(call do_make,$(CONDA_PYTHON))
 
 .PHONY: NLTK
 NLTK:
@@ -215,7 +223,13 @@ clean-all:
 	$(call do_make,clean-all)
 
 #-------------------
-.PHONY: test validate
+.PHONY: test unit-test functional-test validate
+unit-test:
+	$(call do_make,unit-test)
+
+functional-test:
+	$(call do_make,functional-test)
+
 test:
 	$(call do_make,test)
 
@@ -235,13 +249,12 @@ S3: sync_to_s3 sync_from_s3
 #-------------------
 .PHONY: dvc-external lock metrics
 dvc-external:
-	$(call do_make,dvc-external-s3cache)
+	$(call do_make,dvc-external-s3)
 lock:
-	$(call do_make,lock-external)
+	$(call do_make,features lock-features.dvc)
 metrics:
-	$(call do_make,metrics)
-# PPR
-DVC=dvc-external lock metrics
+	$(call do_make,evaluate metrics)
+DVC:dvc-external lock metrics
 #-------------------
 # FIXME: S'assurer de bien détruire les instances
 ec2:
@@ -276,19 +289,18 @@ visualize:
 #-------------------
 # Group services
 STD: .git .gitattributes requirements dependencies \
-	configure remove-venv upgrade-venv \
-    $(CONDA_PYTHON)
+	configure remove-venv upgrade-venv
 
 DIST: sdist bdist dist
 CLEAN: clean-pyc clean-build clean-venv clean clean-all
-TEST: test validate lint typing add-typing
+TEST: test unit-test functional-test validate lint typing add-typing
 ML: prepare features train evaluate visualize
 
 #-------------------
 # Group of options
-NOT_TESTED: DVC clean-pip check-twine test-twine release ec2-attach ec2-notebook
+NOT_TESTED: clean-pip check-twine test-twine release ec2-attach ec2-notebook
 TEXT_PROCESSING:spacy NLTK
-DEFAULT: CLEAN STD DIST TEST ML
+DEFAULT: CLEAN STD DVC DIST TEST ML
 DOCS: build
 JUPYTER: remove-kernel nb-run nb-convert add-typing clean-notebooks
 AWS: S3 EC2

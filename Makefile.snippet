@@ -49,7 +49,7 @@ endif
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour identifier le nombre de processeur
-NB_CORE:=$(shell grep -c '^processor' /proc/cpuinfo)
+NPROC?=$(shell nproc)
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour pouvoir lancer un browser avec un fichier local
@@ -120,9 +120,11 @@ PYTHON_TST=$(shell find tests -type f -iname '*.py' | grep -v __pycache__)
 # Cela servira à gérer automatiquement les environnements.
 # Pour que cela fonctionne, il faut avoir un environement Conda actif,
 # identifié par la variable CONDA_PREFIX (c'est généralement le cas).
+# Il est possible de fonctionner hors ligne avec `CONDA_ARGS=--use-index-cache`
 CONDA_BASE:=$(shell conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
+CONDA_ARGS?=
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
 JUPYTER_DATA_DIR:=$(shell jupyter --data-dir 2>/dev/null || echo "~/.local/share/jupyter")
 
@@ -302,7 +304,7 @@ endif
 CHECK_VENV=@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
   then ( echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ) ; fi
 
-ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV)
+ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV) $(CONDA_ARGS)
 DEACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda deactivate
 
 VALIDATE_VENV=$(CHECK_VENV)
@@ -335,12 +337,12 @@ dependencies: requirements
 # Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
 	@$(VALIDATE_VENV)
-	conda install -q "python=$(PYTHON_VERSION).*" -y -q
+	conda install -q "python=$(PYTHON_VERSION).*" -y -q $(CONDA_ARGS)
 
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
-	pip install -q $(EXTRA_INDEX) -e '.[dev]' | grep -v 'already satisfied' || true
+	pip install -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
 	@touch $(PIP_PACKAGE)
 
 # ---------------------------------------------------------------------------------------
@@ -423,9 +425,9 @@ $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 .PHONY: configure
 ## Prepare the work environment (conda venv, kernel, ...)
 configure:
-	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y
+	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y $(CONDA_ARGS)
 	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
-	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal)" ; fi
+	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal) $(CONDA_ARGS)" ; fi
 
 # ---------------------------------------------------------------------------------------
 .PHONY: remove-venv
@@ -443,7 +445,7 @@ remove-venv : remove-$(VENV)
 .PHONY: upgrade-venv
 upgrade-$(VENV):
 	@$(VALIDATE_VENV)
-	conda update --all
+	conda update --all $(CONDA_ARGS)
 	pip list --format freeze --outdated | sed 's/(.*//g' | xargs -r -n1 pip install $(EXTRA_INDEX) -U
 	echo -e "$(cyan)After validation, upgrade the setup.py$(normal)"
 # Upgrade packages to last versions
@@ -543,7 +545,7 @@ add-typing: typing
 # Voir https://www.sphinx-doc.org/en/master/usage/builders/index.html
 .PHONY: docs
 # Use all processors
-#PPR SPHINX_FLAGS=-j$(NB_CORE)
+#PPR SPHINX_FLAGS=-j$(NPROC)
 SPHINX_FLAGS=
 # Generate API docs
 docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
@@ -692,7 +694,7 @@ clean-build:
 # SNIPPET pour nettoyer tous les notebooks
 .PHONY: clean-notebooks
 ## Remove all results of notebooks
-clean-notebooks:
+clean-notebooks: $(REQUIREMENTS)
 	@[ -e notebooks ] && find notebooks -name '*.ipynb' -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
 	@echo -e "$(cyan)Notebooks cleaned$(normal)"
 
@@ -709,7 +711,7 @@ clean-pip:
 .PHONY: clean-venv clean-$(VENV)
 clean-$(VENV): remove-venv
 	@echo -e "$(cyan)Re-create virtualenv $(VENV)...$(normal)"
-	@conda create -y -q -n $(VENV)
+	@conda create -y -q -n $(VENV) $(CONDA_ARGS)
 	@touch setup.py
 	@echo -e "$(yellow)Warning: Conda virtualenv $(VENV) is empty.$(normal)"
 # Set the current VENV empty
@@ -728,14 +730,18 @@ clean: clean-pyc clean-build clean-notebooks
 clean-all: clean remove-venv remove-kernel
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour executer les tests unitaires et les tests fonctionnels
+# SNIPPET pour executer les tests unitaires et les tests fonctionnels.
+# Utilisez 'NPROC=1 make unit-test' pour ne pas paralléliser les tests
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite
-PYTEST_PARALLEL ?=-n $(NB_CORE)
+ifeq ($(shell test $(NPROC) -gt 1; echo $$?),0)
+PYTEST_PARALLEL ?=-n $(NPROC)
+else
+PYTEST_PARALLEL ?=
+endif
 .PHONY: test unittest functionaltest
 .make-unit-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	@echo -e "$(cyan)Run unit tests...$(normal)"
-	#python setup.py test
 	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "not functional"
 	@touch .make-unit-test
 # Run only unit tests
@@ -751,7 +757,7 @@ functional-test: .make-functional-test
 
 .make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@echo -e "$(cyan)Run all tests...$(normal)"
-	python -m pytest  -s tests $(PYTEST_PARALLEL)
+	python -m pytest $(PYTEST_PARALLEL) -s tests
 	@touch .make-test .make-unit-test .make-functional-test
 ## Run all tests (unit and functional)
 test: .make-test
@@ -776,55 +782,53 @@ validate: .make-test $(DATA)/raw scripts/* notebooks/* build/html build/linkchec
 define dvc_run
 	if [ -e $1 ] ; then dvc remove $1 ; fi
 	rm -f $1
-	#dvc remove $(addsuffix .dvc,$@)
-	#	--no-commit
 	dvc run -f $1 \
-		$(addprefix -d ,$(filter-out .%,$?)) \
+		$(addprefix -d ,$(filter-out .%,$(filter-out %.egg-link,$?))) \
 		$(if $3,-M $@,-o $@) \
 	$2
-	if [ -e $(@D)/.gitignore ] ; then git add $(@D)/.gitignore ; fi
-	if [ -e $1 ] ; then git add $1 ; fi
+	@if [ -e $(@D)/.gitignore ] ; then git add $(@D)/.gitignore ; fi
+	@if [ -e $1 ] ; then git add $1 ; fi
 endef
 
 
 # ---------------------------------------------------------------------------------------
 # Initialize DVC
 .dvc: | .git
-	dvc init
-	dvc config cache.protected true
-	dvc remote add -d origin $(DVC_BUCKET)
-	git add .dvc/config
+	@dvc init
+	@dvc config cache.protected true
+	@dvc remote add -d origin $(DVC_BUCKET)
+	@git add .dvc/config
 REQUIREMENTS += | .dvc
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour initialiser DVC avec la production de fichiers distants dans des buckets
 # Voir: https://dvc.org/doc/user-guide/external-outputs
 # Use :
-# - make dvc-external-s3cache
-# - make dvc-external-gscache
-# - make dvc-external-azurecache
-# - make dvc-external-sshcache
-# - make dvc-external-htfscache
+# - make dvc-external-s3
+# - make dvc-external-gs
+# - make dvc-external-azure
+# - make dvc-external-ssh
+# - make dvc-external-htfs
 .PHONY: dvc-external-*
-## Initialize the DVC external cache provider (dvc-external-s3cache)
-dvc-external-%: .dvc
-	dvc remote add ${*} $(BUCKET)/cache
-	dvc config cache.gs $*
+## Initialize the DVC external cache provider (dvc-external-s3)
+dvc-external-%: .dvc $(REQUIREMENTS)
+	@dvc remote add ${*}cache $(DVC_BUCKET)/cache
+	@dvc config cache.${*} ${*}cache
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour vérouiller un fichier DVC pour ne plus le reconstruire, meme si cela
 # semble nécessaire. C'est util en phase de développement.
 # See https://dvc.org/doc/commands-reference/lock
 # Lock DVC file
-lock-%: .dvc
-	dvc lock $(*:lock-%=%)
+lock-%: .dvc $(REQUIREMENTS)
+	@dvc lock $(*:lock-%=%)
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour afficher les métrics gérées par DVC.
 # See https://dvc.org/doc/commands-reference/metrics
 ## show the DVC metrics
-metrics: .dvc
-	dvc metrics show
+metrics: .dvc $(REQUIREMENTS)
+	@dvc metrics show
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour supprimer les fichiers de DVC du projet
@@ -850,7 +854,7 @@ bda_project/*.py : $(TOOLS)
 	@touch $@
 
 data/interim/datas-prepared.csv: $(REQUIREMENTS) bda_project/prepare_dataset.py data/raw/*
-	$(call dvc_run,prepare.dvc,\
+	@$(call dvc_run,prepare.dvc,\
 	python -O -m bda_project.prepare_dataset \
 		data/raw/datas.csv \
 		data/interim/datas-prepared.csv\
@@ -860,7 +864,7 @@ prepare.dvc: data/interim/datas-prepared.csv
 prepare: prepare.dvc
 
 data/interim/datas-features.csv : $(REQUIREMENTS) bda_project/build_features.py data/interim/datas-prepared.csv
-	$(call dvc_run,feature.dvc,\
+	@$(call dvc_run,features.dvc,\
 	python -O -m bda_project.build_features \
 		data/interim/datas-prepared.csv \
 		data/interim/datas-features.csv\
@@ -869,7 +873,7 @@ data/interim/datas-features.csv : $(REQUIREMENTS) bda_project/build_features.py 
 features: data/interim/datas-features.csv
 
 models/model.pkl : $(REQUIREMENTS) bda_project/train_model.py data/interim/datas-features.csv
-	$(call dvc_run,train.dvc,\
+	@$(call dvc_run,train.dvc,\
 	python -O -m bda_project.train_model \
 		data/interim/datas-features.csv \
 		models/model.pkl \
@@ -879,7 +883,7 @@ train: models/model.pkl
 
 
 reports/auc.metric: $(REQUIREMENTS) bda_project/evaluate_model.py models/model.pkl
-	$(call dvc_run,evaluate.dvc,\
+	@$(call dvc_run,evaluate.dvc,\
 	python -O -m bda_project.evaluate_model \
 		models/model.pkl \
 		data/interim/datas-features.csv \
@@ -891,7 +895,7 @@ evaluate: reports/auc.metric
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) bda_project/visualize.py models/model.pkl
-	python -O -m bda_project.visualize \
+	@python -O -m bda_project.visualize \
 	    reports/
 
 

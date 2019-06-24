@@ -144,12 +144,14 @@ de ce répertoire à `.gitignore`
 Il est également possible de consulter la plupart des [snippets de code
 du Makefile](Makefile.snippet).
 
-# Fonctionnalité à ajouter
+
+# Fonctionnalités à ajouter
 
 - [X] Proposition d'un pipeline datascience
 - [X] Execution unique en cas de rejeu de la règle make
 - [X] Fonctionnement Conda
 - [ ] Fonctionnement virtualenv
+- [ ] Offline
 - [ ] Execution compatible avec le mode parallèle (-j)
 - [ ] Extraction des métriques dans les différentes branches Git (à la [DVC](https://dvc.org/doc/commands-reference/metrics)
 - [X] [Jupyter](https://jupyter.org/)
@@ -177,16 +179,19 @@ du Makefile](Makefile.snippet).
 - [ ] Injecter les notebooks dans la documentation
 - [X] [LFS](https://git-lfs.github.com/)
 - [X] [DVC](https://dvc.org/)
-- [ ] [MLFlow](https://mlflow.org/) (alternative a DVC))
+- [ ] [MLFlow](https://mlflow.org/) (alternative a DVC et exposition REST)
 - [ ] [Airflow](https://airflow.apache.org/)
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
 - [X] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
 - [ ] [Koalas](https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html)
 - [ ] [Prefect](https://www.prefect.io/)
 - [ ] [Tox](https://tox.readthedocs.io/en/latest/)
+- [ ] [Nox](https://nox.thea.codes/en/stable/)
+- [ ] [DevPi](https://devpi.net/docs/devpi/devpi/stable/%2Bd/index.html)
 - [ ] [Jenkins](https://jenkins.io/)
 - [ ] [Github Travis](https://notes.farcellier.com/travisci/index.html)
 - [ ] Gitlab CI
+- [ ] [Gitlab LFS](https://docs.gitlab.com/ce/workflow/lfs/lfs_administration.html#storing-lfs-objects-in-remote-object-storage)
 - [ ] Docker pour le build
 - [ ] Docker pour run
 - [ ] [Structured logs](https://github.com/FabienArcellier/spike_json_formatter_for_logging_python)

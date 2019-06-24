@@ -7,11 +7,10 @@
 # └─────────┘ └──────────┘ └───────┘ └──────────┘ └───────────┘
 #
 
-TOOLS=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '*.py')
-
 .PHONY: prepare features train evaluate visualize
 
 # Rule to declare an implicite dependencies from sub module for all root project files
+TOOLS:=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '*.py')
 {{ cookiecutter.project_slug }}/*.py : $(TOOLS)
 	@touch $@
 
@@ -47,4 +46,4 @@ evaluate: reports/auc.metric
 ## Visualize the result
 visualize: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/visualize.py models/model.pkl
 	python -O -m {{ cookiecutter.project_slug }}.visualize \
-	    reports/
+	    'reports/*.metric'

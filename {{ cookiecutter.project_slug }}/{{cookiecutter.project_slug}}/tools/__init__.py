@@ -4,4 +4,6 @@
     nécessaires aux différentes phases du projet.
 
 """
-__all__ = ["tools"]
+from typing import List
+
+__all__: List[str] = ["tools"]

@@ -3,9 +3,11 @@
     Treatment in charge of training visualize the results.
 """
 import glob
+import json
 import logging
+import os
 import sys
-from typing import Sequence
+from typing import Sequence, IO
 
 import click
 import dotenv
@@ -13,19 +15,21 @@ import dotenv
 LOGGER = logging.getLogger(__name__)
 
 
-# PPR utiliser typing io.IO ?
-def visualize(files: Sequence[str]) -> None:
+def visualize(streams: Sequence[IO[str]]) -> None:
     """ Visualize the results
 
-        :param list of files
+        :param streams list of files
         :return: 0 if ok, else error
     """
-    for a_file in files:
-        pass  # TODO: Ajoutez le code de visualisation ici
+    for stream in streams:
+        # TODO: Ajoutez le code de visualisation de l'évalusation ici
+        metric = json.load(stream)
+        print("date,                 auc")
+        print(metric["datetime"], ",", metric["auc"])
 
 
 @click.command()
-@click.argument('evaluate_filepath', type=click.Path(exists=True))
+@click.argument('evaluate_filepath', type=str)
 def main(evaluate_filepath: str) -> int:
     """ Visualize the results
 
@@ -34,9 +38,12 @@ def main(evaluate_filepath: str) -> int:
     """
     LOGGER.info('Visualize the results')
 
-    inputs: Sequence[str] = \
-        [str(a_file)
-         for a_file in glob.glob(evaluate_filepath, recursive=True)]
+    if (evaluate_filepath.find("*") == -1):
+        evaluate_filepath += "*"
+    inputs: Sequence[IO[str]] = \
+        [open(a_file, "r")
+         for a_file in glob.glob(evaluate_filepath, recursive=True)
+         if not os.path.isdir(a_file)]
     visualize(inputs)
     return 0
 

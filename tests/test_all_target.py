@@ -1,19 +1,13 @@
+import multiprocessing
 import os
 import subprocess
 
 import pytest
 
-# Use PARALLEL=True make ...
-PARALLEL=os.getenv("PARALLEL","False").lower() in ("yes", "true")
-MAKE_PARALLEL = os.getenv("MAKE_PARALLEL","-j -O" if PARALLEL else "")
-PYTEST_PARALLEL=os.getenv("PYTEST_PARALLEL","-n 10" if PARALLEL else "")
+NPROC = int(os.getenv("NPROC", multiprocessing.cpu_count()))
+MAKE_PARALLEL = os.getenv("MAKE_PARALLEL", f"-j {NPROC}" if (NPROC != 0) else "")
+PYTEST_PARALLEL = os.getenv("PYTEST_PARALLEL", f"-n {NPROC}" if (NPROC != 0) else "")
 
-# PPR
-print("--------------------------------------------------------")
-print("PARALLEL=",PARALLEL)
-print("MAKE_PARALLEL=",MAKE_PARALLEL)
-print("PYTEST_PARALLEL=",PYTEST_PARALLEL)
-print("--------------------------------------------------------")
 
 def _run_make_cmd(dirname: str, cmd: str):
     print(f"Execute '{cmd}'...")
@@ -27,9 +21,11 @@ def _run_make_cmd(dirname: str, cmd: str):
         export AWS_INSTANCE_TYPE=t2.small
         ln -f Makefile-TU {dirname}/bda_project/Makefile-TU
         cd "{dirname}/bda_project"
-        {cmd}
+        pwd
+        echo "{cmd}"
+        {cmd} || (echo ">>>>>>>>>>> ERROR with '{cmd}'" ; read PPR )
         conda deactivate
-        conda env remove -n $V
+        # PPR conda env remove -n $V 2>/dev/null
         """, shell=True)
 
 
@@ -58,11 +54,10 @@ def test_template_default_values(cookies, context):
     assert result.project.basename == 'bda_project'
     assert result.project.isdir()
 
-    # PPR assert 0 == _run_make_cmd(result.project.dirname, f"make {PYTEST_PARALLEL} make {MAKE_PARALLEL} -f Makefile-TU DEFAULT DOCS")
-    assert 0 == _run_make_cmd(result.project.dirname,
-                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU DIST")
-
-
+    assert 0 == \
+           _run_make_cmd(result.project.dirname,
+                         f"TU=\"default values\" PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" "
+                         f"make {MAKE_PARALLEL} -f Makefile-TU DEFAULT DOCS")
 @pytest.mark.slow
 def test_template_with_aws_and_s3(cookies, context):
     """Test the template for proper creation.
@@ -91,7 +86,8 @@ def test_template_with_aws_and_s3(cookies, context):
     assert result.project.isdir()
 
     assert 0 == _run_make_cmd(result.project.dirname,
-                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU AWS")
+                              f"TU=\"s3\" PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" "
+                              f"make {MAKE_PARALLEL} -f Makefile-TU AWS")
 
 
 @pytest.mark.slow
@@ -122,7 +118,8 @@ def test_template_with_jupyter(cookies, context):
     assert result.project.isdir()
 
     assert 0 == _run_make_cmd(result.project.dirname,
-                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU JUPYTER")
+                              f"TU=\"jupyter\" PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" "
+                              f"make {MAKE_PARALLEL} -f Makefile-TU JUPYTER")
 
 
 @pytest.mark.slow
@@ -153,7 +150,8 @@ def test_template_with_text_processing(cookies, context):
     assert result.project.isdir()
 
     assert 0 == _run_make_cmd(result.project.dirname,
-                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU TEXT_PROCESSING")
+                              f"TU=\"text processing\" PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" "
+                              f"make {MAKE_PARALLEL} -f Makefile-TU TEXT_PROCESSING")
 
 
 @pytest.mark.slow
@@ -184,5 +182,5 @@ def test_template_with_open_source(cookies, context):
     assert result.project.isdir()
 
     assert 0 == _run_make_cmd(result.project.dirname,
-                              f"PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" make {MAKE_PARALLEL} -f Makefile-TU OPENSOURCE")
-
+                              f"TU=\"Open Source\" PYTEST_PARALLEL=\"{PYTEST_PARALLEL}\" "
+                              f"make {MAKE_PARALLEL} -f Makefile-TU OPENSOURCE")

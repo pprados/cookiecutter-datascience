@@ -28,7 +28,7 @@ The Makefile contains the central entry points for common tasks related to this 
 * ``make remove-kernel`` will remove the project's kernel
 * ``make nb-run-%`` will execute all notebooks
 * ``make notebook`` will start a jupyter notebook
-* ``make nbconvert`` will convert all notebooks to python
+* ``make nb-convert`` will convert all notebooks to python
 * ``make clean-notebooks`` will clean all datas in the notebooks
 {% endif %}
 {% if cookiecutter.use_aws == 'y' %}

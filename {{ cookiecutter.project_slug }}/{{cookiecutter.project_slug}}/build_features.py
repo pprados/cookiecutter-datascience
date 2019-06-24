@@ -40,7 +40,7 @@ def main(input_prepared_filepath: str,
         :param output_featured_filepath: output file path with features
         :return: 0 if ok, else error
     """
-    LOGGER.info('add features from prepared data')
+    LOGGER.info('Add features from prepared data')
 
     pathlib.Path(os.path.dirname(output_featured_filepath)) \
         .mkdir(parents=True, exist_ok=True)

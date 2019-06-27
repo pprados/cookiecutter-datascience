@@ -174,7 +174,7 @@ $(CONDA_PYTHON):
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	$(VALIDATE_VENV)
 	pip install $(EXTRA_INDEX) -e '.[tests]' | grep -v 'already satisfied' || true
-	@touch >$(PIP_PACKAGE)
+	@touch $(PIP_PACKAGE)
 
 # ---------------------------------------------------------------------------------------
 .PHONY: configure
@@ -227,47 +227,60 @@ clean-all: clean remove-venv
 
 .PHONY: test
 .make-test: $(REQUIREMENTS) tests/*.py Makefile-TU
-	@$(VALIDATE_VENV)
-#	python -m pytest $(PYTEST_ARGS) -s tests -m "not slow"
+ifeq ($(OFFLINE),True)
+	@python -m pytest -s tests $(PYTEST_ARGS) -m "not online"
+else
+	@python -m pytest -s tests $(PYTEST_ARGS)
+endif
 	@date >.make-test
 ## Run all tests
 test: .make-test
 
 # Create a default generated Makefile for GIT
 Makefile.snippet: $(REQUIREMENTS)
-	cookiecutter -f -o tmp --no-input .
-	cp tmp/bda_project/Makefile Makefile.snippet
+	cookiecutter -f -o try --no-input .
+	cp try/$(BRANCH)/bda_project/Makefile Makefile.snippet
 	git add Makefile.snippet
 
-try_jupyter: $(REQUIREMENTS)
-	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py use_jupyter=y
-	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+.PHONY: try
+try/$(BRANCH):
+	mkdir -p try/$(BRANCH)
 
-try_text_processing: $(REQUIREMENTS)
+try_jupyter: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py use_text_processing=y
-	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_jupyter=y
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 
-try_DVC: $(REQUIREMENTS)
+try_text_processing: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py use_DVC=y
-	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_text_processing=y
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 
-try_aws: $(REQUIREMENTS)
+try_DVC: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py use_aws=y use_s3=y
-	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_DVC=y
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 
-try_opensource: $(REQUIREMENTS)
+try_aws: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py open_source_software=y
-	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_aws=y use_s3=y
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 
-try: $(REQUIREMENTS)
+try_opensource: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py use_DVC=y
-	ln -f Makefile-TU tmp/bda_project/Makefile-TU
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) open_source_software=y
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
+
+try_default: $(REQUIREMENTS) try/$(BRANCH)
+	$(VALIDATE_VENV)
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH)
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
+
+try: $(REQUIREMENTS) try/$(BRANCH)
+	$(VALIDATE_VENV)
+	# PPR DVC=n
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_DVC=n use_text_processing=y use_aws=y use_s3=y open_source_software=y
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 
 _make-%:
 	$(MAKE) try
@@ -309,9 +322,10 @@ check-docs: .make-check-docs
 
 # Il faut probablement lancer des builds avants, pour remetre l'état valide
 .make-check-makefile: Makefile-TU {{\ cookiecutter.project_slug\ }}/Makefile
-	$(MAKE) try
-	@pushd tmp/bda_project
-	$(ACTIVATE_VENV)
+	@$(MAKE) try
+	pushd try/$(BRANCH)/bda_project
+	export VENV=$(BRANCH)
+	source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $$VENV
 	# Check double make validate
 	make clean-build
 	make validate
@@ -325,8 +339,9 @@ check-makefile: .make-check-makefile
 
 ## Check empty configure
 .make-check-configure:
-	@conda env remove -n bda_project  2>/dev/null
-	pushd tmp/bda_project
+	@conda env remove -n $(BRANCH) 2>/dev/null
+	pushd try/$(BRANCH)/bda_project
+	export VENV=$(BRANCH)
 	$(MAKE) configure
 	popd
 	@date >.make-check-configure
@@ -335,8 +350,7 @@ check-makefile: .make-check-makefile
 check-configure: .make-check-configure
 
 # PPR .make-check-all-make: $(REQUIREMENTS) .make-check-configure .make-check-makefile .make-check-docs
-.make-check-all-make: $(REQUIREMENTS) .make-check-makefile
-	@python -m pytest -s tests $(PYTEST_ARGS) -m slow
+.make-check-all-make: $(REQUIREMENTS) .make-test .make-check-makefile
 	@date >.make-check-all-make
 
 .PHONY: check-all-make
@@ -348,6 +362,12 @@ check-all-make: .make-check-all-make
 	@date >.make-validate
 ## Validate all before commit
 validate: .make-validate
+
+~/.mypypi: try
+	pip download setuptools_scm --dest ~/.mypypi
+	cd try/$(BRANCH)/bda_project
+	make offline
+offline: ~/.mypypi
 
 .PHONY: clean-test
 clean-test:

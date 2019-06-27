@@ -27,8 +27,7 @@ Principes d'organisation du projet
   de commande. Cela permet d'utiliser des outils d'optimisations des meta-paramètres.
 
 * Les metrics doivent être sauvegardées dans un fichier ``.json`` et pushé sur GIT. Cela permet
-  d'avoir une trace des différents scénarios dans différents tags ou branches, pour les comparer,
-  comme le propose `DVC` par exemple.
+  d'avoir une trace des différents scénarios dans différents tags ou branches, pour les comparer.
 
 * Un ``make validate`` est exécuter automatiquement avant un ``git push`` sur la branche ``master``.
   Il ne doit pas générer d'erreurs. Cela permet d'avoir un build incassable, en ne publiant
@@ -95,8 +94,8 @@ Vérifier le build
 Pour vérifier que le Makefile est correct, vous pouvez vider l'environement conda avec ``make clean-venv``
 puis lancer votre règle. Elle doit fonctionner directement et doit même pouvoir être exécuté deux fois
 de suite, sans rejouer le traitement deux fois. Par exemple :
-``$ make validate
-$ make validate``
+``$ make validate``
+``$ make validate``
 
 Déverminer le Makefile
 ----------------------

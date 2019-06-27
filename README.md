@@ -151,7 +151,7 @@ du Makefile](Makefile.snippet).
 - [X] Execution unique en cas de rejeu de la règle make
 - [X] Fonctionnement Conda
 - [ ] Fonctionnement virtualenv
-- [ ] Offline
+- [X] Offline
 - [ ] Execution compatible avec le mode parallèle (-j)
 - [ ] Extraction des métriques dans les différentes branches Git (à la [DVC](https://dvc.org/doc/commands-reference/metrics)
 - [X] [Jupyter](https://jupyter.org/)
@@ -193,7 +193,7 @@ du Makefile](Makefile.snippet).
 - [ ] Gitlab CI
 - [ ] [Gitlab LFS](https://docs.gitlab.com/ce/workflow/lfs/lfs_administration.html#storing-lfs-objects-in-remote-object-storage)
 - [ ] Docker pour le build
-- [ ] Docker pour run
+- [ ] Docker pour le run
 - [ ] [Structured logs](https://github.com/FabienArcellier/spike_json_formatter_for_logging_python)
 - [ ] [Retry](https://notes.farcellier.com/python/index.html#retrying)
 - [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))

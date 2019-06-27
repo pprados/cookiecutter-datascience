@@ -353,8 +353,7 @@ REQUIREMENTS=$(PIP_PACKAGE) \
 {% endif %}	.gitattributes
 requirements: $(REQUIREMENTS)
 dependencies: requirements
-{#
-# PPR: chantier OFFLINE
+
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer le mode offline.
@@ -376,7 +375,7 @@ ifeq ($(OFFLINE),True)
 CONDA_ARGS+=--use-index-cache --use-local --offline
 PIP_ARGS+=--no-index --find-links ~/.mypypi
 endif
- #}
+
 # Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
 	@$(VALIDATE_VENV)
@@ -437,15 +436,23 @@ endif
 NLTK_DATABASE=
 
 $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
-	$(VALIDATE_VENV)
+ifneq ($(OFFLINE),True)
+	@$(VALIDATE_VENV)
 	python -O -m nltk.downloader $* || true
 	touch $(NLTK_DATA)/tokenizers/$*
+else
+	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
+endif
 
 $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
+ifneq ($(OFFLINE),True)
 	@$(VALIDATE_VENV)
 	echo -e "$(cyan)Download $*...$(normal)"
 	python -O -m nltk.downloader $* || true
-	touch $(NLTK_DATA)/corpora/$*{% endif %}
+	touch $(NLTK_DATA)/corpora/$*
+else
+	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
+endif{% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de spacy.{% endif %}
@@ -458,10 +465,14 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 SPACY_DATABASE=
 
 $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
+ifneq ($(OFFLINE),True)
 	@$(VALIDATE_VENV)
 	echo -e "$(cyan)Download $*...$(normal)"
 	python -O -m spacy download $*
-	@touch $(CONDA_PACKAGE)/spacy/data/$*{% endif %}
+	@touch $(CONDA_PACKAGE)/spacy/data/$*
+else
+	@echo -e "$(red)Can not download Spacy database in offline mode$(normal)"
+endif{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour préparer l'environnement d'un projet juste après un `git clone`{% endif %}
@@ -487,10 +498,14 @@ remove-venv : remove-$(VENV)
 # pour tenir compte des mises à jours{% endif %}
 .PHONY: upgrade-venv
 upgrade-$(VENV):
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not upgrade virtual env in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	conda update --all $(CONDA_ARGS)
 	pip list --format freeze --outdated | sed 's/(.*//g' | xargs -r -n1 pip install $(EXTRA_INDEX) -U
-	echo -e "$(cyan)After validation, upgrade the setup.py$(normal)"
+	@echo -e "$(cyan)After validation, upgrade the setup.py$(normal)"
+endif
 # Upgrade packages to last versions
 upgrade-venv: upgrade-$(VENV)
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -560,7 +575,6 @@ pytype.cfg: $(CONDA_PREFIX)/bin/pytype
 	@[[ ! -f pytype.cfg ]] && pytype --generate-config pytype.cfg || true
 	touch pytype.cfg
 
-
 .pytype/pyi/{{ cookiecutter.project_slug }}: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg
 	$(VALIDATE_VENV)
 	pytype {{ cookiecutter.project_slug }}
@@ -602,10 +616,17 @@ docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
 build/%: $(REQUIREMENTS) docs/source docs/* README.md CHANGELOG.md | .git
 	@$(VALIDATE_VENV)
 	@TARGET=$(*:build/%=%)
+ifeq ($(OFFLINE),True)
+	if [ "$$TARGET" != "linkcheck" ] ; then
+endif
 	@echo "Build $$TARGET..."
 	@LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_FLAGS)
 	touch build/$$TARGET
-
+ifeq ($(OFFLINE),True)
+	else
+		@echo -e "$(red)Can not to build '$$TARGET' in offline mode$(normal)"
+	fi
+endif
 # Build all format of documentations
 ## Generate and show the HTML documentation
 docs: build/html
@@ -655,8 +676,12 @@ dist: bdist sdist
 .PHONY: check-twine
 ## Check the distribution before publication
 check-twine: bdist
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not check-twine in offline mode$(normal)"
+else
 	$(VALIDATE_VENV)
 	twine check dist/*
+endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour tester la publication d'une distribution
@@ -664,18 +689,26 @@ check-twine: bdist
 .PHONY: test-twine
 ## Publish distribution on test.pypi.org
 test-twine: bdist
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not test-twine in offline mode$(normal)"
+else
 	$(VALIDATE_VENV)
 	ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
+endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour publier la version sur pypi.org.{% endif %}
 .PHONY: release
 ## Publish distribution on pypi.org
 release: dist
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not release in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	[[ $$(ls -1 dist --hide "*.dev*" | wc -l) -ne 0 ]] || echo -e "$(red)Add a tag version in GIT to release$(normal)"
 	echo "Enter Pypi password"
 	ls $(PWD)/dist/* --hide "*.dev*" | xargs twine upload
+endif
 {% endif %}
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 
@@ -702,18 +735,26 @@ $(CONDA_PREFIX)/bin/aws:
 .PHONY: sync_to_s3 sync_from_s3
 ## Upload Data to S3
 sync_to_s3/%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use s3 in offline mode$(normal)"
+else
 ifeq (default,$(PROFILE))
 	aws s3 sync $(DATA)/$(*:sync_to_s3/%=%) $(S3_BUCKET)/data/$(*:sync_to_s3/%=%)
 else
 	aws s3 sync $(DATA)/$(*:sync_to_s3/%=%) $(S3_BUCKET)/data/$(*:sync_to_s3/%=%) --profile $(PROFILE)
 endif
+endif
 
 ## Download Data from S3
 sync_from_s3/%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use s3 in offline$(normal)"
+else
 ifeq (default,$(PROFILE))
 	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%)
 else
 	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%) --profile $(PROFILE)
+endif
 endif
 {% endif %}
 # Download raw data if necessary
@@ -901,46 +942,70 @@ EC2_LIFE_CYCLE?=--terminate
 .PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
 ## Call 'make %' recipe on EC2 (`make ec2-train`)
 ec2-%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-%=%)"
+endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant d'exécuter une recette avec un tmux activé.
 # Par exemple `make ec2-tmux-train`{% endif %}
 ## Call 'make %' recipe on EC2 with a tmux session (`make ec2-tmux-train`)
 ec2-tmux-%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	set -x
 	NO_RSYNC_END=n ssh-ec2 --multi tmux --leave "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-tmux-%=%)"
+endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-detach-test`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-detach-%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 --detach $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-detach-%=%)"
+endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-attach`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-attach: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 --attach
+endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make ec2-finish`{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
 ec2-finish: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 --finish
+endif
 {% if cookiecutter.use_aws == 'y' %}
 ## Start jupyter notebook on EC2
 ec2-notebook: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline$(normal)"
+else
 	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
+endif
 {% endif %}{% endif %}
 
 {% if cookiecutter.use_DVC == 'y' %}

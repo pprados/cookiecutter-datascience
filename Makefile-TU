@@ -63,8 +63,10 @@ define do_make
 	cd $$D/
     echo "$1"> test.txt
 	. $(CONDA_BASE)/etc/profile.d/conda.sh
-	conda create -n $$V -y python=$(PYTHON_VERSION)
+	conda create $$CONDA_ARGS -n $$V -y python=$(PYTHON_VERSION)
 	conda activate $$V
+	# PPR est-ce util d'ajouter le pip install setuptools_scm ?
+	pip install $(PIP_ARGS) setuptools_scm
 	rm -rf data/interim/* data/processed/* data/external/*
 	CONDA_PACKAGE=$${CONDA_PREFIX}/lib/python$(PYTHON_VERSION)/site-packages
 	export EC2_LIFE_CYCLE=--terminate
@@ -74,6 +76,7 @@ define do_make
 	export KERNEL=bda_project
 	mkdir -p $${NLTK_DATABASE} $${SPACY_DATABASE}
 	echo ""
+    echo "---- $$TU - $1"
 	echo "cd $$(pwd)"
 	echo "conda activate $$V"
 	echo "VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1"
@@ -81,7 +84,8 @@ define do_make
 	cd "$$oldpath"
 	conda deactivate
 	conda env remove -n $$V 2>/dev/null
-	#rm -Rf $$D
+	# PPR bug avec DVC si je rm ?
+	rm -Rf $$D
 endef
 
 .PHONY: help
@@ -93,7 +97,7 @@ help:
 dump:
 	$(call do_make,dump-CONDA_BASE)
 
-.PḦONY: .git
+.PHONY: .git
 .git:
 	$(call do_make,.git)
 
@@ -261,13 +265,13 @@ ec2:
 	$(call do_make,ec2-clean)
 
 ec2-tmux:
-	$(call do_make,ec2-tmux-clean ; ssh-ec2 --terminate :)
+	$(call do_make,ec2-tmux-clean ; [ "$$OFFLINE" = True ] || ssh-ec2 --terminate :)
 ec2-attach:
-	$(call do_make,ec2-detach-clean ec2-attach ; ssh-ec2 --terminate :)
+	$(call do_make,ec2-detach-clean ec2-attach ; [ "$$OFFLINE" = True ] || ssh-ec2 --terminate :)
 ec2-finish:
 	$(call do_make,ec2-detach-clean ec2-finish)
 ec2-notebook:
-	$(call do_make,ec2-notebook ; ssh-ec2 --terminate :)
+	$(call do_make,ec2-notebook ; [ "$$OFFLINE" = True ] || ssh-ec2 --terminate :)
 EC2: ec2 ec2-tmux ec2-finish
 
 #-------------------
@@ -289,7 +293,8 @@ visualize:
 #-------------------
 # Group services
 STD: .git .gitattributes requirements dependencies \
-	configure remove-venv upgrade-venv
+	configure remove-venv
+STD_ONLINE: upgrade-venv
 
 DIST: sdist bdist dist
 CLEAN: clean-pyc clean-build clean-venv clean clean-all
@@ -299,10 +304,9 @@ ML: prepare features train evaluate visualize
 #-------------------
 # Group of options
 NOT_TESTED: clean-pip check-twine test-twine release ec2-attach ec2-notebook
-TEXT_PROCESSING:spacy NLTK
+TEXT_PROCESSING_ONLINE:spacy NLTK
 DEFAULT: CLEAN STD DVC DIST TEST ML
+DEFAULT_ONLINE: STD_ONLINE
 DOCS: build
 JUPYTER: remove-kernel nb-run nb-convert add-typing clean-notebooks
-AWS: S3 EC2
-OPENSOURCE: dist
-
+AWS_ONLINE: S3 EC2

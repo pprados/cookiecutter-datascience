@@ -6,7 +6,7 @@ import click
 from cookiecutter.main import cookiecutter
 
 
-def try_cookiecutter(params: List[str], output_dir: str = "tmp") -> str:
+def try_cookiecutter(params: List[str], output_dir: str = "try") -> str:
     # All default value to false
     options = {
         "project_name": "BDA Project",
@@ -36,7 +36,7 @@ def try_cookiecutter(params: List[str], output_dir: str = "tmp") -> str:
 
 
 @click.command()
-@click.option('--output_dir', default="tmp", type=click.Path(exists=True))
+@click.option('--output_dir', default="try", type=click.Path(exists=True))
 @click.argument('params', nargs=-1, type=str)
 def main(output_dir: str, params: List[str]):
     """ Apply cookiecutter with specific extra parameters

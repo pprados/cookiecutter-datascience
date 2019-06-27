@@ -59,7 +59,6 @@ define BROWSER
 	from urllib.request import pathname2url
 
 	webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])), autoraise=True)
-	print("")
 	sys.exit(0)
 	'
 endef
@@ -67,9 +66,9 @@ endef
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour supprimer le parallelisme pour certaines cibles
 # par exemple pour release
-#ifneq ($(filter release,$(MAKECMDGOALS)),)
-#.NOTPARALLEL:
-#endif
+ifneq ($(filter configure release clean% upgrade-%,$(MAKECMDGOALS)),)
+.NOTPARALLEL:
+endif
 #
 
 # ---------------------------------------------------------------------------------------
@@ -92,10 +91,10 @@ gray:=$(shell tput setaf 8)
 endif
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour gérer le projet, le virtualenv conda et le kernel
+# SNIPPET pour gérer le projet, le virtualenv conda et le kernel.
 # Par convention, les noms du projet, de l'environnement Conda ou le Kernel Jupyter
 # correspondent au nom du répertoire du projet.
-# Il est possible de modifier cela en valorisant les variables VENV et/ou KERNEL
+# Il est possible de modifier cela en valorisant les variables VENV, KERNEL, et/ou PRJ.
 # avant le lancement du Makefile (`VENV=cntk_p36 make`)
 PRJ:=$(shell basename $(shell pwd))
 VENV ?= $(PRJ)
@@ -103,7 +102,7 @@ KERNEL ?=$(VENV)
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:=3.6
 
-# Data directory (can be in other place, in VM for example)
+# Data directory (can be in other place, in VM or Docker for example)
 export DATA?=data
 
 # Use DVC bucket. May be :
@@ -112,20 +111,22 @@ export DATA?=data
 # DVC_BUCKET?=ssh://user@example.com:
 # DVC_BUCKET?=hdfs://user@example.com
 DVC_BUCKET?=~/.dvc
+# List of source and tests files
 PYTHON_SRC=$(shell find bda_project -type f -iname '*.py' | grep -v __pycache__)
 PYTHON_TST=$(shell find tests -type f -iname '*.py' | grep -v __pycache__)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
-# Cela servira à gérer automatiquement les environnements.
+# Cela sert à gérer automatiquement les environnements.
 # Pour que cela fonctionne, il faut avoir un environement Conda actif,
 # identifié par la variable CONDA_PREFIX (c'est généralement le cas).
-# Il est possible de fonctionner hors ligne avec `CONDA_ARGS=--use-index-cache`
 CONDA_BASE:=$(shell conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
 CONDA_ARGS?=
+
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
+PIP_ARGS?=
 JUPYTER_DATA_DIR:=$(shell jupyter --data-dir 2>/dev/null || echo "~/.local/share/jupyter")
 
 # ---------------------------------------------------------------------------------------
@@ -208,8 +209,7 @@ dump-%:
 # Pour cela, elles appliquent `jupyter nb-convert` à la volée. Ainsi, les comparaisons
 # de version ne sont plus parasités par les data.
 #
-# Les scripts pour les CSV utilisent le composant `daff` (pip install daff)
-# pour comparer plus efficacement les évolutions des fichiers csv.
+# Les scripts pour les CSV utilisent le composant `daff` (pipSvolutions des fichiers csv.
 # Un `git diff toto.csv` est plus clair.
 
 # S'assure de la présence de git (util en cas de synchronisation sur le cloud par exemple,
@@ -334,6 +334,28 @@ REQUIREMENTS=$(PIP_PACKAGE) \
 requirements: $(REQUIREMENTS)
 dependencies: requirements
 
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour gérer le mode offline.
+# La cible `offline` permet de télécharger toutes les dépendences, pour pouvoir les utiliser
+# ensuite sans connexion. Ensuite, il faut valoriser la variable d'environnement OFFLINE
+# à True avant le lancement du make pour une utilisation sans réseau.
+# `export OFFLINE=True
+# make ...
+# unset OFFLINE`
+
+# TODO: faire une regle ~/.offline et un variable qui s'ajuste pour tirer la dépendances ?
+# ou bien le faire à la main ?
+# Download dependencies for offline usage
+~/.mypypi: setup.py
+	pip download '.[dev,test]' --dest ~/.mypypi
+# Download modules and packages before going offline
+offline: ~/.mypypi
+ifeq ($(OFFLINE),True)
+CONDA_ARGS+=--use-index-cache --use-local --offline
+PIP_ARGS+=--no-index --find-links ~/.mypypi
+endif
+
 # Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
 	@$(VALIDATE_VENV)
@@ -342,7 +364,7 @@ $(CONDA_PYTHON):
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
-	pip install -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
+	pip install $(PIP_ARGS) -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
 	@touch $(PIP_PACKAGE)
 
 # ---------------------------------------------------------------------------------------
@@ -353,18 +375,18 @@ $(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(REQUIREMENTS)
 	python -O -m ipykernel install --user --name $(KERNEL)
 	echo -e "$(cyan)Kernel $(KERNEL) installed$(normal)"
 
-# Remove the kernel
+# Remove the Jupyter kernel
 .PHONY: remove-kernel
-remove-kernel:
+remove-kernel: $(REQUIREMENTS)
 	@echo y | jupyter kernelspec uninstall $(KERNEL) 2>/dev/null || true
 	echo -e "$(yellow)Warning: Kernel $(KERNEL) uninstalled$(normal)"
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de nltk.
-# Vous pouvez valoriser NLTK_DATA https://www.nltk.org/data.html
+# Vous devez valoriser NLTK_DATA https://www.nltk.org/data.html
 ifndef NLTK_DATA
 export NTLK_DATA
-# The new line slowed the Makefile.
+# The next line slowed the Makefile.
 #NLTK_DATA:=$(shell python -c "import nltk.data; print(nltk.data.path[0])" 2>/dev/null || true)
 # Else
 ifeq ($(OS),Darwin)
@@ -387,22 +409,30 @@ endif
 # Add here the NLTK database.
 # For example, add
 # NLTK_DATABASE= \
-# $(NLTK_DATA)/corpora/wordnet \
-# $(NLTK_DATA)/tokenizers/punkt \
-# $(NLTK_DATA)/corpora/stopwords
+#   $(NLTK_DATA)/corpora/wordnet \
+#   $(NLTK_DATA)/tokenizers/punkt \
+#   $(NLTK_DATA)/corpora/stopwords
 # and that's all.
 NLTK_DATABASE=
 
 $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
-	$(VALIDATE_VENV)
+ifneq ($(OFFLINE),True)
+	@$(VALIDATE_VENV)
 	python -O -m nltk.downloader $* || true
 	touch $(NLTK_DATA)/tokenizers/$*
+else
+	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
+endif
 
 $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
+ifneq ($(OFFLINE),True)
 	@$(VALIDATE_VENV)
 	echo -e "$(cyan)Download $*...$(normal)"
 	python -O -m nltk.downloader $* || true
 	touch $(NLTK_DATA)/corpora/$*
+else
+	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
+endif
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de spacy.
@@ -415,10 +445,14 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 SPACY_DATABASE=
 
 $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
+ifneq ($(OFFLINE),True)
 	@$(VALIDATE_VENV)
 	echo -e "$(cyan)Download $*...$(normal)"
 	python -O -m spacy download $*
 	@touch $(CONDA_PACKAGE)/spacy/data/$*
+else
+	@echo -e "$(red)Can not download Spacy database in offline mode$(normal)"
+endif
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour préparer l'environnement d'un projet juste après un `git clone`
@@ -435,7 +469,7 @@ remove-$(VENV):
 	@$(DEACTIVATE_VENV)
 	conda env remove --name "$(VENV)" -y
 	echo -e "Use: $(cyan)conda deactivate$(normal)"
-# Remove venv
+# Remove virtual environement
 remove-venv : remove-$(VENV)
 
 # ---------------------------------------------------------------------------------------
@@ -444,10 +478,14 @@ remove-venv : remove-$(VENV)
 # pour tenir compte des mises à jours
 .PHONY: upgrade-venv
 upgrade-$(VENV):
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not upgrade virtual env in offline mode$(normal)"
+else
 	@$(VALIDATE_VENV)
 	conda update --all $(CONDA_ARGS)
 	pip list --format freeze --outdated | sed 's/(.*//g' | xargs -r -n1 pip install $(EXTRA_INDEX) -U
-	echo -e "$(cyan)After validation, upgrade the setup.py$(normal)"
+	@echo -e "$(cyan)After validation, upgrade the setup.py$(normal)"
+endif
 # Upgrade packages to last versions
 upgrade-venv: upgrade-$(VENV)
 
@@ -470,7 +508,7 @@ notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebook
 
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
 nb-run-%: $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	$(MAKE) notebooks/.make-$*
+	VENV=$(VENV) $(MAKE) notebooks/.make-$*
 
 
 # ---------------------------------------------------------------------------------------
@@ -495,7 +533,7 @@ run-%:
 	$(MAKE) scripts/.make-$*
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour valider le code avec pylint et flake8
+# SNIPPET pour valider le code avec flake8 et pylint
 .PHONY: lint
 .pylintrc:
 	pylint --generate-rcfile > .pylintrc
@@ -510,18 +548,19 @@ lint: $(REQUIREMENTS) | .pylintrc
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le typage avec pytype
-$(CONDA_PACKAGE)/bin/pytype:
-	@pip install -q pytype
+$(CONDA_PREFIX)/bin/pytype:
+	@pip install $(PIP_ARGS) -q pytype
 
-pytype.cfg:
-	pytype --generate-config pytype.cfg
+pytype.cfg: $(CONDA_PREFIX)/bin/pytype
+	@[[ ! -f pytype.cfg ]] && pytype --generate-config pytype.cfg || true
+	touch pytype.cfg
 
-.pytype/pyi/bda_project: $(REQUIREMENTS) $(CONDA_PACKAGE)/bin/pytype pytype.cfg
+.pytype/pyi/bda_project: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg
 	$(VALIDATE_VENV)
-	pytype -V $(PYTHON_VERSION) bda_project
+	pytype bda_project
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype -V $(PYTHON_VERSION) {} \; )
+	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype {} \; )
 	done
 	touch .pytype/pyi/bda_project
 
@@ -557,10 +596,17 @@ docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
 build/%: $(REQUIREMENTS) docs/source docs/* README.md CHANGELOG.md | .git
 	@$(VALIDATE_VENV)
 	@TARGET=$(*:build/%=%)
+ifeq ($(OFFLINE),True)
+	if [ "$$TARGET" != "linkcheck" ] ; then
+endif
 	@echo "Build $$TARGET..."
 	@LATEXMKOPTS=-silent sphinx-build -M $$TARGET docs build $(SPHINX_FLAGS)
 	touch build/$$TARGET
-
+ifeq ($(OFFLINE),True)
+	else
+		@echo -e "$(red)Can not to build '$$TARGET' in offline mode$(normal)"
+	fi
+endif
 # Build all format of documentations
 ## Generate and show the HTML documentation
 docs: build/html
@@ -624,10 +670,10 @@ $(DATA)/raw:
 
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour convertir tous les notebooks du repertoire 'notebooks' en script
-# python dans le répertoire 'src/scripts', déjà compatible avec le mode scientifique de PyCharm Pro.
+# SNIPPET pour convertir tous les notebooks de 'notebooks/' en script
+# python dans 'scripts/', déjà compatible avec le mode scientifique de PyCharm Pro.
 # Le code utilise un modèle permettant d'encadrer les cellules Markdown dans des strings.
-# Les scripts possède ensuite le flag d'exécution, pour pouvoir les lancer directement
+# Les scripts possèdent ensuite le flag d'exécution, pour pouvoir les lancer directement
 # via un 'scripts/phase1/1_sample.py'.
 .PHONY: nb-convert
 # Convert all notebooks to python scripts
@@ -665,7 +711,7 @@ _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	echo -e "$(cyan)All new scripts are in $${target}$(normal)"
 
 # Version permettant de convertir les notebooks et de la ajouter en même temps à GIT
-# en ajouter le flag +x.
+# en ajoutant le flag +x.
 ## Convert all notebooks to python scripts
 nb-convert: _nbconvert
 	@find scripts/ -type f -iname "*.py" -exec git add "{}" \;
@@ -693,7 +739,7 @@ clean-build:
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer tous les notebooks
 .PHONY: clean-notebooks
-## Remove all results of notebooks
+## Remove all results in notebooks
 clean-notebooks: $(REQUIREMENTS)
 	@[ -e notebooks ] && find notebooks -name '*.ipynb' -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
 	@echo -e "$(cyan)Notebooks cleaned$(normal)"
@@ -710,7 +756,6 @@ clean-pip:
 # SNIPPET pour nettoyer complètement l'environnement Conda
 .PHONY: clean-venv clean-$(VENV)
 clean-$(VENV): remove-venv
-	@echo -e "$(cyan)Re-create virtualenv $(VENV)...$(normal)"
 	@conda create -y -q -n $(VENV) $(CONDA_ARGS)
 	@touch setup.py
 	@echo -e "$(yellow)Warning: Conda virtualenv $(VENV) is empty.$(normal)"
@@ -727,48 +772,50 @@ clean: clean-pyc clean-build clean-notebooks
 # SNIPPET pour faire le ménage du projet
 .PHONY: clean-all
 # Clean all environments
-clean-all: clean remove-venv remove-kernel
+clean-all: remove-kernel clean remove-venv
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour executer les tests unitaires et les tests fonctionnels.
 # Utilisez 'NPROC=1 make unit-test' pour ne pas paralléliser les tests
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite
 ifeq ($(shell test $(NPROC) -gt 1; echo $$?),0)
-PYTEST_PARALLEL ?=-n $(NPROC)
+PYTEST_ARGS ?=-n $(NPROC)
 else
-PYTEST_PARALLEL ?=
+PYTEST_ARGS ?=
 endif
 .PHONY: test unittest functionaltest
 .make-unit-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	@echo -e "$(cyan)Run unit tests...$(normal)"
-	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "not functional"
-	@touch .make-unit-test
+	python -m pytest  -s tests $(PYTEST_ARGS) -m "not functional"
+	@date >.make-unit-test
 # Run only unit tests
 unit-test: .make-unit-test
 
 .make-functional-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	@echo -e "$(cyan)Run functional tests...$(normal)"
-	python -m pytest  -s tests $(PYTEST_PARALLEL) -m "functional"
-	@touch .make-functional-test
+	python -m pytest  -s tests $(PYTEST_ARGS) -m "functional"
+	@date >.make-functional-test
 # Run only functional tests
 functional-test: .make-functional-test
 
 .make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@echo -e "$(cyan)Run all tests...$(normal)"
-	python -m pytest $(PYTEST_PARALLEL) -s tests
-	@touch .make-test .make-unit-test .make-functional-test
+	python -m pytest $(PYTEST_ARGS) -s tests
+	#python setup.py test
+	@date >.make-test
+	@date >.make-unit-test
+	@date >.make-functional-test
 ## Run all tests (unit and functional)
 test: .make-test
 
 
-# SNIPPET pour vérifier les TU et le recalcule de tous les notebooks et scripts.
-# Il peut etre judicieux d'ajouter lint et typing, pour valider le respect des normes Pythons
+# SNIPPET pour vérifier les TU et le recalcul de tout les notebooks et scripts.
+# Cette règle est invoqué avant un commit sur la branche master de git.
 .PHONY: validate
 ## Validate the version before release
-validate: .make-test $(DATA)/raw scripts/* notebooks/* build/html build/linkcheck
-
+validate: .make-test typing $(DATA)/raw scripts/* notebooks/* build/html build/linkcheck
 
 
 
@@ -782,7 +829,7 @@ validate: .make-test $(DATA)/raw scripts/* notebooks/* build/html build/linkchec
 define dvc_run
 	if [ -e $1 ] ; then dvc remove $1 ; fi
 	rm -f $1
-	dvc run -f $1 \
+	dvc run -q -f $1 \
 		$(addprefix -d ,$(filter-out .%,$(filter-out %.egg-link,$?))) \
 		$(if $3,-M $@,-o $@) \
 	$2
@@ -824,6 +871,13 @@ lock-%: .dvc $(REQUIREMENTS)
 	@dvc lock $(*:lock-%=%)
 
 # ---------------------------------------------------------------------------------------
+# SNIPPET pour dévérouiller un fichier DVC pour pouvoir le reconstruire.
+# See https://dvc.org/doc/commands-reference/unlock
+# Lock DVC file
+unlock-%: .dvc $(REQUIREMENTS)
+	@dvc unlock $(*:lock-%=%)
+
+# ---------------------------------------------------------------------------------------
 # SNIPPET pour afficher les métrics gérées par DVC.
 # See https://dvc.org/doc/commands-reference/metrics
 ## show the DVC metrics
@@ -846,10 +900,10 @@ clean-dvc:
 # └─────────┘ └──────────┘ └───────┘ └──────────┘ └───────────┘
 #
 
-TOOLS=$(shell find bda_project/ -mindepth 2 -type f -name '*.py')
 .PHONY: prepare features train evaluate visualize
 
 # Rule to declare an implicite dependencies from sub module for all root project files
+TOOLS:=$(shell find bda_project/ -mindepth 2 -type f -name '*.py')
 bda_project/*.py : $(TOOLS)
 	@touch $@
 

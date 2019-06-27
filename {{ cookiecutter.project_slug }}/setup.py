@@ -48,6 +48,7 @@ dev_requirements: List[str] = [
     'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # To generate doc
     'flake8', 'pylint',  # For lint
     'daff',
+    'pytype',
 {% if cookiecutter.use_jupyter == "y" %}    'jupyter',  # Use Jupyter{% endif %}
 {% if cookiecutter.use_DVC == "y"     %}    'dvc',  # Use DVC{% endif %}
 {% if cookiecutter.use_aws == "y"     %}    'awscli',  # Use AWS{% endif %}

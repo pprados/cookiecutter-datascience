@@ -17,12 +17,14 @@ USE_GPU: str = "-gpu" if (os.environ['GPU'].lower() in 'yes'
 # Package nécessaires à l'execution
 # FIXME Ajoutez et ajustez les dépendences nécessaire à l'exécution.
 requirements: List[str] = [
-    'click',
-    'python-dotenv',
-{% if cookiecutter.use_tensorflow == "y"      %}    'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0 {% endif %}
-{% if cookiecutter.use_text_processing == "y" %}    'spacy~=2.0', {% endif %}
-{% if cookiecutter.use_text_processing == "y" %}    'nltk~=3.3', {% endif %}
-{% if cookiecutter.use_DVC == "y" %}    'appdirs', {% endif %}
+    'click', 'click-pathlib',
+    'python-dotenv',{% if cookiecutter.use_tensorflow == "y"      %}
+    'sklearn',
+    'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0
+    'keras',# {% endif %}{% if cookiecutter.use_text_processing == "y" %}
+    'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
+    'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}
+    'appdirs', {% endif %}
     'numpy~=1.14',
     'pandas~=0.22',
 ]
@@ -44,6 +46,8 @@ test_requirements: List[str] = [
 # Package nécessaires aux builds mais pas au run
 # FIXME Ajoutez les dépendances nécessaire au build et au tests à ajuster suivant le projet
 dev_requirements: List[str] = [
+    'pip',
+    # PPR necessaire a mlflow ? 'conda',
     'twine',  # To publish package in Pypi
     'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # To generate doc
     'flake8', 'pylint',  # For lint

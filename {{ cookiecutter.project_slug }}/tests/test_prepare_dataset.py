@@ -5,7 +5,7 @@
 import unittest
 
 import pandas as pd
-from bda_project.prepare_dataset import prepare_dataset
+from {{ cookiecutter.project_slug }}.prepare_dataset import prepare_dataset
 
 
 class TestPrepareDataSet(unittest.TestCase):

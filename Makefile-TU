@@ -80,12 +80,17 @@ define do_make
 	echo "cd $$(pwd)"
 	echo "conda activate $$V"
 	echo "VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1"
+	read PPR
 	VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1 || (echo ">>>>>>>>>>> ERROR WITH '$1' venv=$$V" ; read PPR )
+	read -p "apres1" PPR
 	cd "$$oldpath"
 	conda deactivate
+	read -p "apres2" PPR
 	conda env remove -n $$V 2>/dev/null
+	read -p "apres3" PPR
 	# PPR bug avec DVC si je rm ?
 	rm -Rf $$D
+	read -p "apres4" PPR
 endef
 
 .PHONY: help

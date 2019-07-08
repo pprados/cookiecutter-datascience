@@ -152,6 +152,7 @@ du Makefile](Makefile.snippet).
 - [X] Fonctionnement Conda
 - [ ] Fonctionnement virtualenv
 - [X] Offline
+- [ ] Lecture depuis URI et non fichiers
 - [ ] Execution compatible avec le mode parallèle (-j)
 - [ ] Extraction des métriques dans les différentes branches Git (à la [DVC](https://dvc.org/doc/commands-reference/metrics)
 - [X] [Jupyter](https://jupyter.org/)
@@ -160,6 +161,9 @@ du Makefile](Makefile.snippet).
 - [X] [Spacy](https://spacy.io/) 
 - [X] [NLTK](https://www.nltk.org/)
 - [X] [pylint](https://www.pylint.org/) et [flake8](http://flake8.pycqa.org/)
+- [X] Typing
+- [ ] Typing at runtime ([Enforce](https://pypi.org/project/enforce/), [pydantic](https://pypi.org/project/pydantic/),
+      ou [pytypes](https://pypi.org/project/pytypes/))
 - [X] [PEP8](https://pep8.readthedocs.io/en/latest/)
 - [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
 - [X] Documentation et [Sphinx](http://www.sphinx-doc.org/)
@@ -199,6 +203,7 @@ du Makefile](Makefile.snippet).
 - [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
 - [X] [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2)
 - [ ] [Secret AWS](https://drivendata.github.io/cookiecutter-data-science/#keep-secrets-and-configuration-out-of-version-control)
-- [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/)
+- [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/) direct ou via mlflow ou Sagemaker-compatible Docker container.
 - [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
 - [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
+- [ ] [MLeap](http://mleap-docs.combust.ml/)

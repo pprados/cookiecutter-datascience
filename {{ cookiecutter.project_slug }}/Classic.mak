@@ -15,7 +15,7 @@ TOOLS:=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '
 	@touch $@
 
 $(DATA)/interim/datas-prepared.csv : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/prepare_dataset.py $(DATA)/raw/*
-	@python -O -m {{ cookiecutter.project_slug }}.prepare_$(DATA)set \
+	@python -O -m {{ cookiecutter.project_slug }}.prepare_dataset \
 		$(DATA)/raw/datas.csv \
 		$(DATA)/interim/datas-prepared.csv
 ## Prepare the dataset

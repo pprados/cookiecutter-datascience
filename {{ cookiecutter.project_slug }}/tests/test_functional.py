@@ -3,15 +3,17 @@
     Test.
 """
 import unittest
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Mapping
 
 import pandas as pd
 import pytest
-from bda_project.build_features import build_features
-from bda_project.evaluate_model import evaluate_model
-from bda_project.prepare_dataset import prepare_dataset
-from bda_project.train_model import train_model
+from {{ cookiecutter.project_slug }}.build_features import build_features
+from {{ cookiecutter.project_slug }}.evaluate_model import evaluate_model
+from {{ cookiecutter.project_slug }}.prepare_dataset import prepare_dataset
+from {{ cookiecutter.project_slug }}.train_model import train_model
 
+
+Model = Any  # TODO: Select type
 
 # @pytest.mark.skip(reason="no way of currently testing this")
 @pytest.mark.functional
@@ -30,10 +32,10 @@ class TestFunctional(unittest.TestCase):
 
         # When
         train_inputs.append(build_features(prepare_dataset(input_raw=input_raw)))
-        model: Any = train_model(inputs=train_inputs,
+        model: Model = train_model(inputs=train_inputs,
                                  epoch=1,
                                  batch_size=1)
-        metrics: Dict[str, Any] = evaluate_model(model, validate_files)
+        metrics: Mapping[str,Any] = evaluate_model(model, validate_files)
 
         # Then
         self.assertGreater(metrics['auc'], 0.8)

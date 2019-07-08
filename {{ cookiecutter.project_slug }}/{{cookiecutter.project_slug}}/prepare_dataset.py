@@ -5,13 +5,15 @@
 """
 
 import logging
-import os
-import pathlib
 import sys
+from pathlib import Path
 
 import click
+import click_pathlib
 import dotenv
 import pandas as pd
+
+from tools.tools import init_logger
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,11 +29,11 @@ def prepare_dataset(input_raw: pd.DataFrame) -> pd.DataFrame:
     return output_prepared
 
 
-@click.command()
-@click.argument('input_raw_filepath', type=click.Path(exists=True))
-@click.argument('output_prepared_filepath', type=click.Path())
-def main(input_raw_filepath: str,
-         output_prepared_filepath: str) -> int:
+@click.command(help="Prepare the dataset.")
+@click.argument('input_raw_filepath', type=click_pathlib.Path(exists=True))
+@click.argument('output_prepared_filepath', type=click_pathlib.Path())
+def main(input_raw_filepath: Path,
+         output_prepared_filepath: Path) -> int:
     """ Process to turn raw data file into prepared data file.
 
         :param input_raw_filepath: data file path
@@ -40,8 +42,7 @@ def main(input_raw_filepath: str,
     """
     LOGGER.info('Clean data set from raw data to interim')
 
-    pathlib.Path(os.path.dirname(output_prepared_filepath)) \
-        .mkdir(parents=True, exist_ok=True)
+    output_prepared_filepath.dirname().mkdir(parents=True, exist_ok=True)
 
     input_raw = pd.read_csv(input_raw_filepath)
     output_prepared = prepare_dataset(input_raw)
@@ -50,9 +51,7 @@ def main(input_raw_filepath: str,
 
 
 if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    init_logger(LOGGER, logging.INFO)
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables

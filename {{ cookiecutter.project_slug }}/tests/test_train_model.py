@@ -7,7 +7,9 @@ from typing import Any, List
 
 import pandas as pd
 import pytest
-from bda_project.train_model import train_model
+from {{ cookiecutter.project_slug }}.train_model import train_model
+
+Model = Any  # TODO: Select type
 
 
 class TestTrainModel(unittest.TestCase):
@@ -23,7 +25,7 @@ class TestTrainModel(unittest.TestCase):
         train_inputs: List[pd.DataFrame] = []
 
         # When
-        model: Any = train_model(inputs=train_inputs,
+        model: Model = train_model(inputs=train_inputs,
                                  epoch=1,
                                  batch_size=1)
 

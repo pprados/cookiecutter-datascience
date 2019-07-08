@@ -2,7 +2,6 @@
 """
     Treatment in charge of training visualize the results.
 """
-import glob
 import json
 import logging
 import os
@@ -11,6 +10,8 @@ from typing import Sequence, IO
 
 import click
 import dotenv
+
+from tools.tools import Glob, init_logger
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,9 +29,9 @@ def visualize(streams: Sequence[IO[str]]) -> None:
         print(metric["datetime"], ",", metric["auc"])
 
 
-@click.command()
-@click.argument('evaluate_filepath', type=str)
-def main(evaluate_filepath: str) -> int:
+@click.command(help="Visualize the results")
+@click.argument('evaluate_filepath', type=Glob(recursive=True))
+def main(evaluate_filepath: Sequence[str]) -> int:
     """ Visualize the results
 
         :param evaluate_filepath: glob data file path
@@ -38,20 +39,16 @@ def main(evaluate_filepath: str) -> int:
     """
     LOGGER.info('Visualize the results')
 
-    if (evaluate_filepath.find("*") == -1):
-        evaluate_filepath += "*"
     inputs: Sequence[IO[str]] = \
-        [open(a_file, "r")
-         for a_file in glob.glob(evaluate_filepath, recursive=True)
+        [open(a_file, "rt")
+         for a_file in evaluate_filepath
          if not os.path.isdir(a_file)]
     visualize(inputs)
     return 0
 
 
 if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    init_logger(LOGGER, logging.INFO)
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables

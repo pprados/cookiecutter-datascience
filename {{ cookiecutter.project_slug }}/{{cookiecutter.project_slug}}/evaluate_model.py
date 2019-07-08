@@ -2,22 +2,28 @@
 """
     Treatment in charge of evaluate model
 """
-import glob
 import json
 import logging
 import pickle
 import sys
+from pathlib import Path
 from time import strftime, gmtime
 from typing import Any, Sequence
 
 import click
+import click_pathlib
 import dotenv
 import pandas as pd
+
+from tools.tools import Glob, init_logger
+from train_model import Model
+
+from {{ cookiecutter.project.slug }}.train_model import Model
 
 LOGGER = logging.getLogger(__name__)
 
 
-def evaluate_model(model: Any,
+def evaluate_model(model: Model,
                    samples: Sequence[pd.DataFrame]) -> dict:
     """ Evaluate the model with sample datas
 
@@ -33,13 +39,13 @@ def evaluate_model(model: Any,
     return metrics
 
 
-@click.command()
-@click.argument('model_filepath', type=click.Path(exists=True))
-@click.argument('sample_filepath', type=click.Path(exists=True))
-@click.argument('evaluate_filepath', type=click.Path())
-def main(model_filepath: str,
-         sample_filepath: str,
-         evaluate_filepath: str) -> int:
+@click.command(help="Evaluate the model")
+@click.argument('model_filepath', type=click_pathlib.Path(exists=True))
+@click.argument('sample_files', type=Glob(default_suffix="**/*.csv"))
+@click.argument('evaluate_filepath', type=click_pathlib.Path())
+def main(model_filepath: Path,
+         sample_files: Sequence[Path],
+         evaluate_filepath: Path) -> int:
     """ Evaluate the model with samples
         :param model_filepath: model file path
         :param sample_filepath: data files path
@@ -48,10 +54,10 @@ def main(model_filepath: str,
     """
     LOGGER.info('Evaluate model \'%s\' from processed data', model_filepath)
 
-    model: Any = pickle.load(open(model_filepath, 'rb'))
+    model: Model = pickle.load(open(model_filepath, 'rb'))
 
     datasets: Sequence[pd.DataFrame] = \
-        [pd.read_csv(f) for f in glob.glob(sample_filepath, recursive=True)]
+        [pd.read_csv(f) for f in sample_files]
     metrics: dict = evaluate_model(model, datasets)
     with open(evaluate_filepath, 'wt') as evaluate_file:
         json.dump(metrics, evaluate_file, indent=4)
@@ -59,9 +65,7 @@ def main(model_filepath: str,
 
 
 if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    init_logger(LOGGER, logging.INFO)
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables

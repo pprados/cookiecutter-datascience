@@ -6,7 +6,7 @@ import unittest
 
 import pandas as pd
 
-from bda_project.build_features import build_features
+from {{ cookiecutter.project_slug }}.build_features import build_features
 
 
 class TestBuildFeatures(unittest.TestCase):

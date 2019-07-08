@@ -66,7 +66,7 @@ endef
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour supprimer le parallelisme pour certaines cibles
 # par exemple pour release
-ifneq ($(filter configure release clean% upgrade-%,$(MAKECMDGOALS)),)
+ifneq ($(filter configure release clean functional-test% upgrade-%,$(MAKECMDGOALS)),)
 .NOTPARALLEL:
 endif
 #{% endif %}
@@ -113,8 +113,8 @@ export DATA?=data
 # DVC_BUCKET?=hdfs://user@example.com
 DVC_BUCKET?={% if cookiecutter.use_aws == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
 # List of source and tests files
-PYTHON_SRC=$(shell find {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
-PYTHON_TST=$(shell find tests -type f -iname '*.py' | grep -v __pycache__)
+PYTHON_SRC=$(shell find -L {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
+PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
@@ -384,7 +384,9 @@ $(CONDA_PYTHON):
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
+	echo -e "$(cyan)Install setup.py dependencies ...$(normal)"
 	pip install $(PIP_ARGS) -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
+	echo -e "$(cyan)setup.py dependencies updated$(normal)"
 	@touch $(PIP_PACKAGE)
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -558,12 +560,16 @@ run-%:
 .pylintrc:
 	pylint --generate-rcfile > .pylintrc
 
-## Lint the code
-lint: $(REQUIREMENTS) | .pylintrc
+.make-lint: $(REQUIREMENTS) $(PYTHON_SRC) | .pylintrc
 	$(VALIDATE_VENV)
-	@flake8 {{ cookiecutter.project_slug }} tests || true
-	@echo "----------------------"
-	@pylint {{ cookiecutter.project_slug }} tests || true
+	@echo "---------------------- FLAKE"
+	@flake8 flower_classifier
+	@echo "---------------------- PYLINT"
+	@pylint flower_classifier
+	touch .make-lint
+
+## Lint the code
+lint: .make-lint
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -575,25 +581,25 @@ pytype.cfg: $(CONDA_PREFIX)/bin/pytype
 	@[[ ! -f pytype.cfg ]] && pytype --generate-config pytype.cfg || true
 	touch pytype.cfg
 
-.pytype/pyi/{{ cookiecutter.project_slug }}: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg
+.PHONY: typing
+.make-typing: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	pytype {{ cookiecutter.project_slug }}
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype {} \; )
+	  ( cd $$phase ; find -L . -type f -name '*.py' -exec pytype {} \; )
 	done
 	touch .pytype/pyi/{{ cookiecutter.project_slug }}
-
-.PHONY: typing
+	touch .make-typing
 ## Check python typing
-typing: .pytype/pyi/{{ cookiecutter.project_slug }}
+typing: .make-typing
 
 ## Add infered typing in module
 add-typing: typing
-	find {{ cookiecutter.project_slug }} -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
+	find -L {{ cookiecutter.project_slug }} -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
+	  ( cd $$phase ; find -L . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
 	done
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -631,10 +637,6 @@ endif
 ## Generate and show the HTML documentation
 docs: build/html
 	@$(BROWSER) build/html/index.html
-
-## Watching for changes to compile the docs
-servedocs: build/html
-	watchmedo shell-command -p '*' -c '$(MAKE) build/html' -R -D docs
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -801,30 +803,30 @@ _nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 		  --template=$${tmpfile} --stdout "$${filename}" >"$${target}"
 		chmod +x $${target}
 		@echo -e "Convert $${filename} to $${target}"
-	done < <(find notebooks -name '*.ipynb' -type f -not -path '*/\.*' -prune -print0)
+	done < <(find -L notebooks -name '*.ipynb' -type f -not -path '*/\.*' -prune -print0)
 	echo -e "$(cyan)All new scripts are in $${target}$(normal)"
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Version permettant de convertir les notebooks et de la ajouter en même temps à GIT
 # en ajoutant le flag +x.{% endif %}
 ## Convert all notebooks to python scripts
 nb-convert: _nbconvert
-	@find scripts/ -type f -iname "*.py" -exec git add "{}" \;
-	@find scripts/ -type f -iname "*.py" -exec git update-index --chmod=+x  "{}" \;{% endif %}
+	@find -L scripts/ -type f -iname "*.py" -exec git add "{}" \;
+	@find -L scripts/ -type f -iname "*.py" -exec git update-index --chmod=+x  "{}" \;{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer tous les fichiers générés par le compilateur Python.{% endif %}
 .PHONY: clean-pyc
 # Clean pre-compiled files
 clean-pyc:
-	@/usr/bin/find . -type f -name "*.py[co]" -delete
-	@/usr/bin/find . -type d -name "__pycache__" -delete
+	@/usr/bin/find -L . -type f -name "*.py[co]" -delete
+	@/usr/bin/find -L . -type d -name "__pycache__" -delete
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer les fichiers de builds (package et docs).{% endif %}
 .PHONY: clean-build
 # Remove build artifacts and docs
 clean-build:
-	@/usr/bin/find . -type f -name ".make-*" -delete
+	@/usr/bin/find -L . -type f -name ".make-*" -delete
 	@rm -fr build/
 	@rm -fr dist/*
 	@rm -fr *.egg-info
@@ -835,7 +837,7 @@ clean-build:
 .PHONY: clean-notebooks
 ## Remove all results in notebooks
 clean-notebooks: $(REQUIREMENTS)
-	@[ -e notebooks ] && find notebooks -name '*.ipynb' -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
+	@[ -e notebooks ] && find -L notebooks -name '*.ipynb' -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
 	@echo -e "$(cyan)Notebooks cleaned$(normal)"{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------{% endif %}

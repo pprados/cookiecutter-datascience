@@ -5,7 +5,7 @@
 import unittest
 from typing import List
 
-from bda_project.visualize import visualize
+from {{ cookiecutter.project_slug }}.visualize import visualize
 
 
 class TestVisualize(unittest.TestCase):

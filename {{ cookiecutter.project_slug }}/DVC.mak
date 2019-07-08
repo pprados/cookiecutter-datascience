@@ -1,21 +1,3 @@
-
-{% if cookiecutter.add_makefile_comments == "y" %}
-# ---------------------------------------------------------------------------------------{% endif %}
-# Function to invoke DVC run
-# $1 : dvc file
-# $2 : cmd to invoke (python ...)
-# $3 : empty or -M
-define dvc_run
-	if [ -e $1 ] ; then dvc remove $1 ; fi
-	rm -f $1
-	dvc run -q -f $1 \
-		$(addprefix -d ,$(filter-out .%,$(filter-out %.egg-link,$?))) \
-		$(if $3,-M $@,-o $@) \
-	$2
-	@if [ -e $(@D)/.gitignore ] ; then git add $(@D)/.gitignore ; fi
-	@if [ -e $1 ] ; then git add $1 ; fi
-endef
-
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # Initialize DVC{% endif %}
@@ -24,7 +6,7 @@ endef
 	@dvc config cache.protected true
 	@dvc remote add -d origin $(DVC_BUCKET)
 	@git add .dvc/config
-REQUIREMENTS += | .dvc
+
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour initialiser DVC avec la production de fichiers distants dans des buckets
@@ -37,7 +19,7 @@ REQUIREMENTS += | .dvc
 # - make dvc-external-htfs
 .PHONY: dvc-external-*
 ## Initialize the DVC external cache provider (dvc-external-s3)
-dvc-external-%: .dvc $(REQUIREMENTS)
+dvc-external-%: $(REQUIREMENTS) | .dvc
 	@dvc remote add ${*}cache $(DVC_BUCKET)/cache
 	@dvc config cache.${*} ${*}cache
 {% if cookiecutter.add_makefile_comments == "y" %}
@@ -46,29 +28,29 @@ dvc-external-%: .dvc $(REQUIREMENTS)
 # semble nécessaire. C'est util en phase de développement.
 # See https://dvc.org/doc/commands-reference/lock{% endif %}
 # Lock DVC file
-lock-%: .dvc $(REQUIREMENTS)
+lock-%: $(REQUIREMENTS) | .dvc
 	@dvc lock $(*:lock-%=%)
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour dévérouiller un fichier DVC pour pouvoir le reconstruire.
 # See https://dvc.org/doc/commands-reference/unlock{% endif %}
 # Lock DVC file
-unlock-%: .dvc $(REQUIREMENTS)
+unlock-%: $(REQUIREMENTS) | .dvc
 	@dvc unlock $(*:lock-%=%)
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour afficher les métrics gérées par DVC.
 # See https://dvc.org/doc/commands-reference/metrics{% endif %}
 ## show the DVC metrics
-metrics: .dvc $(REQUIREMENTS)
+metrics: $(REQUIREMENTS) | .dvc
 	@dvc metrics show
 {% if cookiecutter.add_makefile_comments == "y" %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour supprimer les fichiers de DVC du projet{% endif %}
 # Remove all .dvc files
 clean-dvc:
-	rm -Rf .dvc
-	-/usr/bin/find . -type f -name "*.dvc" -delete
+	@rm -Rf .dvc
+	@-/usr/bin/find . -type f -name "*.dvc" -delete
 
 #################################################################################
 # PROJECT RULES                                                                 #
@@ -87,7 +69,10 @@ TOOLS:=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '
 	@touch $@
 
 data/interim/datas-prepared.csv: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/prepare_dataset.py data/raw/*
-	@$(call dvc_run,prepare.dvc,\
+	dvc run -q -f prepare.dvc \
+		-d {{ cookiecutter.project_slug }}/prepare_dataset.py \
+		-d data/raw/ \
+		-o data/interim/datas-prepared.csv \
 	python -O -m {{ cookiecutter.project_slug }}.prepare_dataset \
 		data/raw/datas.csv \
 		data/interim/datas-prepared.csv\
@@ -97,34 +82,38 @@ prepare.dvc: data/interim/datas-prepared.csv
 prepare: prepare.dvc
 
 data/interim/datas-features.csv : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/build_features.py data/interim/datas-prepared.csv
-	@$(call dvc_run,features.dvc,\
+	dvc run -q -f features.dvc \
+		-d {{ cookiecutter.project_slug }}/build_features.py \
+		-d data/interim/datas-prepared.csv \
+		-o data/interim/datas-features.csv \
 	python -O -m {{ cookiecutter.project_slug }}.build_features \
 		data/interim/datas-prepared.csv \
-		data/interim/datas-features.csv\
-	)
+		data/interim/datas-features.csv
 ## Add features
 features: data/interim/datas-features.csv
 
 models/model.pkl : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/train_model.py data/interim/datas-features.csv
-	@$(call dvc_run,train.dvc,\
+	dvc run -q -f train.dvc \
+		-d {{ cookiecutter.project_slug }}/train_model.py \
+		-d data/interim/datas-features.csv \
 	python -O -m {{ cookiecutter.project_slug }}.train_model \
 		data/interim/datas-features.csv \
-		models/model.pkl \
-	)
+		models/model.pkl
 ## Train the model
 train: models/model.pkl
 
 
-reports/auc.metric: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/evaluate_model.py models/model.pkl
-	@$(call dvc_run,evaluate.dvc,\
+reports/metric.json: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/evaluate_model.py models/model.pkl
+	dvc run -q -f evaluate.dvc \
+		-d {{ cookiecutter.project_slug }}/evaluate_model.py \
+		-d models/model.pkl \
+		-M reports/metric.json \
 	python -O -m {{ cookiecutter.project_slug }}.evaluate_model \
 		models/model.pkl \
 		data/interim/datas-features.csv \
-		reports/auc.metric \
-	,-M \
-	)
+		reports/metric.json
 ## Evalutate the model
-evaluate: reports/auc.metric
+evaluate: reports/metric.json
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/visualize.py models/model.pkl

@@ -19,7 +19,7 @@ ignore-patterns=
 
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
 # number of processors available to use.
-jobs=0
+jobs=1
 
 # Control the amount of potential inferred values when inferring a single
 # object. This can help the performance when dealing with large functions or
@@ -138,8 +138,7 @@ disable=print-statement,
         xreadlines-attribute,
         deprecated-sys-function,
         exception-escape,
-        comprehension-escape,
-        duplicate-code
+        comprehension-escape
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -189,6 +188,7 @@ never-returning-functions=sys.exit
 
 # List of note tags to take in consideration, separated by a comma.
 notes=FIXME,
+      XXX,
       TODO
 
 
@@ -234,7 +234,7 @@ check-str-concat-over-line-jumps=no
 
 # Format style used to check logging format string. `old` means using %
 # formatting, while `new` is for `{}` formatting.
-logging-format-style=new
+logging-format-style=old
 
 # Logging modules to check that the string format arguments are in logging
 # function parameter format.
@@ -321,10 +321,12 @@ function-naming-style=snake_case
 good-names=i,
            j,
            k,
-           Y,
-           x,
            ex,
            Run,
+           x,
+           y,
+           X,
+           Y,
            _
 
 # Include a hint for the correct naming format with invalid-name.
@@ -369,7 +371,7 @@ variable-naming-style=snake_case
 
 # Regular expression matching correct variable names. Overrides variable-
 # naming-style.
-#variable-rgx=
+variable-rgx=^[a-z][a-z0-9]*((_[a-z0-9]+)*)?$
 
 
 [FORMAT]
@@ -421,7 +423,7 @@ ignore-docstrings=yes
 ignore-imports=yes
 
 # Minimum lines number of a similarity.
-min-similarity-lines=4
+min-similarity-lines=6
 
 
 [TYPECHECK]
@@ -534,7 +536,7 @@ valid-metaclass-classmethod-first-arg=cls
 [DESIGN]
 
 # Maximum number of arguments for function / method.
-max-args=5
+max-args=10
 
 # Maximum number of attributes for a class (see R0902).
 max-attributes=7
@@ -546,7 +548,7 @@ max-bool-expr=5
 max-branches=12
 
 # Maximum number of locals for function / method body.
-max-locals=15
+max-locals=25
 
 # Maximum number of parents for a class (see R0901).
 max-parents=7

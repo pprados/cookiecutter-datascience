@@ -138,7 +138,7 @@ def train_model(
         :param seed: Force seed (default None)
         :return: The trained model
     """
-    meta_parameters: Mapping[str, Any] = {
+    meta_parameters = {
         "test_ratio": test_ratio,
         "image_width": image_width,
         "image_height": image_height,

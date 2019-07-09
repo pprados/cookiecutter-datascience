@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 from typing import List
 
 import click
@@ -52,6 +53,7 @@ def main(output_dir: str, params: List[str]):
     except SystemExit as e:
         return e.code
     except Exception as e:
+        traceback.print_exc()
         return -1
 
 

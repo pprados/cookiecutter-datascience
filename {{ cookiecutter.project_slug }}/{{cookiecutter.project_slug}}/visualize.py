@@ -39,10 +39,9 @@ def main(evaluate_filepath: Sequence[str]) -> int:
     """
     LOGGER.info('Visualize the results')
 
-    inputs: Sequence[IO[str]] = \
-        [open(a_file, "rt")
-         for a_file in evaluate_filepath
-         if not os.path.isdir(a_file)]
+    inputs = [open(a_file, "rt")
+              for a_file in evaluate_filepath
+              if not os.path.isdir(a_file)]
     visualize(inputs)
     return 0
 

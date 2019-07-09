@@ -61,7 +61,7 @@ def main(input_files: Sequence[Path],
 
     model_filepath.dirname().mkdir(parents=True, exist_ok=True)
 
-    model: Model = train_model(input_files, epoch, batch_size, seed)
+    model = train_model(input_files, epoch, batch_size, seed)
     pickle.dump(model, open(model_filepath, 'wb'))
     return 0
 

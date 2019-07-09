@@ -276,13 +276,9 @@ endif{% endif %}{% endif %}
 	fi
 	PRE-PUSH
 	chmod +x .git/hooks/pre-push
-{% if cookiecutter.use_DVC != 'y' %}
-# Init DVC
-.dvc:
-	@dvc init
-{% endif %}
+
 # Init git configuration
-.gitattributes: | .git .git/hooks/pre-push .dvc # Configure git
+.gitattributes: | .git .git/hooks/pre-push{% if cookiecutter.use_DVC == 'y' %} .dvc{% endif %}  # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
@@ -596,7 +592,7 @@ typing: .make-typing
 
 ## Add infered typing in module
 add-typing: typing
-	find -L {{ cookiecutter.project_slug }} -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
+	@find -L {{ cookiecutter.project_slug }} -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
 	for phase in scripts/*
 	do
 	  ( cd $$phase ; find -L . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )

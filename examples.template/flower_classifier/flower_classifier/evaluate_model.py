@@ -89,12 +89,12 @@ def main(input_files: Sequence[Path],
         with tf.Session(graph=graph).as_default():  # pylint: disable=E1129
             # 1. Load datas
             labels, _, image_datas = load_images(input_files)
-            model: Model = load_model(str(model_filepath))
+            model = load_model(str(model_filepath))
             with open(domain_filepath, 'rb') as domain_file:
                 domain: Mapping[str, int] = pickle.load(domain_file)
 
             # 2. Calculate metrics
-            metrics: Mapping[str, Any] = evaluate_model(model, domain, image_datas, labels, image_width, image_height)
+            metrics = evaluate_model(model, domain, image_datas, labels, image_width, image_height)
 
             # 3. Write results
             with open(evaluate_filepath, 'wt') as evaluate_file:

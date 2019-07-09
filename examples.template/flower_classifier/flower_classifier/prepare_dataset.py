@@ -26,7 +26,7 @@ def prepare_dataset(streams: Sequence[Tuple[Path, IO[bytes]]]) -> Sequence[Tuple
         :param streams: List of tuple with path and IOBase
         :return: Array of tuple with filename and dataframe
     """
-    flowers: List[Tuple[str, bytes]] = []
+    flowers = []
     for path, stream in streams:
         flowers.append((path, stream.read()))
     return flowers
@@ -49,7 +49,7 @@ def main(input_raw_filepath: Path,
 
     with tarfile.open(input_raw_filepath) as tar:
         # Open tgz
-        streams: List[Tuple[Path, io.BufferedReader]] = []
+        streams = []
         for tarf in tar:
             if tarf.isfile():
                 path = Path(tarf.name)

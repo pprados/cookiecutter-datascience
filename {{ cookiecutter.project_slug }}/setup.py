@@ -20,7 +20,7 @@ requirements: List[str] = [
     'click', 'click-pathlib',
     'python-dotenv',{% if cookiecutter.use_tensorflow == "y"      %}
     'sklearn',
-    'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0
+    'tensorflow' + USE_GPU + '~=1.3',  # Ubuntu: sudo apt-get install cuda-libraries-10.0
     'keras',# {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}

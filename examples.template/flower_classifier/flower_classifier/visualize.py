@@ -36,7 +36,7 @@ def visualize(file_names: Sequence[Path],
         :param interactive Show image or just print prediction
         :return: 0 if ok, else error
     """
-    domains_name: Mapping[int, str] = {v: k for k, v in domains.items()}
+    domains_name = {v: k for k, v in domains.items()}
     for i, image in enumerate(input_files):
         predict = model.predict(np.expand_dims(image, axis=0))
         label = domains_name[np.argmax(predict)]
@@ -81,10 +81,10 @@ def main(input_files: Sequence[Path],
     LOGGER.info('Visualize the results')
 
     # 1. Load datas
-    images: Sequence[np.array] = \
+    images = \
         [decode_and_resize_image(open(path, "rb").read(), (image_width, image_height))
          for path in input_files]
-    model: Model = load_model(str(model_filepath))
+    model = load_model(str(model_filepath))
     with open(domain_filepath, 'rb') as domain_file:
         domain: Mapping[str, int] = pickle.load(domain_file)
 

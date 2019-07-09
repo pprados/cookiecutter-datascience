@@ -373,3 +373,41 @@ offline: ~/.mypypi
 clean-test:
 	rm -Rf /tmp/CC_temp* /tmp/make-* /tmp/ssh-ec2-* /tmp/tmp*.sh /tmp/temp*.sh /tmp/ssh-ec2* \
 	~/.local/share/jupyter/kernels/cc_temp* $(CONDA_BASE)/envs/CC_*
+
+
+# ---- Generate differents forms of samples
+# $1 mode (normal, dvc, ...)
+# $2 project_name
+# $3 flags
+define generate_example
+	mkdir -p examples/$1
+	python tests/try_cookiecutter.py --output_dir examples/$1 \
+		project_Name=$2 \
+		project_slug=$2 \
+		$3
+	rm -Rf examples/$1/$2/$2/
+	cp -Rf \
+		examples.template/$2/$2 \
+		examples.template/$2/tests \
+		examples.template/$2/Project_$1.mak \
+		examples/$1/$2/
+	sed -i '1,/^#####*$$/!d' examples/$1/$2/Makefile
+	sed -i 's/^#####*$$/rexamples.template/$2/Project_$1.mak/' examples/$1/$2/Makefile
+	sed -i '/^requirements: .*$$/rexamples.template/$2/setup.inc' examples/$1/$2/setup.py
+	cp examples.template/flower_classifier/flower_photos.tgz examples/$1/$2/data/raw
+endef
+
+examples.template/flower_classifier/flower_photos.tgz:
+	wget -P examples.template/flower_classifier/ 'http://download.tensorflow.org/example_images/flower_photos.tgz'
+
+# PPR gérer les dépendences
+examples/normal/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
+	$(call generate_example,normal,flower_classifier,use_DVC=n use_tensorflow=y use_aws=y)
+	cp examples.template/flower_classifier/flower_photos.tgz examples/normal/flower_classifier/data/raw
+
+examples/dvc/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
+	$(call generate_example,dvc,flower_classifier,use_DVC=y use_tensorflow=y use_aws=y)
+	cp examples.template/flower_classifier/flower_photos.tgz examples/dvc/flower_classifier/data/raw
+
+.PHONY: examples
+examples: examples/normal/flower_classifier examples/dvc/flower_classifier

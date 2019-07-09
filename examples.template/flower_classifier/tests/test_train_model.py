@@ -28,15 +28,15 @@ class TestTrainModel(unittest.TestCase):
         domain = {"a": 0, "b": 1}
 
         # When
-        model: Model = train_model(labels=labels,
-                                   domain=domain,
-                                   image_datas=image_datas,
-                                   test_ratio=0,
-                                   epochs=1,
-                                   batch_size=1,
-                                   image_width=100,
-                                   image_height=100,
-                                   seed=0)
+        model = train_model(labels=labels,
+                            domain=domain,
+                            image_datas=image_datas,
+                            test_ratio=0,
+                            epochs=1,
+                            batch_size=1,
+                            image_width=100,
+                            image_height=100,
+                            seed=0)
         metric = evaluate_model(model=model,
                                 domain=domain,
                                 image_datas=image_datas,

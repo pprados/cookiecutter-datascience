@@ -27,7 +27,7 @@ class TestFunctional(unittest.TestCase):
         """ Test prepare_dataset() with no data.
         """
         # Given
-        streams: List[Tuple[Path, io.BufferedReader]] = []
+        streams = []
         with tarfile.open("tests/samples.tar.xz") as tar:  # pylint: disable=E1120
             for tarf in tar:
                 if tarf.isfile():
@@ -36,27 +36,27 @@ class TestFunctional(unittest.TestCase):
                     path = path.relative_to(*path.parts[:1])
                     streams.append((path, tar.extractfile(tarf)))
             # When
-            prepared_data: Sequence[Tuple[Path, bytes]] = prepare_dataset(streams=streams)
+            prepared_data = prepare_dataset(streams=streams)
             _, image_datas = zip(*prepared_data)
 
         labels = [0, 1]
         domain = {"a": 0, "b": 1}
 
-        model: Model = train_model(labels=labels,
-                                   domain=domain,
-                                   image_datas=image_datas,
-                                   test_ratio=0,
-                                   epochs=1,
-                                   batch_size=1,
-                                   image_width=100,
-                                   image_height=100,
-                                   seed=0)
-        metric: Mapping[str, Any] = evaluate_model(model=model,
-                                                   domain=domain,
-                                                   image_datas=image_datas,
-                                                   labels=labels,
-                                                   image_width=100,
-                                                   image_height=100)
+        model = train_model(labels=labels,
+                            domain=domain,
+                            image_datas=image_datas,
+                            test_ratio=0,
+                            epochs=1,
+                            batch_size=1,
+                            image_width=100,
+                            image_height=100,
+                            seed=0)
+        metric = evaluate_model(model=model,
+                                domain=domain,
+                                image_datas=image_datas,
+                                labels=labels,
+                                image_width=100,
+                                image_height=100)
 
         image = decode_and_resize_image(open("tests/sample.jpg", "rb").read(), (100, 100))
 

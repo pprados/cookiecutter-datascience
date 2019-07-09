@@ -82,3 +82,4 @@ target/
 
 # exclude data from source control by default
 try
+*.tgz

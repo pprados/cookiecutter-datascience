@@ -18,7 +18,7 @@ import pandas as pd
 from tools.tools import Glob, init_logger
 from train_model import Model
 
-from {{ cookiecutter.project.slug }}.train_model import Model
+from {{ cookiecutter.project_slug }}.train_model import Model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,8 +56,7 @@ def main(model_filepath: Path,
 
     model: Model = pickle.load(open(model_filepath, 'rb'))
 
-    datasets: Sequence[pd.DataFrame] = \
-        [pd.read_csv(f) for f in sample_files]
+    datasets = [pd.read_csv(f) for f in sample_files]
     metrics: dict = evaluate_model(model, datasets)
     with open(evaluate_filepath, 'wt') as evaluate_file:
         json.dump(metrics, evaluate_file, indent=4)

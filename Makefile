@@ -392,23 +392,22 @@ define generate_example
 	sed -i '1,/^#####*$$/!d' examples/$1/$2/Makefile
 	sed -i '/^#####*$$/rexamples.template/$2/Project_$1.mak' examples/$1/$2/Makefile
 	sed -i '/^requirements: .*$$/rexamples.template/$2/setup.inc' examples/$1/$2/setup.py
-	cp -s examples.template/flower_classifier/flower_photos.tgz examples/$1/$2/data/raw
 endef
 
 examples.template/flower_classifier/flower_photos.tgz:
 	wget -P examples.template/flower_classifier/ 'http://download.tensorflow.org/example_images/flower_photos.tgz'
 
 # PPR gérer les dépendences
-examples/normal/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
-	$(call generate_example,normal,flower_classifier,use_DVC=n use_tensorflow=y use_aws=y)
-	cp examples.template/flower_classifier/flower_photos.tgz examples/normal/flower_classifier/data/raw
+examples/classic/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
+	$(call generate_example,classic,flower_classifier,use_DVC=n use_tensorflow=y use_aws=y)
+	ln -s ../../../../../examples.template/flower_classifier/flower_photos.tgz examples/classic/flower_classifier/data/raw
 
 examples/dvc/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
 	$(call generate_example,dvc,flower_classifier,use_DVC=y use_tensorflow=y use_aws=y)
-	cp examples.template/flower_classifier/flower_photos.tgz examples/dvc/flower_classifier/data/raw
+	ln -s ../../../../../examples.template/flower_classifier/flower_photos.tgz examples/dvc/flower_classifier/data/raw
 
-examples/normal/wine_quality: Makefile
-	$(call generate_example,normal,wine_quality,use_DVC=n use_aws=y)
+examples/classic/wine_quality: Makefile
+	$(call generate_example,classic,wine_quality,use_DVC=n use_aws=y)
 
 .PHONY: examples
-examples: examples/normal/flower_classifier examples/dvc/flower_classifier
+examples: examples/classic/flower_classifier examples/dvc/flower_classifier

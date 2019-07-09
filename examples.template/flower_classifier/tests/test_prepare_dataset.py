@@ -23,7 +23,7 @@ class TestPrepareDataSet(unittest.TestCase):
         # Given
 
         # When
-        prepared_data = prepare_dataset(streams=[])
+        prepared_data: Sequence[Tuple[Path, bytes]] = prepare_dataset(streams=[])
 
         # Then
         self.assertIsNotNone(prepared_data)
@@ -36,7 +36,7 @@ class TestPrepareDataSet(unittest.TestCase):
         with tarfile.open(tmpfile, mode="x:gz") as tar_handle:
             tar_handle.add(os.path.join("tests", "sample.jpg"))
 
-        streams = []
+        streams: List[Tuple[Path, io.BufferedReader]] = []
         with tarfile.open(tmpfile) as tar:
             for tarf in tar:
                 if tarf.isfile():

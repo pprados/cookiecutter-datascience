@@ -375,26 +375,24 @@ clean-test:
 	~/.local/share/jupyter/kernels/cc_temp* $(CONDA_BASE)/envs/CC_*
 
 
-# ---- Generate differents forms of samples
+# ---- Generate differents forms of examples
 # $1 mode (normal, dvc, ...)
 # $2 project_name
 # $3 flags
 define generate_example
-	mkdir -p examples/$1
-	python tests/try_cookiecutter.py --output_dir examples/$1 \
+	mkdir -p 'examples/$1'
+	rm -Rf 'examples/$1/$2'
+	python tests/try_cookiecutter.py --output_dir "examples/$1" \
 		project_Name=$2 \
 		project_slug=$2 \
 		$3
-	rm -Rf examples/$1/$2/$2/
-	cp -Rf \
-		examples.template/$2/$2 \
-		examples.template/$2/tests \
-		examples.template/$2/Project_$1.mak \
-		examples/$1/$2/
+	rm -Rf "examples/$1/$2/$2/" "examples/$1/$2/tests/"
+	ln -s "../../../examples.template/$2/$2" "$$(pwd)/examples/$1/$2/"
+	ln -s "../../../examples.template/$2/tests" "$$(pwd)/examples/$1/$2/"
 	sed -i '1,/^#####*$$/!d' examples/$1/$2/Makefile
-	sed -i 's/^#####*$$/rexamples.template/$2/Project_$1.mak/' examples/$1/$2/Makefile
+	sed -i '/^#####*$$/rexamples.template/$2/Project_$1.mak' examples/$1/$2/Makefile
 	sed -i '/^requirements: .*$$/rexamples.template/$2/setup.inc' examples/$1/$2/setup.py
-	cp examples.template/flower_classifier/flower_photos.tgz examples/$1/$2/data/raw
+	cp -s examples.template/flower_classifier/flower_photos.tgz examples/$1/$2/data/raw
 endef
 
 examples.template/flower_classifier/flower_photos.tgz:
@@ -408,6 +406,9 @@ examples/normal/flower_classifier: Makefile examples.template/flower_classifier/
 examples/dvc/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
 	$(call generate_example,dvc,flower_classifier,use_DVC=y use_tensorflow=y use_aws=y)
 	cp examples.template/flower_classifier/flower_photos.tgz examples/dvc/flower_classifier/data/raw
+
+examples/normal/wine_quality: Makefile
+	$(call generate_example,normal,wine_quality,use_DVC=n use_aws=y)
 
 .PHONY: examples
 examples: examples/normal/flower_classifier examples/dvc/flower_classifier

@@ -25,17 +25,22 @@ $ conda install cookiecutter
 ```
 et répondez aux questions.
 
+## Exemples
+Des exemples de projets complet, pour différentes combinaisons de paramètres,
+sont disponibles [ici](examples/)
+
 ## Principe des projects
-- Les projets utilisent un environnement conda pour isoler les dépendences
+- Les projets utilisent un environnement conda pour isoler les dépendances
 - Elles doivent être déclarées dans `setup.py`
-- Le numéro de version du projet est géré automatiquement via GIT et les labels
-- Le `Makefile` doit pouvoir s'exécuter sur plusieurs processeurs (`make -j -O ...`)
+- Le numéro de version du projet est géré automatiquement via GIT et les tags
 
 Une fois le projet créer, il suffit de se rendre dans le répertoire
 et de faire un 
 ```bash
 make configure
 ```
+et suivre les instructions.
+
 Ensuite, un `make help` permet de connaitre les fonctions principales pour gérer le projet.
 
 ## Difficulté d'un "bon Makefile"
@@ -45,21 +50,22 @@ Un Makefile efficace doit:
 de suite. Seule le première invocation produit de nouveaux fichiers. Les autres
 invocations ne font rien.
 
-Pour valider cela, il faut des tests unitaires construisant un projet avec différentes
-combinaisons de paramètres, et qui execute chaque cible du Makefile, sans
-rien d'autre auparavent. Les tests du projets procèdent ainsi pour s'assurer
-de la bonne rédaction des règles.
-
 C'est à cette ambition que nous nous sommes attaqué. Par exemple, il est
 possible de faire un `make validate` deux fois de suite.
+
+Pour vérifier cela, il faut des tests unitaires construisant un projet avec différentes
+combinaisons de paramètres, et qui executent chaque cible du Makefile, sans
+rien d'autre auparavant. Les tests du projets procèdent ainsi pour s'assurer
+de la bonne rédaction des règles.
 
 ## Impact des différentes options
 Lors de la création d'un projet, des questions vous sont posées
 pour identifier les caractèristiques du projet à créer.
 Elles permettent d'alléger le project, en supprimant des règles du `Makefile`
 et les fichiers qui ne sont pas nécessaires.
+
 Pour simplifier l'aide, toutes ne sont pas indiquées dans `make help`.
-Il suffit de doubler le `#` du commentaire avant la règle pour modifier cela.
+Il suffit de doubler le `#` du commentaire avant une règle pour modifier cela.
 
 ### Fonctionalités présentes quelque soit les options
 
@@ -70,7 +76,9 @@ Pour le pipeline de data-science
 - `make evaluate` # Evalutate the model 
 - `make visualize` # Visualize the result
 
-Et le reste, pour la gestion du projet
+A vous de les enrichir ou de les simplifier si certaines étapes ne sont pas nécessaires.
+
+Le reste des règles sont pour la gestion du projet
 - `make help` # Print all majors target
 - `make configure`  # Prepare the environment (conda venv, kernel, ...)
 - `make run-%` # Invoke all script in lexical order from scripts/<% dir> 
@@ -85,50 +93,51 @@ Et le reste, pour la gestion du projet
 - `make dist` # Create a binary and source distribution
 
 ### use_jupyter
-- un répertoire `notebooks/`
-- une dépendence à jupyter dans `setup.py`
-- des hooks à GIT pour nettoyer les notebooks lors des push/pull
-- la gestion d'un kernel Jupyter dédié au projet
+- Un répertoire `notebooks/`
+- Une dépendance à jupyter dans `setup.py`
+- Des hooks à GIT pour nettoyer les notebooks lors des push/pull
+- La gestion d'un kernel Jupyter dédié au projet
 - `make remove-kernel` # Pour supprimer le kernel du projet
 - `make nb-run-%` # Pour executer tous les notebooks
-- `make notebook` # Pour lancer jupyter notebook en gérant les dépendences
+- `make notebook` # Pour lancer jupyter notebook en gérant les dépendances
 - `make nb-convert` # Pour convertir les notebooks en script pythons
 - `make clean-notebooks` # Pour nettoyer les données dans les notebooks
 - `make ec2-notebook` # Si AWS, pour lancer un notebook sur une instance EC2 (via [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2))
  
 ### use_tensorflow
-- Une dépendence à Tensorflow, avec ou sans GPU suivant la plateforme
+- Une dépendance à Tensorflow, avec ou sans GPU suivant la plateforme
 - L'utilisation de l'environement 'tensorflow_p36' en cas d'utilisation de `ssh-ec2`
 
 ### use_text_processing
-- une dépendence à [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
-- des règles pour gérer les bases de données associées via les variables 
+- Une dépendance à [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
+- Des règles pour gérer les bases de données associées via les variables 
 `NLTK_DATABASE` et `SPACY_DATABASE` dans le `Makefile`
  
 ### use_git_LFS
-- ajout de l'installation des hooks LFS dans le projet si possible
-- ajout des tracks de fichiers standards (.pkl, *.bin, *.jpg, *.jpeg, *.git, *.png)
+- Installation des hooks LFS dans le projet si possible
+- Tracks des fichiers standards (.pkl, *.bin, *.jpg, *.jpeg, *.git, *.png)
 
 ### use_[DVC](https://dvc.org/)
-- modification dès règles du pipeline du projet, pour exploiter `dvc run`
-- ajout d'une variable `DVC_BUCKET` pour indiquer où localiser les données
+- Modification dès règles du pipeline du projet, pour exploiter `dvc run`
+- Une variable `DVC_BUCKET` pour indiquer où localiser les données
 - `make dvc-external-%` # Pour ajouter un suivit des modifications de fichier externe
 - `make lock-%` # Pour bloquer le rebuild d'un fichier DVC
 - `make metrics` # Pour afficher les métriques des executions via DVC
 
 ### use_aws (utilisation de [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2))
-- une dépendence à `awscli` et `boto3`
+- Une dépendance à `awscli` et `boto3`
 - `make ec2-%` # Pour executer une règle sur une instance EC2 via `ssh-ec2`
 - `make ec2-tmux-%` # Pour executer une règle  sur une instance EC2 via `ssh-ec2` en mode tmux
 - `make ec2-detach-%` # Pour détacher une règle sur une instance EC2
 - `make ec2-attach` # Pour se rattacher à une instance EC2
-- `make ec2-finish` # Pour se rattacher puis récupérer les résultats
+- `make ec2-terminate` # Pour se rattacher puis récupérer les résultats
 
 ### use_s3
-- une variable `S3_BUCKET` pour le bucket du projet
+- Une dépendance à `awscli` et `boto3`
+- Une variable `S3_BUCKET` pour le bucket du projet
 - `make sync_to_s3/%` # Pour envoyer une copie des `data/` vers S3
 - `make sync_from_s3/%` # Pour récupérer une copie des `data/` depuis S3
-- une dépandence automatique de `data/raw` avec `s3://bucket` et ajout
+- Une dépandance automatique de `data/raw` avec `s3://bucket` et ajout
 de ce répertoire à `.gitignore`
 
 ### open_source_software

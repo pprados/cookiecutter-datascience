@@ -375,7 +375,7 @@ endif
 # Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
 	@$(VALIDATE_VENV)
-	conda install -q "python=$(PYTHON_VERSION).*" -y -q $(CONDA_ARGS)
+	conda install -q "python=$(PYTHON_VERSION).*" -y $(CONDA_ARGS)
 
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
@@ -984,9 +984,9 @@ else
 	ssh-ec2 --attach
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
-# Recette permettant un `make ec2-finish`{% endif %}
+# Recette permettant un `make ec2-terminate`{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
-ec2-finish: $(CONDA_PREFIX)/bin/aws
+ec2-terminate: $(CONDA_PREFIX)/bin/aws
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else

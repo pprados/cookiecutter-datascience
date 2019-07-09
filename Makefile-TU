@@ -273,11 +273,11 @@ ec2-tmux:
 	$(call do_make,ec2-tmux-clean ; [ "$$OFFLINE" = True ] || ssh-ec2 --terminate :)
 ec2-attach:
 	$(call do_make,ec2-detach-clean ec2-attach ; [ "$$OFFLINE" = True ] || ssh-ec2 --terminate :)
-ec2-finish:
-	$(call do_make,ec2-detach-clean ec2-finish)
+ec2-terminate:
+	$(call do_make,ec2-detach-clean ec2-terminate)
 ec2-notebook:
 	$(call do_make,ec2-notebook ; [ "$$OFFLINE" = True ] || ssh-ec2 --terminate :)
-EC2: ec2 ec2-tmux ec2-finish
+EC2: ec2 ec2-tmux ec2-terminate
 
 #-------------------
 .PHONY: prepare features train evalutate visualize

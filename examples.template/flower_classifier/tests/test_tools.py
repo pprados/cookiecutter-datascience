@@ -34,7 +34,7 @@ class TestTools(unittest.TestCase):
 
         # When
         # decode_and_resize_image(raw_bytes: bytes, size: Tuple[int, int]) -> np.ndarray:
-        array = decode_and_resize_image(data, (10, 10))
+        array: np.ndarray = decode_and_resize_image(data, (10, 10))
 
         # Then
         self.assertEqual((10, 10, 3), array.shape)

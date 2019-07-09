@@ -91,35 +91,22 @@ gray:=$(shell tput setaf 8)
 endif
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour gérer le projet, le virtualenv conda et le kernel.
-# Par convention, les noms du projet, de l'environnement Conda ou le Kernel Jupyter
+# SNIPPET pour gérer le projet, le virtualenv conda.
+# Par convention, les noms du projet, de l'environnement Conda
 # correspondent au nom du répertoire du projet.
-# Il est possible de modifier cela en valorisant les variables VENV, KERNEL, et/ou PRJ.
+# Il est possible de modifier cela en valorisant les variables VENV, et/ou PRJ.
 # avant le lancement du Makefile (`VENV=cntk_p36 make`)
 PRJ:=$(shell basename $(shell pwd))
 VENV ?= $(PRJ)
-KERNEL ?=$(VENV)
+
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:=3.6
-
+S3_BUCKET?=s3://$(subst _,-,$(PRJ))
+PROFILE = default
 # Data directory (can be in other place, in VM or Docker for example)
 export DATA?=data
 
-# Use DVC bucket. May be :
-# DVC_BUCKET?=s3://$(PRJ)
-# DVC_BUCKET?=gs://$(PRJ)
-# DVC_BUCKET?=ssh://user@example.com:
-# DVC_BUCKET?=hdfs://user@example.com
-DVC_BUCKET?=~/.dvc
-# List of source and tests files
-PYTHON_SRC=$(shell find bda_project -type f -iname '*.py' | grep -v __pycache__)
-PYTHON_TST=$(shell find tests -type f -iname '*.py' | grep -v __pycache__)
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour reconstruire tous les chemins importants permettant
-# de gérer correctement les dépendances des modules sous Conda.
-# Cela sert à gérer automatiquement les environnements.
-# Pour que cela fonctionne, il faut avoir un environement Conda actif,
-# identifié par la variable CONDA_PREFIX (c'est généralement le cas).
+# Conda environment
 CONDA_BASE:=$(shell conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
@@ -127,7 +114,7 @@ CONDA_ARGS?=
 
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
 PIP_ARGS?=
-JUPYTER_DATA_DIR:=$(shell jupyter --data-dir 2>/dev/null || echo "~/.local/share/jupyter")
+
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter des repositories complémentaires à PIP.
@@ -201,15 +188,12 @@ dump-%:
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer les Notebooks avec GIT.
 # Les recettes suivantes s'assure que git est bien initialisé
-# et ajoute des recettes pour les fichiers *.ipynb
-# et eventuellement pour les fichiers *.csv.
+# et ajoute des recettes pour les fichiers *.csv.
 #
 # Pour cela, un fichier .gitattribute est maintenu à jour.
-# Les recettes pour les notebooks se chargent de les nettoyer avant de les commiter.
-# Pour cela, elles appliquent `jupyter nb-convert` à la volée. Ainsi, les comparaisons
-# de version ne sont plus parasités par les data.
-#
-# Les scripts pour les CSV utilisent le composant `daff` (pipSvolutions des fichiers csv.
+
+# Les scripts pour les CSV utilisent le composant `daff` (pip install daff)
+# pour comparer plus efficacement les évolutions des fichiers csv.
 # Un `git diff toto.csv` est plus clair.
 
 # S'assure de la présence de git (util en cas de synchronisation sur le cloud par exemple,
@@ -218,11 +202,6 @@ dump-%:
 	@git init -q
 	git commit --allow-empty -m "Create project bda_project"
 
-# Règle technique importante, invoquées lors du `git commit` d'un fichier *.ipynb via
-# le paramètrage de `.gitattributes`.
-.PHONY: pipe_clear_jupyter_output
-pipe_clear_jupyter_output:
-	jupyter nb-convert --to notebook --ClearOutputPreprocessor.enabled=True <(cat <&0) --stdout 2>/dev/null
 
 
 # Règle qui ajoute la validation du project avant un push sur la branche master.
@@ -261,20 +240,16 @@ pipe_clear_jupyter_output:
 	PRE-PUSH
 	chmod +x .git/hooks/pre-push
 
+# Init DVC
+.dvc:
+	@dvc init
+
 # Init git configuration
 .gitattributes: | .git .git/hooks/pre-push .dvc # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
 
-ifeq ($(shell which jupyter >/dev/null ; echo "$$?"),0)
-	# Add rules to manage the output data of notebooks
-	@git config --local filter.dropoutput_jupyter.clean "make --silent pipe_clear_jupyter_output"
-	@git config --local filter.dropoutput_jupyter.smudge cat
-	@[ -e .gitattributes ] && grep -v dropoutput_jupyter .gitattributes >.gitattributes.new 2>/dev/null || true
-	@[ -e .gitattributes.new ] && mv .gitattributes.new .gitattributes || true
-	@echo "*.ipynb filter=dropoutput_jupyter diff=dropoutput_jupyter -text" >>.gitattributes
-endif
 
 ifeq ($(shell which daff >/dev/null ; echo "$$?"),0)
 	# Add rules to manage diff with daff for CSV file
@@ -286,10 +261,6 @@ ifeq ($(shell which daff >/dev/null ; echo "$$?"),0)
 	@echo "*.[tc]sv diff=daff-csv merge=daff-csv -text" >>.gitattributes
 endif
 
-ifeq ($(shell which dvc >/dev/null ; echo "$$?"),0)
-	# Add DVC/Git integration
-	@dvc install
-endif
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour vérifier la présence d'un environnement Conda conforme
@@ -317,7 +288,6 @@ VALIDATE_VENV=$(CHECK_VENV)
 # - les dépendances PIP
 # - l'import de données pour spacy
 # - l'import de données pour nltk
-# - la gestion d'un kernel pour Jupyter
 #
 # Il suffit, dans les autres de règles, d'ajouter la dépendances sur `$(REQUIREMENTS)`
 # pour qu'un simple `make test` garantie la mise à jour de l'environnement avant
@@ -367,19 +337,6 @@ $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	pip install $(PIP_ARGS) -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
 	@touch $(PIP_PACKAGE)
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour gérer les kernels Jupyter
-# Intall a Jupyter kernel
-$(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(REQUIREMENTS)
-	@$(VALIDATE_VENV)
-	python -O -m ipykernel install --user --name $(KERNEL)
-	echo -e "$(cyan)Kernel $(KERNEL) installed$(normal)"
-
-# Remove the Jupyter kernel
-.PHONY: remove-kernel
-remove-kernel: $(REQUIREMENTS)
-	@echo y | jupyter kernelspec uninstall $(KERNEL) 2>/dev/null || true
-	echo -e "$(yellow)Warning: Kernel $(KERNEL) uninstalled$(normal)"
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de nltk.
@@ -467,7 +424,7 @@ configure:
 .PHONY: remove-venv
 remove-$(VENV):
 	@$(DEACTIVATE_VENV)
-	conda env remove --name "$(VENV)" -y
+	conda env remove --name "$(VENV)" -y 2>/dev/null
 	echo -e "Use: $(cyan)conda deactivate$(normal)"
 # Remove virtual environement
 remove-venv : remove-$(VENV)
@@ -489,27 +446,6 @@ endif
 # Upgrade packages to last versions
 upgrade-venv: upgrade-$(VENV)
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET de validation des notebooks en les ré-executants.
-# L'idée est d'avoir un sous répertoire par phase, dans le répertoire `notebooks`.
-# Ainsi, il suffit d'un `make nb-run-phase1` pour valider tous les notesbooks du répertoire `notebooks/phase1`.
-# Pour valider toutes les phases : `make nb-run-*`.
-# L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.
-.PHONY: nb-run-*
-notebooks/.make-%: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	$(VALIDATE_VENV)
-	time jupyter nbconvert \
-	  --ExecutePreprocessor.timeout=-1 \
-	  --execute \
-	  --inplace notebooks/$*/*.ipynb
-	touch notebooks/.make-$*
-# All notebooks
-notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebooks/*)))
-
-## Invoke all notebooks in lexical order from notebooks/<% dir>
-nb-run-%: $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	VENV=$(VENV) $(MAKE) notebooks/.make-$*
-
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET de validation des scripts en les ré-executant.
@@ -523,7 +459,7 @@ scripts/.make-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	time ls scripts/$*/*.py | grep -v __ | sed 's/\.py//g; s/\//\./g' | \
 		xargs -L 1 -t python -O -m
-	@touch scripts/.make-$*
+	@date >scripts/.make-$*
 
 # All phases
 scripts/phases: $(sort $(subst scripts/,scripts/.make-,$(wildcard scripts/*)))
@@ -651,71 +587,89 @@ bdist: dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl
 ## Create a full distribution
 dist: bdist sdist
 
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour tester la publication d'une distribution avant sa publication.
+.PHONY: check-twine
+## Check the distribution before publication
+check-twine: bdist
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not check-twine in offline mode$(normal)"
+else
+	$(VALIDATE_VENV)
+	twine check dist/*
+endif
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour tester la publication d'une distribution
+# sur test.pypi.org.
+.PHONY: test-twine
+## Publish distribution on test.pypi.org
+test-twine: bdist
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not test-twine in offline mode$(normal)"
+else
+	$(VALIDATE_VENV)
+	ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
+endif
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour publier la version sur pypi.org.
+.PHONY: release
+## Publish distribution on pypi.org
+release: dist
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not release in offline mode$(normal)"
+else
+	@$(VALIDATE_VENV)
+	[[ $$(ls -1 dist --hide "*.dev*" | wc -l) -ne 0 ]] || echo -e "$(red)Add a tag version in GIT to release$(normal)"
+	echo "Enter Pypi password"
+	ls $(PWD)/dist/* --hide "*.dev*" | xargs twine upload
+endif
+
 
 
 # ---------------------------------------------------------------------------------------
-# SNIPPET pour executer jupyter notebook, mais en s'assurant de la bonne application des dépendances.
-# Utilisez `make notebook` à la place de `jupyter notebook`.
-.PHONY: notebook
-## Start jupyter notebooks
-notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	@$(VALIDATE_VENV)
-	DATA=$$DATA jupyter notebook --ExecutePreprocessor.kernel_name=$(KERNEL) 
+# SNIPPET pour installer aws cli.
+$(CONDA_PREFIX)/bin/aws:
+	@pip install $(PIP_ARGS) -q awscli
 
 
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour synchroniser les données avec un bucket s3.
+# Si le repertoire data/raw est ajouté dans .gitignore, il n'est alors plus
+# sauvegardé dans .git. Il sera alors récupéré via s3.
+.PHONY: sync_to_s3 sync_from_s3
+## Upload Data to S3
+sync_to_s3/%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use s3 in offline mode$(normal)"
+else
+ifeq (default,$(PROFILE))
+	aws s3 sync $(DATA)/$(*:sync_to_s3/%=%) $(S3_BUCKET)/data/$(*:sync_to_s3/%=%)
+else
+	aws s3 sync $(DATA)/$(*:sync_to_s3/%=%) $(S3_BUCKET)/data/$(*:sync_to_s3/%=%) --profile $(PROFILE)
+endif
+endif
+
+## Download Data from S3
+sync_from_s3/%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use s3 in offline$(normal)"
+else
+ifeq (default,$(PROFILE))
+	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%)
+else
+	aws s3 sync $(S3_BUCKET)/data/$(*:sync_from_s3/%=%) $(DATA)/$(*:sync_from_s3/%=%) --profile $(PROFILE)
+endif
+endif
 
 # Download raw data if necessary
 $(DATA)/raw:
+	make sync_from_s3/data/raw
 
 
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour convertir tous les notebooks de 'notebooks/' en script
-# python dans 'scripts/', déjà compatible avec le mode scientifique de PyCharm Pro.
-# Le code utilise un modèle permettant d'encadrer les cellules Markdown dans des strings.
-# Les scripts possèdent ensuite le flag d'exécution, pour pouvoir les lancer directement
-# via un 'scripts/phase1/1_sample.py'.
-.PHONY: nb-convert
-# Convert all notebooks to python scripts
-_nbconvert:  $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	@echo -e "Convert all notebooks..."
-	notebook_path=notebooks
-	script_path=scripts
-	tmpfile=$$(mktemp /tmp/make-XXXXX)
-	
-	cat >$${tmpfile} <<TEMPLATE
-	{% extends 'python.tpl' %}
-	{% block in_prompt %}# %%{% endblock in_prompt %}
-	{%- block header -%}
-	#!/usr/bin/env python
-	# coding: utf-8
-	{% endblock header %}
-	{% block input %}
-	{{ cell.source | ipython2python }}{% endblock input %}
-	{% block markdowncell scoped %}
-	# %% md
-	"""
-	{{ cell.source  }}
-	"""
-	{% endblock markdowncell %}
-	TEMPLATE
-	
-	while IFS= read -r -d '' filename; do
-		target=$$(echo $$filename | sed "s/^$${notebook_path}/$${script_path}/g; s/ipynb$$/py/g ; s/[ -]/_/g" )
-		mkdir -p $$(dirname $${target})
-		jupyter nbconvert --to python --ExecutePreprocessor.kernel_name=$(KERNEL) \
-		  --template=$${tmpfile} --stdout "$${filename}" >"$${target}"
-		chmod +x $${target}
-		@echo -e "Convert $${filename} to $${target}"
-	done < <(find notebooks -name '*.ipynb' -type f -not -path '*/\.*' -prune -print0)
-	echo -e "$(cyan)All new scripts are in $${target}$(normal)"
-
-# Version permettant de convertir les notebooks et de la ajouter en même temps à GIT
-# en ajoutant le flag +x.
-## Convert all notebooks to python scripts
-nb-convert: _nbconvert
-	@find scripts/ -type f -iname "*.py" -exec git add "{}" \;
-	@find scripts/ -type f -iname "*.py" -exec git update-index --chmod=+x  "{}" \;
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer tous les fichiers générés par le compilateur Python.
@@ -736,13 +690,6 @@ clean-build:
 	@rm -fr *.egg-info
 	@echo -e "$(cyan)Build cleaned$(normal)"
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour nettoyer tous les notebooks
-.PHONY: clean-notebooks
-## Remove all results in notebooks
-clean-notebooks: $(REQUIREMENTS)
-	@[ -e notebooks ] && find notebooks -name '*.ipynb' -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
-	@echo -e "$(cyan)Notebooks cleaned$(normal)"
 
 # ---------------------------------------------------------------------------------------
 .PHONY: clean-pip
@@ -766,13 +713,13 @@ clean-venv : clean-$(VENV)
 # SNIPPET pour faire le ménage du projet (hors environnement)
 .PHONY: clean
 ## Clean current environment
-clean: clean-pyc clean-build clean-notebooks
+clean: clean-pyc clean-build 
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour faire le ménage du projet
 .PHONY: clean-all
 # Clean all environments
-clean-all: remove-kernel clean remove-venv
+clean-all: clean remove-venv
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour executer les tests unitaires et les tests fonctionnels.
@@ -815,81 +762,105 @@ test: .make-test
 # Cette règle est invoqué avant un commit sur la branche master de git.
 .PHONY: validate
 ## Validate the version before release
-validate: .make-test typing $(DATA)/raw scripts/* notebooks/* build/html build/linkcheck
-
-
-
-
+validate: .make-test typing $(DATA)/raw scripts/* build/html build/linkcheck
 
 # ---------------------------------------------------------------------------------------
-# Function to invoke DVC run
-# $1 : dvc file
-# $2 : cmd to invoke (python ...)
-# $3 : empty or -M
-define dvc_run
-	if [ -e $1 ] ; then dvc remove $1 ; fi
-	rm -f $1
-	dvc run -q -f $1 \
-		$(addprefix -d ,$(filter-out .%,$(filter-out %.egg-link,$?))) \
-		$(if $3,-M $@,-o $@) \
-	$2
-	@if [ -e $(@D)/.gitignore ] ; then git add $(@D)/.gitignore ; fi
-	@if [ -e $1 ] ; then git add $1 ; fi
+# SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.
+# Voir https://gitlab.octo.com/pprados/ssh-ec2
+# L'utilisation de `$(REQUIREMENTS)` dans chaque règle, permet de s'assurer de la bonne
+# mise en place de l'environnement nécessaire à l'exécution de la recette,
+# même lorsqu'elle est exécuté sur EC2.
+# Par exemple :
+# - `make on-ec2-test` execute les TU sur EC2 (Invoque `make test`)
+# - `make detach-train` détache le l'apprentissage (Invoque `make train`)
+
+# Conda virtual env to use in EC2
+VENV_AWS=tensorflow_p36
+
+# Initialize EC2 instance
+# The two first lines add a log of the script in /tmp/user-data.log
+# for debug
+export AWS_USER_DATA
+define AWS_USER_DATA
+#!/bin/bash -x
+exec > /tmp/user-data.log 2>&1
+sudo su - ec2-user -c "conda install -n $(VENV_AWS) make>=4 -y $(CONDA_ARGS)"
 endef
 
+# What is the life cycle of EC2 instance  via ssh-ec2 ?
+#--leave --stop or --terminate
+EC2_LIFE_CYCLE?=--terminate
 
-# ---------------------------------------------------------------------------------------
-# Initialize DVC
-.dvc: | .git
-	@dvc init
-	@dvc config cache.protected true
-	@dvc remote add -d origin $(DVC_BUCKET)
-	@git add .dvc/config
-REQUIREMENTS += | .dvc
+# Recette permettant un `make ec2-test`
+.PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
+## Call 'make %' recipe on EC2 (`make ec2-train`)
+ec2-%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
+	@$(VALIDATE_VENV)
+	set -x
+	ssh-ec2 $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-%=%)"
+endif
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour initialiser DVC avec la production de fichiers distants dans des buckets
-# Voir: https://dvc.org/doc/user-guide/external-outputs
-# Use :
-# - make dvc-external-s3
-# - make dvc-external-gs
-# - make dvc-external-azure
-# - make dvc-external-ssh
-# - make dvc-external-htfs
-.PHONY: dvc-external-*
-## Initialize the DVC external cache provider (dvc-external-s3)
-dvc-external-%: .dvc $(REQUIREMENTS)
-	@dvc remote add ${*}cache $(DVC_BUCKET)/cache
-	@dvc config cache.${*} ${*}cache
+# Recette permettant d'exécuter une recette avec un tmux activé.
+# Par exemple `make ec2-tmux-train`
+## Call 'make %' recipe on EC2 with a tmux session (`make ec2-tmux-train`)
+ec2-tmux-%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
+	@$(VALIDATE_VENV)
+	set -x
+	NO_RSYNC_END=n ssh-ec2 --multi tmux --leave "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-tmux-%=%)"
+endif
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour vérouiller un fichier DVC pour ne plus le reconstruire, meme si cela
-# semble nécessaire. C'est util en phase de développement.
-# See https://dvc.org/doc/commands-reference/lock
-# Lock DVC file
-lock-%: .dvc $(REQUIREMENTS)
-	@dvc lock $(*:lock-%=%)
+# Recette permettant un `make ec2-detach-test`
+# Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin
+## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
+ec2-detach-%: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
+	@$(VALIDATE_VENV)
+	set -x
+	ssh-ec2 --detach $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-detach-%=%)"
+endif
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour dévérouiller un fichier DVC pour pouvoir le reconstruire.
-# See https://dvc.org/doc/commands-reference/unlock
-# Lock DVC file
-unlock-%: .dvc $(REQUIREMENTS)
-	@dvc unlock $(*:lock-%=%)
+# Recette permettant un `make ec2-attach`
+# Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin
+## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
+ec2-attach: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
+	@$(VALIDATE_VENV)
+	set -x
+	ssh-ec2 --attach
+endif
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour afficher les métrics gérées par DVC.
-# See https://dvc.org/doc/commands-reference/metrics
-## show the DVC metrics
-metrics: .dvc $(REQUIREMENTS)
-	@dvc metrics show
+# Recette permettant un `make ec2-finish`
+## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
+ec2-finish: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
+else
+	@$(VALIDATE_VENV)
+	set -x
+	ssh-ec2 --finish
+endif
 
-# ---------------------------------------------------------------------------------------
-# SNIPPET pour supprimer les fichiers de DVC du projet
-# Remove all .dvc files
-clean-dvc:
-	rm -Rf .dvc
-	-/usr/bin/find . -type f -name "*.dvc" -delete
+## Start jupyter notebook on EC2
+ec2-notebook: $(CONDA_PREFIX)/bin/aws
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline$(normal)"
+else
+	@$(VALIDATE_VENV)
+	set -x
+	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
+endif
+
+
 
 #################################################################################
 # PROJECT RULES                                                                 #
@@ -907,57 +878,38 @@ TOOLS:=$(shell find bda_project/ -mindepth 2 -type f -name '*.py')
 bda_project/*.py : $(TOOLS)
 	@touch $@
 
-data/interim/datas-prepared.csv: $(REQUIREMENTS) bda_project/prepare_dataset.py data/raw/*
-	@$(call dvc_run,prepare.dvc,\
-	python -O -m bda_project.prepare_dataset \
-		data/raw/datas.csv \
-		data/interim/datas-prepared.csv\
-	)
-prepare.dvc: data/interim/datas-prepared.csv
+$(DATA)/interim/datas-prepared.csv : $(REQUIREMENTS) bda_project/prepare_dataset.py $(DATA)/raw/*
+	@python -O -m bda_project.prepare_dataset \
+		$(DATA)/raw/datas.csv \
+		$(DATA)/interim/datas-prepared.csv
 ## Prepare the dataset
-prepare: prepare.dvc
+prepare: $(DATA)/interim/datas-prepared.csv
 
-data/interim/datas-features.csv : $(REQUIREMENTS) bda_project/build_features.py data/interim/datas-prepared.csv
-	@$(call dvc_run,features.dvc,\
-	python -O -m bda_project.build_features \
-		data/interim/datas-prepared.csv \
-		data/interim/datas-features.csv\
-	)
+$(DATA)/processed/datas-features.csv : $(REQUIREMENTS) bda_project/build_features.py $(DATA)/interim/datas-prepared.csv
+	@python -O -m bda_project.build_features \
+		$(DATA)/interim/datas-prepared.csv \
+		$(DATA)/processed/datas-features.csv
 ## Add features
-features: data/interim/datas-features.csv
+features: $(DATA)/processed/datas-features.csv
 
-models/model.pkl : $(REQUIREMENTS) bda_project/train_model.py data/interim/datas-features.csv
-	@$(call dvc_run,train.dvc,\
-	python -O -m bda_project.train_model \
-		data/interim/datas-features.csv \
-		models/model.pkl \
-	)
+models/model.pkl : $(REQUIREMENTS) bda_project/train_model.py $(DATA)/processed/datas-features.csv
+	@python -O -m bda_project.train_model \
+		$(DATA)/processed/datas-features.csv \
+		models/model.pkl
 ## Train the model
 train: models/model.pkl
 
-
 reports/auc.metric: $(REQUIREMENTS) bda_project/evaluate_model.py models/model.pkl
-	@$(call dvc_run,evaluate.dvc,\
-	python -O -m bda_project.evaluate_model \
+	@python -O -m bda_project.evaluate_model \
 		models/model.pkl \
-		data/interim/datas-features.csv \
-		reports/auc.metric \
-	,-M \
-	)
+		$(DATA)/processed/datas-features.csv \
+		reports/auc.metric
 ## Evalutate the model
 evaluate: reports/auc.metric
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) bda_project/visualize.py models/model.pkl
 	@python -O -m bda_project.visualize \
-	    reports/
-
-
-# See https://dvc.org/doc/commands-reference/repro
-.PHONY: repro
-## 	Re-run commands recorded in the last DVC stages in the same order.
-repro: evaluate.dvc
-	dvc repro $<
-
+	    'reports/*.metric'
 
 

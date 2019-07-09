@@ -35,7 +35,6 @@ setup_requirements: List[str] = ["pytest-runner","setuptools_scm"]
 test_requirements: List[str] = [
     'pytest>=2.8.0',
     'pytest-openfiles', # For tests
-    'pytest-cookies',
     'pytest-xdist',
     'pytest-httpbin==0.0.7',
     'pytest-mock',

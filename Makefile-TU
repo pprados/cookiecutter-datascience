@@ -3,7 +3,11 @@
 # This is a unit test of all target of generated Makefile
 # Use a temporay coTS = -e -c
 .ONESHELL:
+ifeq ($(OFFLINE),True)
 export CONDA_ARGS=--use-index-cache --use-local --offline
+else
+export CONDA_ARGS=--use-index-cache --use-local
+endif
 
 export NPROC?=$(shell nproc)
 # Ne fonctionne pas en parallelisant les make du build. (et j'ai pas testé)
@@ -80,17 +84,11 @@ define do_make
 	echo "cd $$(pwd)"
 	echo "conda activate $$V"
 	echo "VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1"
-	read PPR
-	VENV=$$V $(MAKE) $(MAKE_PARALLEL) $1 || (echo ">>>>>>>>>>> ERROR WITH '$1' venv=$$V" ; read PPR )
-	read -p "apres1" PPR
 	cd "$$oldpath"
 	conda deactivate
-	read -p "apres2" PPR
 	conda env remove -n $$V 2>/dev/null
-	read -p "apres3" PPR
 	# PPR bug avec DVC si je rm ?
 	rm -Rf $$D
-	read -p "apres4" PPR
 endef
 
 .PHONY: help

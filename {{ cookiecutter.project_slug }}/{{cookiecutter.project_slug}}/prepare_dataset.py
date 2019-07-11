@@ -13,7 +13,7 @@ import click_pathlib
 import dotenv
 import pandas as pd
 
-from tools.tools import init_logger
+from .tools.tools import init_logger
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +24,8 @@ def prepare_dataset(input_raw: pd.DataFrame) -> pd.DataFrame:
         :param input_raw: Input raw dataframe
         :return: Prepared dataframe
     """
+    LOGGER.info('Prepare data set from raw data')
+
     # TODO: Remplacez la ligne suivante pour un enrichissement du dataset
     output_prepared = input_raw
     return output_prepared
@@ -40,9 +42,8 @@ def main(input_raw_filepath: Path,
         :param output_prepared_filepath: new file to write with prepared datas
         :return: 0 if ok, else error
     """
-    LOGGER.info('Clean data set from raw data to interim')
 
-    output_prepared_filepath.dirname().mkdir(parents=True, exist_ok=True)
+    output_prepared_filepath.parent.mkdir(parents=True, exist_ok=True)
 
     input_raw = pd.read_csv(input_raw_filepath)
     output_prepared = prepare_dataset(input_raw)

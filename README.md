@@ -216,3 +216,4 @@ du Makefile](Makefile.snippet).
 - [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
 - [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
 - [ ] [MLeap](http://mleap-docs.combust.ml/)
+- [ ] [Sops](https://pypi.org/project/sops/)

@@ -66,7 +66,7 @@ def test_template_default_values(cookies, context):
 
 @pytest.mark.slow
 @pytest.mark.online
-def Xtest_template_default_values_online(cookies, context):
+def test_template_default_values_online(cookies, context):
     """Test the template for proper creation.
 
     cookies is a fixture provided by the pytest-cookies
@@ -89,7 +89,7 @@ def Xtest_template_default_values_online(cookies, context):
 
 @pytest.mark.slow
 @pytest.mark.online
-def Xtest_template_with_aws_and_s3(cookies, context):
+def test_template_with_aws_and_s3(cookies, context):
     """Test the template for proper creation.
 
     cookies is a fixture provided by the pytest-cookies
@@ -122,7 +122,7 @@ def Xtest_template_with_aws_and_s3(cookies, context):
 
 
 @pytest.mark.slow
-def Xtest_template_with_jupyter(cookies, context):
+def test_template_with_jupyter(cookies, context):
     """Test the template for proper creation.
 
     cookies is a fixture provided by the pytest-cookies
@@ -155,7 +155,7 @@ def Xtest_template_with_jupyter(cookies, context):
 
 @pytest.mark.slow
 @pytest.mark.online
-def Xtest_template_with_text_processing(cookies, context):
+def test_template_with_text_processing(cookies, context):
     """Test the template for proper creation.
 
     cookies is a fixture provided by the pytest-cookies

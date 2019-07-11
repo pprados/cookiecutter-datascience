@@ -11,7 +11,7 @@ from typing import Sequence, IO
 import click
 import dotenv
 
-from tools.tools import Glob, init_logger
+from .tools.tools import Glob, init_logger
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +22,8 @@ def visualize(streams: Sequence[IO[str]]) -> None:
         :param streams list of files
         :return: 0 if ok, else error
     """
+    LOGGER.info('Visualize the results')
+
     for stream in streams:
         # TODO: Ajoutez le code de visualisation de l'évalusation ici
         metric = json.load(stream)
@@ -37,7 +39,6 @@ def main(evaluate_filepath: Sequence[str]) -> int:
         :param evaluate_filepath: glob data file path
         :return: 0 if ok, else error
     """
-    LOGGER.info('Visualize the results')
 
     inputs = [open(a_file, "rt")
               for a_file in evaluate_filepath

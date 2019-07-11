@@ -18,9 +18,9 @@ USE_GPU: str = "-gpu" if (os.environ['GPU'].lower() in 'yes'
 # FIXME Ajoutez et ajustez les dépendences nécessaire à l'exécution.
 requirements: List[str] = [
     'click', 'click-pathlib',
-    'python-dotenv',{% if cookiecutter.use_tensorflow == "y"      %}
-    'sklearn',
-    'tensorflow' + USE_GPU + '~=1.3',  # Ubuntu: sudo apt-get install cuda-libraries-10.0
+    'python-dotenv',
+    'sklearn',{% if cookiecutter.use_tensorflow == "y" %}
+    'tensorflow' + USE_GPU + '~=1.3','tensorflow_hub'  # Ubuntu: sudo apt-get install cuda-libraries-10.0
     'keras',# {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}
@@ -52,9 +52,10 @@ dev_requirements: List[str] = [
     'flake8', 'pylint',  # For lint
     'daff',
     'pytype',
-{% if cookiecutter.use_jupyter == "y" %}    'jupyter',  # Use Jupyter{% endif %}
-{% if cookiecutter.use_DVC == "y"     %}    'dvc',  # Use DVC{% endif %}
-{% if cookiecutter.use_aws == "y"     %}    'awscli',  # Use AWS{% endif %}
+{% if cookiecutter.use_jupyter == "y"    %}    'jupyter',  # Use Jupyter{% endif %}
+{% if cookiecutter.use_DVC == "y"        %}    'dvc',  # Use DVC{% endif %}
+{% if cookiecutter.use_aws == "y"        %}    'awscli',  # Use AWS{% endif %}
+{% if cookiecutter.use_tensorflow == "y" %}    'tensorboard',  # Use tensorflow{% endif %}
 ]
 
 

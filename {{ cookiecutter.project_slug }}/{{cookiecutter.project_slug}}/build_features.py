@@ -9,10 +9,11 @@ import sys
 from pathlib import Path
 
 import click
+import click_pathlib
 import dotenv
 import pandas as pd
 
-from tools.tools import init_logger
+from .tools.tools import init_logger
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ def build_features(input_prepared: pd.DataFrame) -> pd.DataFrame:
         :param input_prepared: data prepared
         :return: data with features
     """
+    LOGGER.info('Add features from prepared data')
+
     # TODO: Remplacez la ligne suivante pour un enrichissement du dataset
     output_feature = input_prepared
     return output_feature
@@ -41,9 +44,8 @@ def main(input_prepared_filepath: Path,
         :param output_featured_filepath: output file path with features
         :return: 0 if ok, else error
     """
-    LOGGER.info('Add features from prepared data')
 
-    output_featured_filepath.dirname().mkdir(parents=True, exist_ok=True)
+    output_featured_filepath.parent.mkdir(parents=True, exist_ok=True)
 
     input_prepared = pd.read_csv(input_prepared_filepath)
     output_feature = build_features(input_prepared)

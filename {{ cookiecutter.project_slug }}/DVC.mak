@@ -96,7 +96,8 @@ models/model.pkl : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/train_model.p
 	dvc run -q -f train.dvc \
 		-d {{ cookiecutter.project_slug }}/train_model.py \
 		-d data/interim/datas-features.csv \
-	python -O -m {{ cookiecutter.project_slug }}.train_model \
+	python -O -m {{ cookiecutter.project_slug }}.train_model \{% if cookiecutter.use_tensorflow == "y" %}
+	    --logdir $(TENSORFLOW_LOGDIR) \{% endif %}
 		data/interim/datas-features.csv \
 		models/model.pkl
 ## Train the model

@@ -293,13 +293,13 @@ _make-%:
 .make-check-docs: {{\ cookiecutter.project_slug\ }}/Makefile {{\ cookiecutter.project_slug\ }}/docs
 	$(MAKE) try
 	@source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate bda_project
-	@pushd tmp/bda_project
+	@pushd try/$(BRANCH)/bda_project
 #@$(MAKE) build/applehelp # https://github.com/miyakogi/m2r/issues/34
 	@$(MAKE) build/changes
 	@$(MAKE) build/devhelp
 	@$(MAKE) build/dirhtml
 	@$(MAKE) build/dummy
-#@$(MAKE) build/epub # Error with KeyErro 'ids' in _epub_base.py
+	@$(MAKE) build/epub # Error with KeyErro 'ids' in _epub_base.py
 	@$(MAKE) build/gettext
 	@$(MAKE) build/html
 	@$(MAKE) build/htmlhelp
@@ -349,8 +349,7 @@ check-makefile: .make-check-makefile
 .PHONY: check-configure
 check-configure: .make-check-configure
 
-# PPR .make-check-all-make: $(REQUIREMENTS) .make-check-configure .make-check-makefile .make-check-docs
-.make-check-all-make: $(REQUIREMENTS) .make-test .make-check-makefile
+.make-check-all-make: $(REQUIREMENTS) .make-check-configure .make-check-makefile .make-check-docs
 	@date >.make-check-all-make
 
 .PHONY: check-all-make
@@ -409,5 +408,4 @@ examples/dvc/flower_classifier: Makefile examples.template/flower_classifier/flo
 examples/classic/wine_quality: Makefile
 	$(call generate_example,classic,wine_quality,use_DVC=n use_aws=y)
 
-.PHONY: examples
-examples: examples/classic/flower_classifier examples/dvc/flower_classifier
+examples: examples/[cd]*/flower_classifier

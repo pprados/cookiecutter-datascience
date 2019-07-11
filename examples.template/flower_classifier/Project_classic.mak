@@ -1,4 +1,3 @@
-#################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
 # Mode NORMAL
@@ -34,7 +33,8 @@ prepare: data/processed/*
 models/model_flower_classifier.h5 models/model_flower_classifier.pkl : $(REQUIREMENTS) \
 	flower_classifier/train_model.py data/processed/*
 	python -O -m flower_classifier.train_model \
-		--seed 12345 \
+		--seed 97531 \
+		--batch-size 16 \
 		'data/processed/**/212*.jpg' \
 		models/model_flower_classifier.h5 \
 		models/model_flower_classifier.pkl

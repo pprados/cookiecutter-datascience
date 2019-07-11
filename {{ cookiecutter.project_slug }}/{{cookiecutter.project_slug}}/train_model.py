@@ -6,19 +6,19 @@ import logging
 import pickle
 import sys
 from pathlib import Path
-from typing import Any, Sequence, Optional
+from typing import Any, Sequence, Optional, Iterator
 
 import click
 import click_pathlib
 import dotenv
 {% if cookiecutter.use_tensorflow == 'y' %}import keras{% endif %}
-from tools.tools import Glob, init_logger
+from .tools.tools import Glob, init_logger
 
 LOGGER = logging.getLogger(__name__)
 
-{% if cookiecutter.use_tensorflow == 'n' %}Model = keras.Model{% else %}Model = Any  # TODO: Select type{% endif %}
+{% if cookiecutter.use_tensorflow == 'y' %}Model = keras.Model{% else %}Model = Any  # TODO: Select type{% endif %}
 
-def train_model(inputs: Sequence[str],
+def train_model(inputs: Sequence[Path],
                 epoch: int = 128,
                 batch_size: int = 1024,
                 seed:Optional[int] = None) -> Model:
@@ -30,6 +30,8 @@ def train_model(inputs: Sequence[str],
         :param seed: Force seed (default None)
         :return: The trained model
     """
+    LOGGER.info('Train model from processed and featured data')
+
     # TODO: Remplacez la ligne suivante par un apprentissage
     model = "TODO"
 
@@ -47,7 +49,8 @@ def main(input_files: Sequence[Path],
          model_filepath: Path,
          epoch: int,
          batch_size: int,
-         seed: Optional[int]) -> int:
+         seed: Optional[int],
+        ) -> int:
     """ Train the model from input_filepath and save it in model_filepath
 
         :param input_filepath: glob data file path
@@ -57,9 +60,7 @@ def main(input_files: Sequence[Path],
         :param seed: The initial seed (default None)
         :return: 0 if ok, else error
     """
-    LOGGER.info('Train model from processed and featured data')
-
-    model_filepath.dirname().mkdir(parents=True, exist_ok=True)
+    model_filepath.parent.mkdir(parents=True, exist_ok=True)
 
     model = train_model(input_files, epoch, batch_size, seed)
     pickle.dump(model, open(model_filepath, 'wb'))

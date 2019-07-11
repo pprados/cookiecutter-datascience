@@ -115,6 +115,7 @@ DVC_BUCKET?={% if cookiecutter.use_aws == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% e
 # List of source and tests files
 PYTHON_SRC=$(shell find -L {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
 PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
+{% if cookiecutter.use_tensorflow == "y" %}TENSORFLOW_LOGDIR=./logdir{% endif %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
@@ -451,6 +452,11 @@ ifneq ($(OFFLINE),True)
 else
 	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
 endif{% endif %}
+{% if cookiecutter.use_tensorflow == "y" %}
+## Start tensorbard
+tensorboard:
+	tensorboard --logdir $(TENSORFLOW_LOGDIR)
+{% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de spacy.{% endif %}

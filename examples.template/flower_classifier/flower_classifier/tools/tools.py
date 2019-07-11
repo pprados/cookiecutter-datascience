@@ -8,7 +8,7 @@ import logging
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Sequence, Tuple, Optional, List, Mapping
+from typing import Sequence, Tuple, Optional, List, Mapping, Iterator
 
 import click
 import numpy as np
@@ -58,20 +58,21 @@ class Glob(click.ParamType):
                 glob.glob(super().convert(value=value, param=param, ctx=ctx), recursive=self.recursive)]
 
 
-def decode_and_resize_image(raw_bytes: bytes, size: Tuple[int, int]) -> np.ndarray:
+def decode_and_resize_image(data: np.array, size: Tuple[int, int]) -> np.ndarray:
     """
     Read, decode and resize raw image bytes (e.g. raw content of a jpeg file).
 
-    :param raw_bytes: Image bits, e.g. jpeg image.
+    :param data: array of pixels.
     :param size: requested output dimensions
     :return: Multidimensional numpy array representing the resized image.
     """
-    data = np.array(Image.open(BytesIO(raw_bytes)).resize(size))
-    info = np.iinfo(data.dtype)  # Get the information of the incoming image type
-    return np.asarray(data.astype(np.float32) / info.max)  # normalize the data to 0 - 1
+    return (data / 127.5) - 1
+
+    # info = np.iinfo(data.dtype)  # Get the information of the incoming image type
+    # return np.asarray(data.astype(np.float32) / info.max)  # normalize the data to 0 - 1
 
 
-def load_images(files: Sequence[Path]) -> Tuple[Sequence[int], Mapping[str, int], Sequence[bytes]]:
+def load_images(files: Iterator[Path]) -> Tuple[Sequence[int], Mapping[str, int], Sequence[bytes]]:
     """
     Load directories and returns data and labels
     :param input_filepath: Glob path
@@ -81,10 +82,11 @@ def load_images(files: Sequence[Path]) -> Tuple[Sequence[int], Mapping[str, int]
     domain: Mapping[str, int] = {}
     image_datas: Sequence[bytes] = []
     for file in files:
-        with open(file, "rb") as image_file:
+        with Image.open(file) as image_file:
             clazz = Path(file).parts[-2:-1][0]
             if clazz not in domain:
                 domain[clazz] = len(domain)
             labels.append(domain[clazz])
-            image_datas.append(image_file.read())
+            image = (np.array(image_file, dtype=float) / 127.5) - 1
+            image_datas.append(image)
     return labels, domain, image_datas

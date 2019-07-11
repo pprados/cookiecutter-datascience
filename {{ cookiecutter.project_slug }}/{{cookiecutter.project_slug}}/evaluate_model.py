@@ -8,29 +8,29 @@ import pickle
 import sys
 from pathlib import Path
 from time import strftime, gmtime
-from typing import Any, Sequence
+from typing import Sequence, Iterator
 
 import click
 import click_pathlib
 import dotenv
 import pandas as pd
 
-from tools.tools import Glob, init_logger
-from train_model import Model
-
-from {{ cookiecutter.project_slug }}.train_model import Model
+from .tools.tools import Glob, init_logger
+from .train_model import Model
 
 LOGGER = logging.getLogger(__name__)
 
 
 def evaluate_model(model: Model,
-                   samples: Sequence[pd.DataFrame]) -> dict:
+                   samples: Iterator[pd.DataFrame]) -> dict:
     """ Evaluate the model with sample datas
 
         :param model: model
         :param samples: A list of samples dataframe
         :return: dictionary with metrics
     """
+    LOGGER.info('Evaluate model')
+
     metrics = {}
     for a_sample in samples:
         pass  # TODO Code d'evaluation de chaque dataframe
@@ -52,12 +52,11 @@ def main(model_filepath: Path,
         :param evaluate_filepath: json file path with metrics to write
         :return: 0 if ok, else error
     """
-    LOGGER.info('Evaluate model \'%s\' from processed data', model_filepath)
 
-    model: Model = pickle.load(open(model_filepath, 'rb'))
+    model = pickle.load(open(model_filepath, 'rb'))
 
     datasets = [pd.read_csv(f) for f in sample_files]
-    metrics: dict = evaluate_model(model, datasets)
+    metrics = evaluate_model(model, iter(datasets))
     with open(evaluate_filepath, 'wt') as evaluate_file:
         json.dump(metrics, evaluate_file, indent=4)
     return 0

@@ -29,19 +29,20 @@ $(DATA)/processed/datas-features.csv : $(REQUIREMENTS) {{ cookiecutter.project_s
 features: $(DATA)/processed/datas-features.csv
 
 models/model.pkl : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/train_model.py $(DATA)/processed/datas-features.csv
-	@python -O -m {{ cookiecutter.project_slug }}.train_model \
+	@python -O -m {{ cookiecutter.project_slug }}.train_model \{% if cookiecutter.use_tensorflow == "y" %}
+	    --logdir $(TENSORFLOW_LOGDIR) \{% endif %}
 		$(DATA)/processed/datas-features.csv \
 		models/model.pkl
 ## Train the model
 train: models/model.pkl
 
-reports/auc.metric: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/evaluate_model.py models/model.pkl
+reports/metric.json: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/evaluate_model.py models/model.pkl
 	@python -O -m {{ cookiecutter.project_slug }}.evaluate_model \
 		models/model.pkl \
 		$(DATA)/processed/datas-features.csv \
-		reports/auc.metric
+		reports/metric.json
 ## Evalutate the model
-evaluate: reports/auc.metric
+evaluate: reports/metric.json
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/visualize.py models/model.pkl

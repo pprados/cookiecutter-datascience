@@ -7,7 +7,7 @@ import math
 import pickle
 import sys
 from pathlib import Path
-from typing import Tuple, Sequence, Mapping, Optional, Any
+from typing import Tuple, Sequence, Mapping, Optional, Any, Iterator
 
 import click
 import click_pathlib
@@ -15,9 +15,9 @@ import dotenv
 import numpy as np
 import tensorflow as tf
 import keras
-from keras.applications import vgg16
-from keras.callbacks import Callback
-from keras.layers import Input, Dense, Flatten, Lambda
+from keras.applications import vgg16, VGG19
+from keras.callbacks import Callback, TensorBoard
+from keras.layers import Input, Dense, Flatten, Lambda, Dropout
 from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
 
@@ -28,24 +28,33 @@ LOGGER = logging.getLogger(__name__)
 Model = keras.Model
 
 
-def _imagenet_preprocess_tf(x: np.ndarray) -> np.ndarray:
-    return (x / 127.5) - 1
-
-
 def _create_model(input_shape: Tuple[int, int, int], classes: int) -> Model:
-    image = Input(input_shape)
-    lambda_layer = Lambda(_imagenet_preprocess_tf)
-    preprocessed_image = lambda_layer(image)
-    model = vgg16.VGG16(classes=classes,
-                        input_tensor=preprocessed_image,
-                        weights=None,
-                        include_top=False)
+    """
+      use VGG19
+    """
+    model = VGG19(weights="imagenet",
+                  include_top=False,
+                  input_shape=input_shape)
 
-    x = Flatten(name='flatten')(model.output)
-    x = Dense(4096, activation='relu', name='fc1')(x)
-    x = Dense(4096, activation='relu', name='fc2')(x)
-    x = Dense(classes, activation='softmax', name='predictions')(x)
-    return Model(inputs=model.input, outputs=x)
+    # Freeze the layers which you don't want to train. Here I am freezing the first 5 layers.
+    for layer in model.layers[:1]:
+        layer.trainable = False
+
+    # Adding custom Layers
+    x = model.output
+    x = Flatten()(x)
+    x = Dense(1024, activation="relu")(x)
+    x = Dropout(0.5)(x)
+    x = Dense(1024, activation="relu")(x)
+    predictions = Dense(classes, activation="softmax", name='predictions')(x)
+
+    # creating the final model
+    final_model = Model(inputs=model.input, outputs=predictions)
+
+    final_model.compile(loss='categorical_crossentropy', optimizer='adam',
+                        metrics=['acc'])  # optimizer=RMSprop(lr=0.001)
+
+    return final_model
 
 
 class _MLflowLogger(Callback):
@@ -95,7 +104,7 @@ class _MLflowLogger(Callback):
         Log the best model with MLflow and evaluate it on the train and validation data so that the
         metrics stored with MLflow reflect the logged model.
         """
-        self._model.set_weights(self._best_weights)
+        # self._model.set_weights(self._best_weights)
         # x, y = self._train
         # train_res = self._model.evaluate(x=x, y=y)
         # for name, value in zip(self._model.metrics_names, train_res):
@@ -111,25 +120,22 @@ class _MLflowLogger(Callback):
 def train_model(
         domain: Mapping[str, int],
         labels: Sequence[int],
-        image_datas: Sequence[bytes],
+        image_datas: Iterator[np.array],
         test_ratio: float,
         epochs: int = 1,
         batch_size: int = 1,
         image_width: int = 224,
         image_height: int = 224,
-        seed: Optional[int] = None) -> Model:
-    """ Train VGG16 model on provided image files. This will create a new MLflow run and log all
-        parameters, metrics and the resulting model with MLflow. The resulting model is an instance
-        of KerasImageClassifierPyfunc - a custom python function model that embeds all necessary
-        preprocessing together with the VGG16 Keras model. The resulting model can be applied
-        directly to image base64 encoded image data.
+        seed: Optional[int] = None,
+        logdir: Path="./logdir/") -> Model:
+    """ Train VGG19 model on provided image files.
 
-        Must be called in Tensorflow session.
+        May be called in Tensorflow session.
 
         :param labels: Sequence of labels for the image files.
         :param domain: Dictionary representing the domain of the reponse.
                        Provides mapping label-name -> label-id.
-        :param image_datas: array of bytes of images
+        :param image_datas: iterator of nparray with image in float normalisation
         :param test_ratio: Ration beetween train and test. (default 0.2)
         :param epoch: Maximum number of epochs to evaluate. (default 1)
         :param batch_size: Batch size passed to the learning algo. (default 1)
@@ -149,18 +155,13 @@ def train_model(
     LOGGER.info("Training model with the following parameters: %s", meta_parameters)
 
     LOGGER.info("Domain: %s", domain)
-    # for param, value in locals().items():
-    #     print("  ", param, "=", value)
 
     assert len(set(labels)) == len(domain)
 
     input_shape = (image_width, image_height, 3)
 
-    # with tf.Graph().as_default() as g:
-    #     with tf.Session(graph=g).as_default():
-    dims = input_shape[:2]
-    x = np.array([decode_and_resize_image(datas, dims)
-                  for datas in image_datas])
+    # PPR dims = input_shape[:2]
+    x = np.array([datas for datas in image_datas])
     y = np_utils.to_categorical(np.array(labels), num_classes=len(domain))
     train_size = 1 - test_ratio
     x_train, x_valid, y_train, y_valid = train_test_split(x, y, random_state=seed,
@@ -179,13 +180,14 @@ def train_model(
                            artifact_path="model",
                            domain=sorted_domain,
                            image_dims=input_shape)
+    tensorboard = TensorBoard(log_dir=logdir)
     model.fit(
         x=x_train,
         y=y_train,
         validation_data=(x_valid, y_valid),
         epochs=epochs,
         batch_size=batch_size,
-        callbacks=[logger])
+        callbacks=[logger, tensorboard])
 
     return model
 
@@ -207,15 +209,17 @@ def train_model(
 @click.option("--image-height", type=click.INT, default=224, help="Input image height in pixels.")
 @click.option("--test-ratio", type=click.FLOAT, default=0.2)
 @click.option("--seed", type=click.INT, help="Seed for the random generator.")
+@click.option('--logdir', type=click_pathlib.Path(), help='Tensorflow logdir', default="./logdir/")
 def main(input_files: Sequence[Path],
-         model_filepath: str,
-         domain_filepath: str,
+         model_filepath: Path,
+         domain_filepath: Path,
          test_ratio: float,
          epochs: int,
          batch_size: int,
          image_width: int,
          image_height: int,
-         seed: Optional[int]) -> int:
+         seed: Optional[int],
+         logdir: Path) -> int:
     """ Train the model from input_filepath and save it in model_filepath
 
         :param input_filepath: glob data file path
@@ -223,6 +227,7 @@ def main(input_files: Sequence[Path],
         :param epoch: Value of epoch (default 128)
         :param batch_size: Value of batch size (default 1024)
         :param seed: The initial seed (default None)
+        :param logdir: Tensorboard logdir (default None)
         :return: 0 if ok, else error
     """
     LOGGER.info('Train model from processed and featured data')
@@ -237,13 +242,14 @@ def main(input_files: Sequence[Path],
             model = train_model(
                 domain,
                 labels,
-                image_datas,
+                iter(image_datas),
                 test_ratio,
                 epochs,
                 batch_size,
                 image_width,
                 image_height,
-                seed)
+                seed,
+                logdir)
 
             # 3. Save the model
             model.save(str(model_filepath))

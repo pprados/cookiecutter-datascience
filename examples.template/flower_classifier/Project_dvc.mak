@@ -1,4 +1,3 @@
-#################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
 #
@@ -44,7 +43,8 @@ models/model_flower_classifier.h5 models/model_flower_classifier.pkl : $(REQUIRE
 		-o models/model_flower_classifier.h5 \
 		-o models/model_flower_classifier.pkl \
 	python -O -m flower_classifier.train_model \
-		--seed 12345 \
+		--seed 97531 \
+		--batch-size 16 \
 		'data/processed/\*\*/212\*.jpg' \
 		models/model_flower_classifier.h5 \
 		models/model_flower_classifier.pkl

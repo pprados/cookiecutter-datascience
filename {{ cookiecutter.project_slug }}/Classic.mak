@@ -8,6 +8,16 @@
 #
 
 .PHONY: prepare features train evaluate visualize
+# Meta parameters
+# TODO: Ajustez les meta-paramètres
+ifdef DEBUG
+EPOCHS :=1
+BATCH_SIZE :=1
+else
+EPOCHS :=10
+BATCH_SIZE :=16
+endif
+SEED :=12345
 
 # Rule to declare an implicite dependencies from sub module for all root project files
 TOOLS:=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '*.py')
@@ -29,7 +39,10 @@ $(DATA)/processed/datas-features.csv : $(REQUIREMENTS) {{ cookiecutter.project_s
 features: $(DATA)/processed/datas-features.csv
 
 models/model.pkl : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/train_model.py $(DATA)/processed/datas-features.csv
-	@python -O -m {{ cookiecutter.project_slug }}.train_model \{% if cookiecutter.use_tensorflow == "y" %}
+	@python -O -m {{ cookiecutter.project_slug }}.train_model \
+		--seed $(SEED) \
+		--batch-size $(BATCH_SIZE) \
+		--epochs $(EPOCHS) \{% if cookiecutter.use_tensorflow == "y" %}
 	    --logdir $(TENSORFLOW_LOGDIR) \{% endif %}
 		$(DATA)/processed/datas-features.csv \
 		models/model.pkl

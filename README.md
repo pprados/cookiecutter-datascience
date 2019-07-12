@@ -107,6 +107,9 @@ Le reste des règles sont pour la gestion du projet
 ### use_tensorflow
 - Une dépendance à Tensorflow, avec ou sans GPU suivant la plateforme
 - L'utilisation de l'environement 'tensorflow_p36' en cas d'utilisation de `ssh-ec2`
+- Variable TENSORFLOW_LOGDIR à './logdir'
+- `make tensorboard` pour lancer tensorboard en écoute de `TENSORFLOW_LOGDIR` 
+- `make ec2-tensorboard` pour lancer tensorboard en écoute de `TENSORFLOW_LOGDIR` sur EC2
 
 ### use_text_processing
 - Une dépendance à [Spacy](https://spacy.io/) et [NLTK](https://www.nltk.org/)
@@ -161,6 +164,7 @@ du Makefile](Makefile.snippet).
 - [X] Fonctionnement Conda
 - [ ] Fonctionnement virtualenv
 - [X] Offline
+- [ ] GPU
 - [ ] Lecture depuis URI et non fichiers
 - [ ] Execution compatible avec le mode parallèle (-j)
 - [ ] Extraction des métriques dans les différentes branches Git (à la [DVC](https://dvc.org/doc/commands-reference/metrics)
@@ -205,7 +209,7 @@ du Makefile](Makefile.snippet).
 - [ ] [Github Travis](https://notes.farcellier.com/travisci/index.html)
 - [ ] Gitlab CI
 - [ ] [Gitlab LFS](https://docs.gitlab.com/ce/workflow/lfs/lfs_administration.html#storing-lfs-objects-in-remote-object-storage)
-- [ ] Docker pour le build
+- [ ] Docker pour le build/train
 - [ ] Docker pour le run
 - [ ] [Structured logs](https://github.com/FabienArcellier/spike_json_formatter_for_logging_python)
 - [ ] [Retry](https://notes.farcellier.com/python/index.html#retrying)

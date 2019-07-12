@@ -31,16 +31,13 @@ def prepare_dataset(input_raw: pd.DataFrame) -> pd.DataFrame:
     return output_prepared
 
 
-@click.command(help="Prepare the dataset.")
-@click.argument('input_raw_filepath', type=click_pathlib.Path(exists=True))
-@click.argument('output_prepared_filepath', type=click_pathlib.Path())
+@click.command(short_help="Prepare the dataset.")
+@click.argument('input_raw_filepath', metavar='<selected files>',type=click_pathlib.Path(exists=True))
+@click.argument('output_prepared_filepath', metavar='<output>', type=click_pathlib.Path())
 def main(input_raw_filepath: Path,
          output_prepared_filepath: Path) -> int:
-    """ Process to turn raw data file into prepared data file.
-
-        :param input_raw_filepath: data file path
-        :param output_prepared_filepath: new file to write with prepared datas
-        :return: 0 if ok, else error
+    """
+    Prepare the <selected files> and save in <output>.
     """
 
     output_prepared_filepath.parent.mkdir(parents=True, exist_ok=True)

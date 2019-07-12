@@ -391,6 +391,7 @@ define generate_example
 	sed -i '1,/^#####*$$/!d' examples/$1/$2/Makefile
 	sed -i '/^#####*$$/rexamples.template/$2/Project_$1.mak' examples/$1/$2/Makefile
 	sed -i '/^requirements: .*$$/rexamples.template/$2/setup.inc' examples/$1/$2/setup.py
+	rm -Rf examples/$1/$2/scripts
 endef
 
 examples.template/flower_classifier/flower_photos.tgz:
@@ -400,12 +401,17 @@ examples.template/flower_classifier/flower_photos.tgz:
 examples/classic/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
 	$(call generate_example,classic,flower_classifier,use_DVC=n use_tensorflow=y use_aws=y)
 	ln -s ../../../../../examples.template/flower_classifier/flower_photos.tgz examples/classic/flower_classifier/data/raw
+	pushd examples/classic/flower_classifier/data/raw
+	conda activate bda_project
+	make visualize
+	popd
 
 examples/dvc/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
 	$(call generate_example,dvc,flower_classifier,use_DVC=y use_tensorflow=y use_aws=y)
 	ln -s ../../../../../examples.template/flower_classifier/flower_photos.tgz examples/dvc/flower_classifier/data/raw
+	pushd examples/dvc/flower_classifier/data/raw
+	conda activate bda_project
+	make visualize
+	popd
 
-examples/classic/wine_quality: Makefile
-	$(call generate_example,classic,wine_quality,use_DVC=n use_aws=y)
-
-examples: examples/[cd]*/flower_classifier
+examples: examples/*/flower_classifier

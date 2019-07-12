@@ -7,53 +7,49 @@ import logging
 import sys
 import tarfile
 from pathlib import Path
-from typing import Tuple, Sequence, IO, Iterator
+from typing import Tuple, IO, Iterator
 
 import click
 import click_pathlib
 import dotenv
 import numpy as np
 from PIL import Image
-from flower_classifier.tools.tools import init_logger
+
+from flower_classifier.tools.tools import init_logger, caculate_domains_from_tar
 
 LOGGER = logging.getLogger(__name__)
 
 
 def prepare_dataset(streams: Iterator[Tuple[Path, IO[bytes]]],
-                    image_width: int = 224,
-                    image_height: int = 224,
+                    dim: Tuple[int, int] = (224, 224),
                     ) -> Iterator[Tuple[Path, np.array]]:
     """ Extract and resize image from streams
 
         :param streams: List of tuple with path and IOBase
-        :param image_width: Target image width
-        :param image_height: Target image height
+        :param dim: Input image width and height in pixels. (default 224,224)
         :return: Array of tuple with filename and dataframe
     """
-    size = (image_width, image_height)
     for path, stream in streams:
-        image = Image.open(stream).resize(size)
+        image = Image.open(stream).resize(dim)
         yield (path, np.array(image))
 
 
-@click.command()
-@click.argument('input_raw_filepath', type=click_pathlib.Path(exists=True, file_okay=True))
-@click.argument('output_prepared_path', type=click_pathlib.Path(dir_okay=True))
+@click.command(short_help="Prepare dataset")
+@click.argument('input_raw_filepath', metavar='<tgz file>',  type=click_pathlib.Path(exists=True, file_okay=True))
+@click.argument('output_prepared_path', metavar='<target>',type=click_pathlib.Path(dir_okay=True))
 @click.option("--image-width", type=click.INT, default=224, help="Input image width in pixels.")
 @click.option("--image-height", type=click.INT, default=224, help="Input image height in pixels.")
 def main(input_raw_filepath: Path,
          output_prepared_path: Path,
          image_width: int,
          image_height: int) -> int:
-    """ Process to turn raw data file into prepared data file.
-
-        :param input_raw_filepath: data file path
-        :param output_prepared_path: directory to write prepared datas
-        :return: 0 if ok, else error
+    """ 
+    This script extract and resize images from <tgz file> to <target>
     """
-    LOGGER.info("Extract and resize images from %s", input_raw_filepath)
+    LOGGER.info("Extract and resize images from '%s'", input_raw_filepath)
 
     output_prepared_path.mkdir(parents=True, exist_ok=True)
+    dim = (image_width, image_height)
 
     def extract_tgz(tgz_filepath: Path) -> Iterator[Tuple[Path, tarfile.ExFileObject]]:
         with tarfile.open(tgz_filepath) as tar:
@@ -66,9 +62,7 @@ def main(input_raw_filepath: Path,
 
     # Write files
     output_prepared_path.touch()
-    for (uname, flower) in prepare_dataset(extract_tgz(input_raw_filepath),
-                                           image_width=image_width,
-                                           image_height=image_height):
+    for (uname, flower) in prepare_dataset(extract_tgz(input_raw_filepath), dim):
         target_path = output_prepared_path.joinpath(uname)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         while True:

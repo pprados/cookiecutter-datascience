@@ -115,7 +115,7 @@ DVC_BUCKET?={% if cookiecutter.use_aws == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% e
 # List of source and tests files
 PYTHON_SRC=$(shell find -L {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
 PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
-{% if cookiecutter.use_tensorflow == "y" %}TENSORFLOW_LOGDIR=./logdir{% endif %}
+{% if cookiecutter.use_tensorflow == "y" %}TENSORFLOW_LOGDIR?=./logdir{% endif %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
 # de gérer correctement les dépendances des modules sous Conda.
@@ -456,6 +456,15 @@ endif{% endif %}
 ## Start tensorbard
 tensorboard:
 	tensorboard --logdir $(TENSORFLOW_LOGDIR)
+{% if cookiecutter.use_aws == 'y' %}
+## Start tensorbord on EC2
+ec2-tensorboard: clean-pyc
+ifeq ($(OFFLINE),True)
+	@echo -e "$(red)Can not use ssh-ec2 in offline$(normal)"
+else
+	set -x
+	ssh-ec2 --stop -L 6006:localhost:6006 "tensorboard --logdir $(TENSORFLOW_LOGDIR)"
+{% endif %}
 {% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -945,11 +954,10 @@ EC2_LIFE_CYCLE?=--terminate
 # Recette permettant un `make ec2-test`{% endif %}
 .PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
 ## Call 'make %' recipe on EC2 (`make ec2-train`)
-ec2-%: $(CONDA_PREFIX)/bin/aws
+ec2-%: $(CONDA_PREFIX)/bin/aws clean-pyc
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else
-	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-%=%)"
 endif
@@ -957,7 +965,7 @@ endif
 # Recette permettant d'exécuter une recette avec un tmux activé.
 # Par exemple `make ec2-tmux-train`{% endif %}
 ## Call 'make %' recipe on EC2 with a tmux session (`make ec2-tmux-train`)
-ec2-tmux-%: $(CONDA_PREFIX)/bin/aws
+ec2-tmux-%: $(CONDA_PREFIX)/bin/aws clean-pyc
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else
@@ -969,7 +977,7 @@ endif
 # Recette permettant un `make ec2-detach-test`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin{% endif %}
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
-ec2-detach-%: $(CONDA_PREFIX)/bin/aws
+ec2-detach-%: $(CONDA_PREFIX)/bin/aws clean-pyc
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else
@@ -1006,7 +1014,6 @@ ec2-notebook: $(CONDA_PREFIX)/bin/aws
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline$(normal)"
 else
-	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 endif

@@ -12,11 +12,10 @@ import click
 import click_pathlib
 import dotenv
 {% if cookiecutter.use_tensorflow == 'y' %}import keras{% endif %}
-from .tools.tools import Glob, init_logger
+from .tools.tools import Model, Glob, init_logger
 
 LOGGER = logging.getLogger(__name__)
 
-{% if cookiecutter.use_tensorflow == 'y' %}Model = keras.Model{% else %}Model = Any  # TODO: Select type{% endif %}
 
 def train_model(inputs: Sequence[Path],
                 epoch: int = 128,
@@ -37,28 +36,27 @@ def train_model(inputs: Sequence[Path],
 
     return model
 
-
-@click.command(help="Trains model.")
-@click.argument('input_files', type=Glob(default_suffix="**/*.csv"))
-@click.argument('model_filepath', type=click_pathlib.Path())
+{% if cookiecutter.add_makefile_comments == 'y' %}# Les paramètres ci-dessous permettent d'avoir une possibilité d'invoquer
+# la méthode `train_model` à partir de la ligne de commande, en utilisant des fichiers.
+# Vous pouvez invoquer `python -m {{ cookiecutter.project_slug }}.train_model --help`
+# pour consulter l'aide générée.
+# Tous les méta-paramètres doivent être valorisable en paramètre
+# afin de permettre l'optimisation des méta-paramètres via différents outils.{% endif %}
+@click.command(short_help="Trains model.")
+@click.argument('input_files', metavar='<selected files>', type=Glob(default_suffix="**/*.csv"))
+@click.argument('model_filepath', metavar='<model>', type=click_pathlib.Path())
 # Hyper parameters
 @click.option('--epoch', default=128, type=int, help='Epoch')
 @click.option('--batch-size', default=1024, type=int, help='Batch size')
-@click.option('--seed',  type=int, help='Batch size', default=None)
+@click.option('--seed',  type=int, help='Fixed seed', default=None)
 def main(input_files: Sequence[Path],
          model_filepath: Path,
          epoch: int,
          batch_size: int,
          seed: Optional[int],
         ) -> int:
-    """ Train the model from input_filepath and save it in model_filepath
-
-        :param input_filepath: glob data file path
-        :param model_filepath: file to write the model
-        :param epoch: Value of epoch (default 128)
-        :param batch_size: Value of batch size (default 1024)
-        :param seed: The initial seed (default None)
-        :return: 0 if ok, else error
+    """
+    Train the <model> from <selected files>
     """
     model_filepath.parent.mkdir(parents=True, exist_ok=True)
 

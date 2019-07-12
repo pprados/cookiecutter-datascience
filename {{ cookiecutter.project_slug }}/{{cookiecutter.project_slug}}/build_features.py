@@ -32,17 +32,13 @@ def build_features(input_prepared: pd.DataFrame) -> pd.DataFrame:
     return output_feature
 
 
-@click.command(help="Add features")
-@click.argument('input_prepared_filepath', type=click_pathlib.Path(exists=True))
-@click.argument('output_featured_filepath', type=click_pathlib.Path())
+@click.command(short_help='Add features')
+@click.argument('input_prepared_filepath', metavar='<selected files>', type=click_pathlib.Path(exists=True))
+@click.argument('output_featured_filepath', metavar='<output>', type=click_pathlib.Path())
 def main(input_prepared_filepath: Path,
          output_featured_filepath: Path) -> int:
-    """ Runs data processing scripts to turn add features from raw data
-        into data with features.
-
-        :param input_prepared_filepath: input prepared file path
-        :param output_featured_filepath: output file path with features
-        :return: 0 if ok, else error
+    """
+    Add features from <selected files> and save result in <output>.
     """
 
     output_featured_filepath.parent.mkdir(parents=True, exist_ok=True)

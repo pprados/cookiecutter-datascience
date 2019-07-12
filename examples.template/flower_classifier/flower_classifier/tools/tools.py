@@ -5,14 +5,19 @@ in the model.
 """
 import glob
 import logging
+import operator
 import os
-from io import BytesIO
+import pickle
+import tarfile
 from pathlib import Path
-from typing import Sequence, Tuple, Optional, List, Mapping, Iterator
+from typing import Sequence, Tuple, Optional, List, Mapping, Iterator, Generator, Any
 
 import click
+import keras
 import numpy as np
 from PIL import Image
+
+Model = keras.Model
 
 
 def init_logger(logger: logging.Logger, level: int) -> None:
@@ -58,20 +63,20 @@ class Glob(click.ParamType):
                 glob.glob(super().convert(value=value, param=param, ctx=ctx), recursive=self.recursive)]
 
 
-def decode_and_resize_image(data: np.array, size: Tuple[int, int]) -> np.ndarray:
-    """
-    Read, decode and resize raw image bytes (e.g. raw content of a jpeg file).
+def caculate_domains_from_tar(tar_filepath: Path) -> Tuple[Sequence[int], Mapping[str, int]]:
+    with tarfile.open(tar_filepath) as tar:
+        labels: Sequence[str] = []
+        domain: Mapping[str, int] = {}
+        for tarf in tar:
+            path = Path(tarf.name)
+            if path.suffix == ".jpg":
+                clazz = path.parts[-2:-1][0]
+                if clazz not in domain:
+                    domain[clazz] = len(domain)
+                labels.append(domain[clazz])
+        return labels, domain
 
-    :param data: array of pixels.
-    :param size: requested output dimensions
-    :return: Multidimensional numpy array representing the resized image.
-    """
-    return (data / 127.5) - 1
-
-    # info = np.iinfo(data.dtype)  # Get the information of the incoming image type
-    # return np.asarray(data.astype(np.float32) / info.max)  # normalize the data to 0 - 1
-
-
+# PPR: a virer ?
 def load_images(files: Iterator[Path]) -> Tuple[Sequence[int], Mapping[str, int], Sequence[bytes]]:
     """
     Load directories and returns data and labels
@@ -90,3 +95,17 @@ def load_images(files: Iterator[Path]) -> Tuple[Sequence[int], Mapping[str, int]
             image = (np.array(image_file, dtype=float) / 127.5) - 1
             image_datas.append(image)
     return labels, domain, image_datas
+
+
+def save_model_and_domain(model_filepath: Path, 
+                          model: Model, 
+                          domain_filepath: Path,
+                          domain: Mapping[str, int]) -> None:
+    model.save(str(model_filepath))
+    with open(domain_filepath, 'wb') as domain_file:
+        pickle.dump(domain, domain_file)
+
+def generator_itemgetter(k:Any, generator:Generator) -> Generator:
+    """A generator to select specify key of the previous generator """
+    for g in generator:
+        yield g.__getitem__(k)

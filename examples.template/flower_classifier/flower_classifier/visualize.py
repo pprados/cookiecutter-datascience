@@ -17,7 +17,7 @@ from keras.models import Model
 from keras.models import load_model
 from matplotlib import pyplot as plt
 
-from flower_classifier.tools.tools import decode_and_resize_image, Glob, init_logger
+from flower_classifier.tools.tools import Glob, init_logger
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,14 +51,10 @@ def visualize(file_names: Sequence[Path],
         plt.show()
 
 
-@click.command(help="Visualize the model in action with a set of images"
-                    "Parameters:"
-                    "- The input is expected as a directory or a glob path."
-                    "- The model file path (.h5 extension)."
-                    "- The domain file path (.pkl extension)")
-@click.argument('input_files', type=Glob(default_suffix="**/*.jpg"))
-@click.argument('model_filepath', type=click_pathlib.Path(exists=True))
-@click.argument('domain_filepath', type=click_pathlib.Path(exists=True))
+@click.command(help="Apply the model")
+@click.argument('input_files', metavar='<selected files>', type=Glob(default_suffix="**/*.jpg"))
+@click.argument('model_filepath', metavar='<model>', type=click_pathlib.Path(exists=True))
+@click.argument('domain_filepath', metavar='<domain>', type=click_pathlib.Path(exists=True))
 @click.option("--image-width", type=click.INT, default=224, help="Input image width in pixels.")
 @click.option("--image-height", type=click.INT, default=224, help="Input image height in pixels.")
 @click.option("--interactive", type=click.BOOL, default=True, help="Wait user input ?")
@@ -68,15 +64,7 @@ def main(input_files: Sequence[Path],
          image_width: int,
          image_height: int,
          interactive: bool) -> int:
-    """ Visualize the results
-
-        :param input_files: list of files to predict
-        :param model_filepath: The file path of the model
-        :param domain_filepath: The file path of the domain
-        :param image_width: Width of the images
-        :param image_height: Height of the images
-        :param interactive: Flag to ask user input
-        :return: 0 if ok, else error
+    """ Apply the <model> and <model> on glob <selected files>
     """
     LOGGER.info('Visualize the results')
 

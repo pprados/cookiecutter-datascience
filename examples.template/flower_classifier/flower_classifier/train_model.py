@@ -4,29 +4,25 @@
 """
 import logging
 import math
-import pickle
 import sys
 from pathlib import Path
-from typing import Tuple, Sequence, Mapping, Optional, Any, Iterator
+from typing import Tuple, Sequence, Mapping, Optional, Iterator
 
 import click
 import click_pathlib
 import dotenv
+import keras
 import numpy as np
 import tensorflow as tf
-import keras
-from keras.applications import vgg16, VGG19
+from keras.applications import VGG19
 from keras.callbacks import Callback, TensorBoard
-from keras.layers import Input, Dense, Flatten, Lambda, Dropout
+from keras.layers import Dense, Flatten, Dropout
 from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
 
-from flower_classifier.tools.tools import decode_and_resize_image, Glob, load_images, init_logger
+from flower_classifier.tools.tools import init_logger, save_model_and_domain, Glob, load_images, Model
 
 LOGGER = logging.getLogger(__name__)
-
-Model = keras.Model
-
 
 def _create_model(input_shape: Tuple[int, int, int], classes: int) -> Model:
     """
@@ -57,66 +53,6 @@ def _create_model(input_shape: Tuple[int, int, int], classes: int) -> Model:
     return final_model
 
 
-class _MLflowLogger(Callback):
-    """
-    Keras callback for logging metrics and final model with MLflow.
-
-    Metrics are logged after every epoch. The logger keeps track of the best model based on the
-    validation metric. At the end of the training, the best model is logged with MLflow.
-    """
-
-    def __init__(self,
-                 model: Model,
-                 x_train: np.array,
-                 y_train: np.array,
-                 x_valid: np.array,
-                 y_valid: np.array,
-                 **kwargs):
-        super(_MLflowLogger, self).__init__()
-        self._model = model
-        self._best_val_loss = math.inf
-        self._train = (x_train, y_train)
-        self._valid = (x_valid, y_valid)
-        self._pyfunc_params = kwargs
-        self._best_weights = None
-
-    def on_epoch_end(self, epoch: int, logs=None):
-        """
-        Log Keras metrics with MLflow. Update the best model if the model improved on the validation
-        data.
-        """
-        if not logs:
-            return
-        # for name, value in logs.items():
-        #     if name.startswith("val_"):
-        #         name = "valid_" + name[4:]
-        #     else:
-        #         name = "train_" + name
-        #     mlflow.log_metric(name, value)
-        val_loss = logs["val_loss"]
-        if val_loss < self._best_val_loss:
-            # Save the "best" weights
-            self._best_val_loss = val_loss
-            self._best_weights = [x.copy() for x in self._model.get_weights()]
-
-    def on_train_end(self, logs=None):
-        """
-        Log the best model with MLflow and evaluate it on the train and validation data so that the
-        metrics stored with MLflow reflect the logged model.
-        """
-        # self._model.set_weights(self._best_weights)
-        # x, y = self._train
-        # train_res = self._model.evaluate(x=x, y=y)
-        # for name, value in zip(self._model.metrics_names, train_res):
-        #     LOGGER.info("train_%s=%s", name, value)
-        #     # mlflow.log_metric("train_{}".format(name), value)
-        # x, y = self._valid
-        # valid_res = self._model.evaluate(x=x, y=y)
-        # for name, value in zip(self._model.metrics_names, valid_res):
-        #     LOGGER.info("valid_%s=%s", name, value)
-        #     # mlflow.log_metric("valid_{}".format(name), value)
-
-
 def train_model(
         domain: Mapping[str, int],
         labels: Sequence[int],
@@ -124,8 +60,7 @@ def train_model(
         test_ratio: float,
         epochs: int = 1,
         batch_size: int = 1,
-        image_width: int = 224,
-        image_height: int = 224,
+        dim: Tuple[int, int] = (224, 224),
         seed: Optional[int] = None,
         logdir: Path="./logdir/") -> Model:
     """ Train VGG19 model on provided image files.
@@ -139,28 +74,25 @@ def train_model(
         :param test_ratio: Ration beetween train and test. (default 0.2)
         :param epoch: Maximum number of epochs to evaluate. (default 1)
         :param batch_size: Batch size passed to the learning algo. (default 1)
-        :param image_width: Input image width in pixels. (default 224)
-        :param image_height: Input image height in pixels. (default 224)
+        :param dim: Input image width and height in pixels. (default 224,224)
         :param seed: Force seed (default None)
+        :param logdir: Tensorflow logdir
         :return: The trained model
     """
     meta_parameters = {
         "test_ratio": test_ratio,
-        "image_width": image_width,
-        "image_height": image_height,
+        "image_width": dim[0],
+        "image_height": dim[1],
         "epochs": epochs,
         "batch_size": batch_size,
         "seed": seed
     }
     LOGGER.info("Training model with the following parameters: %s", meta_parameters)
 
-    LOGGER.info("Domain: %s", domain)
-
     assert len(set(labels)) == len(domain)
 
-    input_shape = (image_width, image_height, 3)
+    input_shape = (dim[0], dim[1], 3)
 
-    # PPR dims = input_shape[:2]
     x = np.array([datas for datas in image_datas])
     y = np_utils.to_categorical(np.array(labels), num_classes=len(domain))
     train_size = 1 - test_ratio
@@ -171,36 +103,21 @@ def train_model(
         optimizer=keras.optimizers.SGD(decay=1e-5, nesterov=True, momentum=.9),
         loss=keras.losses.categorical_crossentropy,
         metrics=["accuracy"])
-    sorted_domain = sorted(domain.keys(), key=lambda x: domain[x])
-    logger = _MLflowLogger(model=model,
-                           x_train=x_train,
-                           y_train=y_train,
-                           x_valid=x_valid,
-                           y_valid=y_valid,
-                           artifact_path="model",
-                           domain=sorted_domain,
-                           image_dims=input_shape)
-    tensorboard = TensorBoard(log_dir=logdir)
     model.fit(
         x=x_train,
         y=y_train,
         validation_data=(x_valid, y_valid),
         epochs=epochs,
         batch_size=batch_size,
-        callbacks=[logger, tensorboard])
+        callbacks=[TensorBoard(log_dir=logdir)])
 
     return model
 
 
-@click.command(help="Trains an Keras model on flower_photos dataset."
-                    "Parameters:"
-                    "- The input is expected as a directory tree with pictures for each category in a"
-                    " folder named by the category, or a glob path."
-                    "- The output is the model file path (.h5 extension)."
-                    "- The domain file path (.pkl extension)")
-@click.argument('input_files', type=Glob(default_suffix="**/*.jpg"))
-@click.argument('model_filepath', type=click_pathlib.Path(file_okay=True))
-@click.argument('domain_filepath', type=click_pathlib.Path(dir_okay=True))
+@click.command(short_help="Train model")
+@click.argument('input_files', metavar='<selected files>', type=Glob(default_suffix="**/*.jpg"))
+@click.argument('model_filepath', metavar='<model>', type=click_pathlib.Path(file_okay=True))
+@click.argument('domain_filepath', metavar='<domain>', type=click_pathlib.Path(dir_okay=True))
 # Hyper parameters
 @click.option("--epochs", type=click.INT, default=1, help="Maximum number of epochs to evaluate.")
 @click.option("--batch-size", type=click.INT, default=1,
@@ -220,22 +137,22 @@ def main(input_files: Sequence[Path],
          image_height: int,
          seed: Optional[int],
          logdir: Path) -> int:
-    """ Train the model from input_filepath and save it in model_filepath
+    """
+    Train the model with glob <selected files>, and save in <model> and <domain>.
 
-        :param input_filepath: glob data file path
-        :param model_filepath: file to write the model
-        :param epoch: Value of epoch (default 128)
-        :param batch_size: Value of batch size (default 1024)
-        :param seed: The initial seed (default None)
-        :param logdir: Tensorboard logdir (default None)
-        :return: 0 if ok, else error
+    \b
+    Parameters:
+    - The input is expected as a directory tree with pictures for each category in a
+     folder named by the category, or a glob path.
+    - The output file path (.h5 extension).
+    - The domain file path (.pkl extension)
     """
     LOGGER.info('Train model from processed and featured data')
 
     with tf.Graph().as_default() as graph:  # pylint: disable=E1129
         with tf.Session(graph=graph).as_default():  # pylint: disable=E1129
             # 1. Load datas
-            model_filepath = Path(model_filepath)
+            dim = (image_width, image_height)
             labels, domain, image_datas = load_images(input_files)
 
             # 2. Train the model
@@ -246,16 +163,13 @@ def main(input_files: Sequence[Path],
                 test_ratio,
                 epochs,
                 batch_size,
-                image_width,
-                image_height,
+                dim,
                 seed,
                 logdir)
 
             # 3. Save the model
-            model.save(str(model_filepath))
-            # mlflow.keras.save_model(model, path=model_filepath.with_suffix(".h5"))
-            with open(domain_filepath, 'wb') as domain_file:
-                pickle.dump(domain, domain_file)
+            save_model_and_domain(model_filepath, model,
+                                  domain_filepath, domain)
     return 0
 
 

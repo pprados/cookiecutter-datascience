@@ -39,18 +39,14 @@ def evaluate_model(model: Model,
     return metrics
 
 
-@click.command(help="Evaluate the model")
-@click.argument('model_filepath', type=click_pathlib.Path(exists=True))
-@click.argument('sample_files', type=Glob(default_suffix="**/*.csv"))
-@click.argument('evaluate_filepath', type=click_pathlib.Path())
+@click.command(short_help='Evaluate the model')
+@click.argument('model_filepath', metavar='<model>', type=click_pathlib.Path(exists=True))
+@click.argument('sample_files', metavar='<selected files>', type=Glob(default_suffix="**/*.csv"))
+@click.argument('evaluate_filepath', metavar='<evaluate>', type=click_pathlib.Path())
 def main(model_filepath: Path,
          sample_files: Sequence[Path],
          evaluate_filepath: Path) -> int:
-    """ Evaluate the model with samples
-        :param model_filepath: model file path
-        :param sample_filepath: data files path
-        :param evaluate_filepath: json file path with metrics to write
-        :return: 0 if ok, else error
+    """ Evaluate the <model> with <selected files> and save result in <evaluate>.
     """
 
     model = pickle.load(open(model_filepath, 'rb'))

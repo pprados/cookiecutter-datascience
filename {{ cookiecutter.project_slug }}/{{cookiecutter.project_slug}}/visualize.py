@@ -32,12 +32,10 @@ def visualize(streams: Sequence[IO[str]]) -> None:
 
 
 @click.command(help="Visualize the results")
-@click.argument('evaluate_filepath', type=Glob(recursive=True))
+@click.argument('evaluate_filepath', metavar='<selected files>', type=Glob(recursive=True))
 def main(evaluate_filepath: Sequence[str]) -> int:
-    """ Visualize the results
-
-        :param evaluate_filepath: glob data file path
-        :return: 0 if ok, else error
+    """
+    Apply the model on <selected files>
     """
 
     inputs = [open(a_file, "rt")

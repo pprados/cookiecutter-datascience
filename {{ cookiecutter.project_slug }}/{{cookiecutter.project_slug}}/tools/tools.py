@@ -10,6 +10,8 @@ from pathlib import Path
 
 import click
 
+{% if cookiecutter.use_tensorflow == 'y' %}Model = keras.Model{% else %}Model = Any  # TODO: Select type{% endif %}
+
 def init_logger(logger: logging.Logger, level:int) -> None:
     """ Init logger
 

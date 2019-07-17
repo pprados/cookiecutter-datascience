@@ -21,9 +21,10 @@ class TestPrepareDataSet(unittest.TestCase):
         """ Test prepare_dataset() with no data.
         """
         # Given
+        pseudo_generator = []
 
         # When
-        prepared_data: Sequence[Tuple[Path, bytes]] = prepare_dataset(streams=[])
+        prepared_data = prepare_dataset(opened_files=pseudo_generator)
 
         # Then
         self.assertIsNotNone(prepared_data)
@@ -32,21 +33,11 @@ class TestPrepareDataSet(unittest.TestCase):
         """ Test prepare_dataset() with no data.
         """
         # Given
-        tmpfile = NamedTemporaryFile(suffix=".tgz").name
-        with tarfile.open(tmpfile, mode="x:gz") as tar_handle:
-            tar_handle.add(os.path.join("tests", "sample.jpg"))
+        pseudo_generator = [(Path("tests/sample.jpg"), open(os.path.join("tests", "sample.jpg"), "rb"))]
 
-        streams: List[Tuple[Path, io.BufferedReader]] = []
-        with tarfile.open(tmpfile) as tar:
-            for tarf in tar:
-                if tarf.isfile():
-                    path = Path(tarf.name)  # pylint: disable=E1120
-                    # Remove first part
-                    path = path.relative_to(*path.parts[:1])
-                    streams.append((path, tar.extractfile(tarf)))
-            # When
-            prepared_data: Sequence[Tuple[Path, bytes]] = prepare_dataset(streams=streams)
+        # When
+        prepared_data = list(prepare_dataset(opened_files=pseudo_generator))
 
         # Then
         self.assertIsNotNone(prepared_data)
-        self.assertEqual(prepared_data[0][0], Path('sample.jpg'))
+        self.assertEqual(prepared_data[0][0], pseudo_generator[0][0])

@@ -15,8 +15,7 @@ import click_pathlib
 import dotenv
 import pandas as pd
 
-from .tools.tools import Glob, init_logger
-from .train_model import Model
+from {{ cookiecutter.project_slug}}.tools import Glob, init_logger, Model
 
 LOGGER = logging.getLogger(__name__)
 

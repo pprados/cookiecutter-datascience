@@ -3,12 +3,11 @@
     Test.
 """
 import logging
-import os
 import unittest
+from pathlib import Path
 
 import numpy as np
-
-from flower_classifier.tools.tools import decode_and_resize_image, init_logger
+from flower_classifier.tools import init_logger, caculate_labels_and_domains_from_paths, generator_itemgetter
 
 
 class TestTools(unittest.TestCase):
@@ -27,15 +26,28 @@ class TestTools(unittest.TestCase):
         # Then
         self.assertTrue(logger.isEnabledFor(logging.INFO))
 
-    def test_decode_and_resize_image(self) -> None:
+    def test_caculate_labels_and_domains_from_paths(self) -> None:
         # Given
-        with open(os.path.join("tests", "sample.jpg"), "rb") as image_file:
-            data = image_file.read()
+        files = [Path('roses/a.jpg'), Path('tulips/b.jpg'), Path('roses/c.jpg')]
 
         # When
         # decode_and_resize_image(raw_bytes: bytes, size: Tuple[int, int]) -> np.ndarray:
-        array: np.ndarray = decode_and_resize_image(data, (10, 10))
+        labels, domain = caculate_labels_and_domains_from_paths(files)
 
         # Then
-        self.assertEqual((10, 10, 3), array.shape)
-        self.assertTrue(np.float32, array.dtype)
+        self.assertEqual(2, len(domain))
+        self.assertEqual(0, domain["roses"])
+        self.assertEqual(1, domain["tulips"])
+        self.assertListEqual(labels, [0, 1, 0])
+
+    def test_generator_itemgetter(self) -> None:
+        # Given
+        pseudo_generator = [('A', 0), ('B', 1)]
+
+        # When
+        result_0 = list(generator_itemgetter(0, pseudo_generator))
+        result_1 = list(generator_itemgetter(1, pseudo_generator))
+
+        # Then
+        self.assertListEqual(result_0, ['A', 'B'])
+        self.assertListEqual(result_1, [0, 1])

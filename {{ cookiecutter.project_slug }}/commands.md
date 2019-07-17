@@ -7,7 +7,7 @@ The Makefile contains the central entry points for common tasks related to this 
 * ``make features`` will add some features
 * ``make train`` will train the model
 * ``make evaluate`` will evaluate the model
-* ``make visualilze`` will visualize the result
+* ``make visualize`` will visualize the result
 
 ## Others commands
 * ``make help`` will print all majors target

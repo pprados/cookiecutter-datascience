@@ -5,7 +5,7 @@ Tools for machine learning pipeline.
 import glob
 import logging
 import os
-from typing import Optional, List
+from typing import Optional, List, Any
 from pathlib import Path
 
 import click
@@ -51,10 +51,4 @@ class Glob(click.ParamType):
                 glob.glob(super().convert(value=value, param=param, ctx=ctx), recursive=self.recursive)]
 
 
-# TODO: Ajoutez le code communs ici, et exposez le dans __init__.py
-def tools(a_parameter: str) -> None:
-    """
-    A tools
-
-    :param a_parameter: a parameter
-    """
+# TODO: Ajoutez le code communs ici

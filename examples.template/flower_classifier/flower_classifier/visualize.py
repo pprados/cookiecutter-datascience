@@ -6,18 +6,19 @@ import logging
 import pickle
 import sys
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence, Iterator
 from typing import Sequence
 
 import click
 import click_pathlib
 import dotenv
 import numpy as np
+from PIL import Image
 from keras.models import Model
 from keras.models import load_model
 from matplotlib import pyplot as plt
 
-from flower_classifier.tools.tools import Glob, init_logger
+from flower_classifier.tools import Glob, init_logger, normalize_image
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,18 +38,34 @@ def visualize(file_names: Sequence[Path],
         :return: 0 if ok, else error
     """
     domains_name = {v: k for k, v in domains.items()}
+    max_items = 6
+    nb_cols = 2
     for i, image in enumerate(input_files):
         predict = model.predict(np.expand_dims(image, axis=0))
         label = domains_name[np.argmax(predict)]
         if interactive:
             byte_image = (image * 255).astype(np.uint8)
-            plt.subplot(len(input_files), 1, i + 1)
+            plt.subplot(max_items // nb_cols, nb_cols, (i % max_items) + 1)
             plt.title(label)
-            plt.imshow(byte_image)
+            plt.imshow(byte_image)  # PPR: Bug d'affichage et de prédiction
         else:
             print(f"{file_names[i]} = {label}")
+        if interactive and not ((i + 1) % max_items):
+            plt.show()
+
     if interactive:
         plt.show()
+
+def _load_images_predict(files: Iterator[Path]) -> Iterator[Sequence[bytes]]:
+    """
+    Load iterator and returns images
+    :param files: A list of Path
+    :return: Se
+    """
+    for file in files:
+        with Image.open(file) as image_file:
+            yield normalize_image(np.array(image_file, dtype=float))
+
 
 
 @click.command(help="Apply the model")
@@ -69,15 +86,13 @@ def main(input_files: Sequence[Path],
     LOGGER.info('Visualize the results')
 
     # 1. Load datas
-    images = \
-        [decode_and_resize_image(open(path, "rb").read(), (image_width, image_height))
-         for path in input_files]
+    images = _load_images_predict(input_files)
     model = load_model(str(model_filepath))
     with open(domain_filepath, 'rb') as domain_file:
         domain: Mapping[str, int] = pickle.load(domain_file)
 
     # 2. Visualize datas
-    visualize(input_files, images, model, domain, interactive)
+    visualize(input_files, list(images), model, domain, interactive)
 
     return 0
 

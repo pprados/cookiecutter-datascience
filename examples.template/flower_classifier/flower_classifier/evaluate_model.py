@@ -18,7 +18,7 @@ import tensorflow as tf
 from keras.models import load_model
 from keras.utils import np_utils
 
-from flower_classifier.tools.tools import Glob, load_images, init_logger, Model
+from flower_classifier.tools import *
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,14 +45,36 @@ def evaluate_model(model: Model,
 
     scores = model.evaluate(images, labels,
                             verbose=LOGGER.isEnabledFor(logging.INFO))
-    LOGGER.info("%s:%3.2f", (model.metrics_names[0], scores[0] * 100.0))
-    LOGGER.info("%s:%3.2f", (model.metrics_names[1], scores[1] * 100.0))
+    LOGGER.info("%s:%3.2f", model.metrics_names[0], scores[0] * 100.0)
+    LOGGER.info("%s:%3.2f", model.metrics_names[1], scores[1] * 100.0)
 
     metrics = {}
     metrics['datetime'] = strftime("%Y-%m-%d %H:%M:%S", gmtime())
     for i, name in enumerate(model.metrics_names):
         metrics[name] = scores[i]
     return metrics
+
+def _load_images_for_evaluations(domain: Mapping[str, int], files: Iterator[Path]) -> Tuple[
+    Sequence[int], Sequence[bytes]]:
+    """
+    Load iterator and returns data and labels
+    :param input_filepath: Glob path
+    :return: (
+    """
+    labels: Sequence[str] = []
+    image_datas: Sequence[bytes] = []
+    for file in files:
+        with Image.open(file) as image_file:
+            clazz = Path(file).parts[-2:-1][0]
+            if clazz in domain:
+                labels.append(domain[clazz])
+            else:
+                LOGGER.warning("label '%s' not found in domain", clazz)
+                labels.append(0)
+            image = normalize_image(np.array(image_file, dtype=float))
+            image_datas.append(image)
+    return labels, image_datas
+
 
 
 @click.command(short_help="Evaluate model")
@@ -72,10 +94,10 @@ def main(input_files: Sequence[Path],
     with tf.Graph().as_default() as graph:  # pylint: disable=E1129
         with tf.Session(graph=graph).as_default():  # pylint: disable=E1129
             # 1. Load datas
-            labels, _, image_datas = load_images(iter(input_files))
             model = load_model(str(model_filepath))
             with open(domain_filepath, 'rb') as domain_file:
                 domain = pickle.load(domain_file)
+            labels, image_datas = _load_images_for_evaluations(domain, iter(input_files))
 
             # 2. Calculate metrics
             metrics = evaluate_model(model,

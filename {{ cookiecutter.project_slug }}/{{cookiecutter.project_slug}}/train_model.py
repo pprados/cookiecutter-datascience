@@ -12,19 +12,19 @@ import click
 import click_pathlib
 import dotenv
 {% if cookiecutter.use_tensorflow == 'y' %}import keras{% endif %}
-from .tools.tools import Model, Glob, init_logger
+from {{ cookiecutter.project_slug}}.tools import Model, Glob, init_logger
 
 LOGGER = logging.getLogger(__name__)
 
 
 def train_model(inputs: Sequence[Path],
-                epoch: int = 128,
+                epochs: int = 128,
                 batch_size: int = 1024,
                 seed:Optional[int] = None) -> Model:
     """ Train the model from inputs
 
         :param inputs: list of datasets to train the model
-        :param epoch: Value of epoch (default 128)
+        :param epochs: Value of epochs (default 128)
         :param batch_size: Value of batch size (default 1024)
         :param seed: Force seed (default None)
         :return: The trained model
@@ -46,12 +46,12 @@ def train_model(inputs: Sequence[Path],
 @click.argument('input_files', metavar='<selected files>', type=Glob(default_suffix="**/*.csv"))
 @click.argument('model_filepath', metavar='<model>', type=click_pathlib.Path())
 # Hyper parameters
-@click.option('--epoch', default=128, type=int, help='Epoch')
+@click.option('--epochs', default=128, type=int, help='Epochs')
 @click.option('--batch-size', default=1024, type=int, help='Batch size')
 @click.option('--seed',  type=int, help='Fixed seed', default=None)
 def main(input_files: Sequence[Path],
          model_filepath: Path,
-         epoch: int,
+         epochs: int,
          batch_size: int,
          seed: Optional[int],
         ) -> int:
@@ -60,7 +60,7 @@ def main(input_files: Sequence[Path],
     """
     model_filepath.parent.mkdir(parents=True, exist_ok=True)
 
-    model = train_model(input_files, epoch, batch_size, seed)
+    model = train_model(input_files, epochs, batch_size, seed)
     pickle.dump(model, open(model_filepath, 'wb'))
     return 0
 

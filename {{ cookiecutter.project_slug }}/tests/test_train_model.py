@@ -26,7 +26,7 @@ class TestTrainModel(unittest.TestCase):
 
         # When
         model: Model = train_model(inputs=train_inputs,
-                                 epoch=1,
+                                 epochs=1,
                                  batch_size=1)
 
         # Then

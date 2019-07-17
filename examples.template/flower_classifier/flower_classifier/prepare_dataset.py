@@ -15,21 +15,21 @@ import dotenv
 import numpy as np
 from PIL import Image
 
-from flower_classifier.tools.tools import init_logger, caculate_domains_from_tar
+from flower_classifier.tools import init_logger
 
 LOGGER = logging.getLogger(__name__)
 
 
-def prepare_dataset(streams: Iterator[Tuple[Path, IO[bytes]]],
+def prepare_dataset(opened_files: Iterator[Tuple[Path, IO[bytes]]],
                     dim: Tuple[int, int] = (224, 224),
                     ) -> Iterator[Tuple[Path, np.array]]:
     """ Extract and resize image from streams
 
-        :param streams: List of tuple with path and IOBase
+        :param opened_files: List of tuple with path and IOBase
         :param dim: Input image width and height in pixels. (default 224,224)
         :return: Array of tuple with filename and dataframe
     """
-    for path, stream in streams:
+    for path, stream in opened_files:
         image = Image.open(stream).resize(dim)
         yield (path, np.array(image))
 

@@ -13,7 +13,7 @@ import click_pathlib
 import dotenv
 import pandas as pd
 
-from .tools.tools import init_logger
+from {{ cookiecutter.project_slug}}.tools import init_logger
 
 LOGGER = logging.getLogger(__name__)
 

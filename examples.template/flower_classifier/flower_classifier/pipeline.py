@@ -13,10 +13,8 @@ import click
 import click_pathlib
 import dotenv
 
-from flower_classifier.evaluate_model import evaluate_model
+from flower_classifier.tools import *
 from flower_classifier.prepare_dataset import prepare_dataset
-from flower_classifier.tools.tools import init_logger, caculate_domains_from_tar, save_model_and_domain, \
-    generator_itemgetter
 from flower_classifier.train_model import train_model
 
 LOGGER = logging.getLogger(__name__)
@@ -63,7 +61,7 @@ def main(input_raw_filepath: Path,
                     yield (path, tar.extractfile(tarf))
 
     # 1. load and train the model simultaneously
-    labels, domain = caculate_domains_from_tar(input_raw_filepath)
+    labels, domain = caculate_labels_and_domains_from_paths(tar_paths(input_raw_filepath))
     image_datas = generator_itemgetter(1, prepare_dataset(extract_tgz(input_raw_filepath), dim))
     model = train_model(domain,
                         labels,

@@ -11,13 +11,13 @@
 # Meta parameters
 # TODO: Ajustez les meta-paramètres
 ifdef DEBUG
-EPOCHS :=1
-BATCH_SIZE :=1
+EPOCHS :=--epochs 1
+BATCH_SIZE :=--batch-size 1
 else
-EPOCHS :=10
-BATCH_SIZE :=16
+EPOCHS :=--epochs 10
+BATCH_SIZE :=--batch-size 16
 endif
-SEED :=12345
+SEED :=--seed 12345
 
 # Rule to declare an implicite dependencies from sub module for all root project files
 TOOLS:=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '*.py')
@@ -40,9 +40,9 @@ features: $(DATA)/processed/datas-features.csv
 
 models/model.pkl : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/train_model.py $(DATA)/processed/datas-features.csv
 	@python -O -m {{ cookiecutter.project_slug }}.train_model \
-		--seed $(SEED) \
-		--batch-size $(BATCH_SIZE) \
-		--epochs $(EPOCHS) \{% if cookiecutter.use_tensorflow == "y" %}
+		$(SEED) \
+		$(BATCH_SIZE) \
+		$(EPOCHS) \{% if cookiecutter.use_tensorflow == "y" %}
 	    --logdir $(TENSORFLOW_LOGDIR) \{% endif %}
 		$(DATA)/processed/datas-features.csv \
 		models/model.pkl

@@ -159,28 +159,34 @@ du Makefile](Makefile.snippet).
 
 # Fonctionnalités à ajouter
 
+De base
 - [X] Proposition d'un pipeline datascience
 - [X] Execution unique en cas de rejeu de la règle make
 - [X] Fonctionnement Conda
 - [ ] Fonctionnement virtualenv
-- [X] Offline
+- [X] Offline (partiel)
 - [ ] GPU
-- [ ] Lecture depuis URI et non fichiers
 - [ ] Execution compatible avec le mode parallèle (-j)
 - [ ] Extraction des métriques dans les différentes branches Git (à la [DVC](https://dvc.org/doc/commands-reference/metrics)
+
+Datascience
 - [X] [Jupyter](https://jupyter.org/)
 - [X] [Tensorflow](https://www.tensorflow.org/)
 - [ ] [Tensorflow template](https://github.com/Mrgemy95/Tensorflow-Project-Template)
 - [X] [Spacy](https://spacy.io/) 
 - [X] [NLTK](https://www.nltk.org/)
 - [X] [pylint](https://www.pylint.org/) et [flake8](http://flake8.pycqa.org/)
+- [X] [DVC](https://dvc.org/)
+- [ ] [MLFlow](https://mlflow.org/) (alternative a DVC et exposition REST)
+- [ ] [MLeap](http://mleap-docs.combust.ml/)
+
+Norme et qualité
 - [X] Typing
 - [ ] Typing at runtime ([Enforce](https://pypi.org/project/enforce/), [pydantic](https://pypi.org/project/pydantic/),
       ou [pytypes](https://pypi.org/project/pytypes/))
 - [X] [PEP8](https://pep8.readthedocs.io/en/latest/)
-- [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
-- [X] Documentation et [Sphinx](http://www.sphinx-doc.org/)
-- [ ] [ReadTheDoc](https://readthedocs.org/)
+
+Tests
 - [X] [pytype](https://opensource.google.com/projects/pytype)
 - [X] Test unitaires
 - [X] Test unitaires du makefile produit par cookiecutter
@@ -192,11 +198,42 @@ du Makefile](Makefile.snippet).
 - [ ] [Cobertura](http://cobertura.github.io/cobertura/)
 - [ ] [Test isolation](https://notes.farcellier.com/blog/20190315_ecrire_des_tests_isoles_avec_des_effets_de_bords_sur_le_filesystem_en_python/page.html)
 - [ ] [Hypothesis](https://hypothesis.readthedocs.io/)
+- [ ] [Pyramide des tests](https://blog.octo.com/la-pyramide-des-tests-par-la-pratique-1-5/)
+- [ ] [Sonarcube](https://www.sonarqube.org/)
+- [ ] [Behave](https://behave.readthedocs.io/en/latest/)
+- [ ] [Retry](https://notes.farcellier.com/python/index.html#retrying)
+
+Docs
+- [X] Documentation et [Sphinx](http://www.sphinx-doc.org/)
+- [ ] [ReadTheDoc](https://readthedocs.org/)
 - [ ] [Upload sphinx](https://pythonhosted.org/an_example_pypi_project/setuptools.html#using-setup-py)
 - [ ] Injecter les notebooks dans la documentation
+
+Ressources
 - [X] [LFS](https://git-lfs.github.com/)
-- [X] [DVC](https://dvc.org/)
-- [ ] [MLFlow](https://mlflow.org/) (alternative a DVC et exposition REST)
+- [ ] [Gitlab LFS](https://docs.gitlab.com/ce/workflow/lfs/lfs_administration.html#storing-lfs-objects-in-remote-object-storage)
+
+CI/CD
+- [X] Hook avant un `commit` sur la branche `master` de git
+- [ ] [Jenkins](https://jenkins.io/)
+- [ ] [Github Travis](https://notes.farcellier.com/travisci/index.html)
+- [ ] Gitlab CI
+- [ ] Docker pour le build/train
+- [ ] Docker pour le run
+
+Cloud
+- [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
+- [X] [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2)
+- [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/) direct ou via mlflow ou Sagemaker-compatible Docker container.
+- [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
+- [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
+
+Sécurité
+- [ ] [Sops](https://pypi.org/project/sops/)
+- [ ] [Secret AWS](https://drivendata.github.io/cookiecutter-data-science/#keep-secrets-and-configuration-out-of-version-control)
+
+Autres
+- [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
 - [ ] [Airflow](https://airflow.apache.org/)
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
 - [X] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
@@ -205,19 +242,5 @@ du Makefile](Makefile.snippet).
 - [ ] [Tox](https://tox.readthedocs.io/en/latest/)
 - [ ] [Nox](https://nox.thea.codes/en/stable/)
 - [ ] [DevPi](https://devpi.net/docs/devpi/devpi/stable/%2Bd/index.html)
-- [ ] [Jenkins](https://jenkins.io/)
-- [ ] [Github Travis](https://notes.farcellier.com/travisci/index.html)
-- [ ] Gitlab CI
-- [ ] [Gitlab LFS](https://docs.gitlab.com/ce/workflow/lfs/lfs_administration.html#storing-lfs-objects-in-remote-object-storage)
-- [ ] Docker pour le build/train
-- [ ] Docker pour le run
 - [ ] [Structured logs](https://github.com/FabienArcellier/spike_json_formatter_for_logging_python)
-- [ ] [Retry](https://notes.farcellier.com/python/index.html#retrying)
-- [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
-- [X] [ssh-ec2](https://gitlab.octo.com/pprados/ssh-ec2)
-- [ ] [Secret AWS](https://drivendata.github.io/cookiecutter-data-science/#keep-secrets-and-configuration-out-of-version-control)
-- [ ] [Amazon SageMaker](https://aws.amazon.com/fr/sagemaker/) direct ou via mlflow ou Sagemaker-compatible Docker container.
-- [ ] [Aws NEO](https://aws.amazon.com/fr/sagemaker/neo/) pour optimmiser les modèles
-- [ ] AWS lambda avec [Zappa](https://notes.farcellier.com/zappa/index.html) serverless compatible HTTP
-- [ ] [MLeap](http://mleap-docs.combust.ml/)
-- [ ] [Sops](https://pypi.org/project/sops/)
+- [ ] Dans le code python, lecture depuis URI et non d'un fichier

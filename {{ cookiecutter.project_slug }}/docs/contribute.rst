@@ -5,14 +5,18 @@ Contribute
 
 Récupérez les sources
 
-``$ git clone |giturl| {{cookiecutter.project_slug}}``
+.. code-block:: bash
 
-puis::
+    $ git clone |giturl| {{cookiecutter.project_slug}}
 
-$ cd {{cookiecutter.project_slug}}
-$ make configure
-$ conda activate {{cookiecutter.project_slug}}
-$ make docs
+puis:
+
+.. code-block:: bash
+
+    $ cd {{cookiecutter.project_slug}}
+    $ make configure
+    $ conda activate {{cookiecutter.project_slug}}
+    $ make docs
 
 Principes d'organisation du projet
 ==================================
@@ -33,6 +37,10 @@ Principes d'organisation du projet
   Il ne doit pas générer d'erreurs. Cela permet d'avoir un build incassable, en ne publiant
   que des commits validés.
   Il est possible de forcer tout de même le push avec ``FORCE=y git push``.
+  Cela permet d'avoir l'équivalent d'une CI/CD en local. Bien entendu, cela peut etre supprimé
+  si une plateforme d'intégration est disponible.
+
+* La version du projet et déduite du tag courant GIT
 
 * Pour les fichiers de données, le modèle propose
   d'utiliser :
@@ -43,7 +51,7 @@ Principes d'organisation du projet
 {% if cookiecutter.use_git_LFS == 'y' %}  - `git lfs <https://git-lfs.github.com/>`_ pour les gros fichiers,
     mais il faut avoir un serveur LFS disponible. C'est le cas pour Gitlab ou Github.{% endif %}{% if cookiecutter.use_DVC == 'y' %}
   - `DVC <https://dvc.org/>`_ pour une autre approche avec backup sur le cloud{% endif %}{% if cookiecutter.use_aws == 'y' %}
-  - Un bucket s3://|s3_bucket| avec ``data/raw/``.
+  - Un bucket ``s3://|s3_bucket|`` avec ``data/raw/``.
     Une règle permet alors de télécharger localement les données depuis le bucket
     si le développeur ne possède pas le répertoire ``data/raw``.
     Pour metre à jour ce bucket, utilisez ``make sync_to_s3/raw``.
@@ -67,12 +75,12 @@ Principes d'organisation du projet
   l'ordre lexicographique pour validation.
 {% if cookiecutter.use_jupyter == 'y' %}
 * Il est possible de convertir les notebooks en scripts, via ``make nb-convert``{% endif %}
-* Le `typing <https://realpython.com/python-type-checking/>`_ est recommandé, avant d'améliorer la qualité du code et sa documentation.
-  Vous pouvez vérifier cela avec ``make typing``, ou ajouter automatiquement le typing à votre code
-  avec ``make add-typing``.
+* Le `typing <https://realpython.com/python-type-checking/>`_ est recommandé, afin d'améliorer la qualité du code
+  et sa documentation. Vous pouvez vérifier cela avec ``make typing``, ou ajouter automatiquement une partie du typing
+  à votre code avec ``make add-typing``.
 * La documentation est générée en ``html`` et ``latexpdf`` dans le répertoire ``build/``. Tous les autres format
   de Sphinx sont possible, via un ``make build/epub`` par exemple.
-* La distribution du package est conforme aux usages sous Python, avec un package avec les sources
+* La distribution du package est conforme aux usages sous Python, avec un package dédié avec les sources
   et un package WHL.
 
 Truc et astuces
@@ -82,31 +90,39 @@ Quelques astuces disponibles dans le projet.
 Les test
 --------
 Les tests sont divisés en deux groupes : ``unit-test`` et ``functional-test``.
-Il est possible d'exécuter l'un des groups à la fois (``make ...``) ou
+Il est possible d'exécuter l'un des groups à la fois (``make (unit|functional)-test``) ou
 l'ensemble (``make test``).
 
 Les tests sont parallélisés lors de leurs executions. Cela permet de bénéficier des architectures
 avec plusieurs coeurs CPU. Pour désactiver temporairement cette fonctionnalité, il suffit
-d'indiquer un nombre de coeur à utiliser. Par exemple : ``NPROC=1 make test``
+d'indiquer un nombre de coeur réduit à utiliser. Par exemple : ``NPROC=1 make test``
 
 Vérifier le build
 -----------------
-Pour vérifier que le Makefile est correct, vous pouvez vider l'environement conda avec ``make clean-venv``
+Pour vérifier que le ``Makefile`` est correct, vous pouvez vider l'environement conda avec ``make clean-venv``
 puis lancer votre règle. Elle doit fonctionner directement et doit même pouvoir être exécuté deux fois
 de suite, sans rejouer le traitement deux fois. Par exemple :
-``$ make validate``
-``$ make validate``
+
+
+.. code-block:: bash
+
+    $ make validate
+    $ make validate
 
 Déverminer le Makefile
 ----------------------
-Il est possible de connaitre la valeur calculée d'une variable dans le Makefile. Pour cela,
+Il est possible de connaitre la valeur calculée d'une variable dans le ``Makefile``. Pour cela,
 utilisez ``make dump-MA_VARIABLE``.
+
+Pour comprendre les règles de dépendances justifiant un build, utilisez ``make --debug -n``.
 {% if cookiecutter.use_jupyter == 'y' %}
 Convertir un notebook
 ---------------------
 Il est possible de convertir un notebook en script, puis de lui ajouter un typage.
 
-``make nb-convert add-typing``
+.. code-block:: bash
+
+    make nb-convert add-typing
 
 Gestion des règles ne produisant pas de fichiers
 ------------------------------------------------

@@ -20,8 +20,8 @@ requirements: List[str] = [
     'click', 'click-pathlib',
     'python-dotenv',
     'sklearn',{% if cookiecutter.use_tensorflow == "y" %}
-    'tensorflow' + USE_GPU + '~=1.3','tensorflow_hub'  # Ubuntu: sudo apt-get install cuda-libraries-10.0
-    'keras',# {% endif %}{% if cookiecutter.use_text_processing == "y" %}
+    'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0
+    'keras',{% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}
     'appdirs', {% endif %}
@@ -53,7 +53,7 @@ dev_requirements: List[str] = [
     'daff',
     'pytype',
 {% if cookiecutter.use_jupyter == "y"    %}    'jupyter',  # Use Jupyter{% endif %}
-{% if cookiecutter.use_DVC == "y"        %}    'dvc',  # Use DVC{% endif %}
+{% if cookiecutter.use_DVC == "y"        %}    'dvc', 'boto3', # Use DVC{% endif %}
 {% if cookiecutter.use_aws == "y"        %}    'awscli',  # Use AWS{% endif %}
 {% if cookiecutter.use_tensorflow == "y" %}    'tensorboard',  # Use tensorflow{% endif %}
 ]

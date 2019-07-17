@@ -19,6 +19,8 @@ from PIL import Image
 
 Model = keras.Model
 
+LOGGER = logging.getLogger(__name__)
+
 
 def init_logger(logger: logging.Logger, level: int) -> None:
     """ Init logger
@@ -63,49 +65,41 @@ class Glob(click.ParamType):
                 glob.glob(super().convert(value=value, param=param, ctx=ctx), recursive=self.recursive)]
 
 
-def caculate_domains_from_tar(tar_filepath: Path) -> Tuple[Sequence[int], Mapping[str, int]]:
-    with tarfile.open(tar_filepath) as tar:
-        labels: Sequence[str] = []
-        domain: Mapping[str, int] = {}
-        for tarf in tar:
-            path = Path(tarf.name)
-            if path.suffix == ".jpg":
-                clazz = path.parts[-2:-1][0]
-                if clazz not in domain:
-                    domain[clazz] = len(domain)
-                labels.append(domain[clazz])
-        return labels, domain
-
-# PPR: a virer ?
-def load_images(files: Iterator[Path]) -> Tuple[Sequence[int], Mapping[str, int], Sequence[bytes]]:
-    """
-    Load directories and returns data and labels
-    :param input_filepath: Glob path
-    :return: (
-    """
+def caculate_labels_and_domains_from_paths(paths: Iterator[Path]) -> Tuple[Sequence[int], Mapping[str, int]]:
     labels: Sequence[str] = []
     domain: Mapping[str, int] = {}
-    image_datas: Sequence[bytes] = []
-    for file in files:
-        with Image.open(file) as image_file:
-            clazz = Path(file).parts[-2:-1][0]
+    for path in paths:
+        if path.suffix == ".jpg":
+            clazz = path.parts[-2:-1][0]
             if clazz not in domain:
                 domain[clazz] = len(domain)
             labels.append(domain[clazz])
-            image = (np.array(image_file, dtype=float) / 127.5) - 1
-            image_datas.append(image)
-    return labels, domain, image_datas
+    return labels, domain
 
 
-def save_model_and_domain(model_filepath: Path, 
-                          model: Model, 
+def normalize_image(image: np.array) -> np.array:
+    return (image / 127.5) - 1
+
+
+
+def save_model_and_domain(model_filepath: Path,
+                          model: Model,
                           domain_filepath: Path,
                           domain: Mapping[str, int]) -> None:
     model.save(str(model_filepath))
     with open(domain_filepath, 'wb') as domain_file:
         pickle.dump(domain, domain_file)
 
-def generator_itemgetter(k:Any, generator:Generator) -> Generator:
+
+def generator_itemgetter(k: Any, generator: Generator) -> Generator:
     """A generator to select specify key of the previous generator """
     for g in generator:
         yield g.__getitem__(k)
+
+
+def tar_paths(tar_filepath: Path) -> Iterator[Path]:
+    def tarIterator(tar):
+        for tarf in tar:
+            yield Path(tarf.name)
+
+    return tarIterator(tarfile.open(tar_filepath))

@@ -11,7 +11,7 @@ from typing import Sequence, IO
 import click
 import dotenv
 
-from .tools.tools import Glob, init_logger
+from {{ cookiecutter.project_slug}}.tools import Glob, init_logger
 
 LOGGER = logging.getLogger(__name__)
 

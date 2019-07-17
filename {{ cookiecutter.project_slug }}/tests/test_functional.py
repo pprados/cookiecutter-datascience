@@ -33,7 +33,7 @@ class TestFunctional(unittest.TestCase):
         # When
         train_inputs.append(build_features(prepare_dataset(input_raw=input_raw)))
         model: Model = train_model(inputs=train_inputs,
-                                 epoch=1,
+                                 epochs=1,
                                  batch_size=1)
         metrics: Mapping[str,Any] = evaluate_model(model, validate_files)
 

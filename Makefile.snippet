@@ -66,7 +66,7 @@ endef
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour supprimer le parallelisme pour certaines cibles
 # par exemple pour release
-ifneq ($(filter configure release clean% upgrade-%,$(MAKECMDGOALS)),)
+ifneq ($(filter configure release clean functional-test% upgrade-%,$(MAKECMDGOALS)),)
 .NOTPARALLEL:
 endif
 #
@@ -240,12 +240,8 @@ dump-%:
 	PRE-PUSH
 	chmod +x .git/hooks/pre-push
 
-# Init DVC
-.dvc:
-	@dvc init
-
 # Init git configuration
-.gitattributes: | .git .git/hooks/pre-push .dvc # Configure git
+.gitattributes: | .git .git/hooks/pre-push  # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
@@ -329,12 +325,14 @@ endif
 # Rule to check the good installation of python in Conda venv
 $(CONDA_PYTHON):
 	@$(VALIDATE_VENV)
-	conda install -q "python=$(PYTHON_VERSION).*" -y -q $(CONDA_ARGS)
+	conda install -q "python=$(PYTHON_VERSION).*" -y $(CONDA_ARGS)
 
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
-	pip install $(PIP_ARGS) -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
+	echo -e "$(cyan)Install setup.py dependencies ... (may take minutes)$(normal)"
+	pip install $(PIP_ARGS) $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
+	echo -e "$(cyan)setup.py dependencies updated$(normal)"
 	@touch $(PIP_PACKAGE)
 
 
@@ -390,6 +388,7 @@ ifneq ($(OFFLINE),True)
 else
 	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
 endif
+
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de spacy.
@@ -474,12 +473,16 @@ run-%:
 .pylintrc:
 	pylint --generate-rcfile > .pylintrc
 
-## Lint the code
-lint: $(REQUIREMENTS) | .pylintrc
+.make-lint: $(REQUIREMENTS) $(PYTHON_SRC) | .pylintrc
 	$(VALIDATE_VENV)
-	@flake8 bda_project tests || true
-	@echo "----------------------"
-	@pylint bda_project tests || true
+	@echo "---------------------- FLAKE"
+	@flake8 flower_classifier
+	@echo "---------------------- PYLINT"
+	@pylint flower_classifier
+	touch .make-lint
+
+## Lint the code
+lint: .make-lint
 
 
 # ---------------------------------------------------------------------------------------
@@ -491,25 +494,25 @@ pytype.cfg: $(CONDA_PREFIX)/bin/pytype
 	@[[ ! -f pytype.cfg ]] && pytype --generate-config pytype.cfg || true
 	touch pytype.cfg
 
-.pytype/pyi/bda_project: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg
+.PHONY: typing
+.make-typing: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	pytype bda_project
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find . -type f -name '*.py' -exec pytype {} \; )
+	  ( cd $$phase ; find -L . -type f -name '*.py' -exec pytype {} \; )
 	done
 	touch .pytype/pyi/bda_project
-
-.PHONY: typing
+	touch .make-typing
 ## Check python typing
-typing: .pytype/pyi/bda_project
+typing: .make-typing
 
 ## Add infered typing in module
 add-typing: typing
-	find bda_project -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
+	@find -L bda_project -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
+	  ( cd $$phase ; find -L . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
 	done
 
 
@@ -547,10 +550,6 @@ endif
 ## Generate and show the HTML documentation
 docs: build/html
 	@$(BROWSER) build/html/index.html
-
-## Watching for changes to compile the docs
-servedocs: build/html
-	watchmedo shell-command -p '*' -c '$(MAKE) build/html' -R -D docs
 
 
 # ---------------------------------------------------------------------------------------
@@ -676,15 +675,15 @@ $(DATA)/raw:
 .PHONY: clean-pyc
 # Clean pre-compiled files
 clean-pyc:
-	@/usr/bin/find . -type f -name "*.py[co]" -delete
-	@/usr/bin/find . -type d -name "__pycache__" -delete
+	@/usr/bin/find -L . -type f -name "*.py[co]" -delete
+	@/usr/bin/find -L . -type d -name "__pycache__" -delete
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour nettoyer les fichiers de builds (package et docs).
 .PHONY: clean-build
 # Remove build artifacts and docs
 clean-build:
-	@/usr/bin/find . -type f -name ".make-*" -delete
+	@/usr/bin/find -L . -type f -name ".make-*" -delete
 	@rm -fr build/
 	@rm -fr dist/*
 	@rm -fr *.egg-info
@@ -794,11 +793,10 @@ EC2_LIFE_CYCLE?=--terminate
 # Recette permettant un `make ec2-test`
 .PHONY: ec2-* ec2-tmux-* ec2-detach-* ec2-notebook ec2-ssh
 ## Call 'make %' recipe on EC2 (`make ec2-train`)
-ec2-%: $(CONDA_PREFIX)/bin/aws
+ec2-%: $(CONDA_PREFIX)/bin/aws clean-pyc
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else
-	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 $(EC2_LIFE_CYCLE) "source activate $(VENV_AWS) ; LC_ALL="en_US.UTF-8" VENV=$(VENV_AWS) make $(*:ec2-%=%)"
 endif
@@ -806,7 +804,7 @@ endif
 # Recette permettant d'exécuter une recette avec un tmux activé.
 # Par exemple `make ec2-tmux-train`
 ## Call 'make %' recipe on EC2 with a tmux session (`make ec2-tmux-train`)
-ec2-tmux-%: $(CONDA_PREFIX)/bin/aws
+ec2-tmux-%: $(CONDA_PREFIX)/bin/aws clean-pyc
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else
@@ -818,7 +816,7 @@ endif
 # Recette permettant un `make ec2-detach-test`
 # Il faut faire un ssh-ec2 --finish pour rapatrier les résultats à la fin
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
-ec2-detach-%: $(CONDA_PREFIX)/bin/aws
+ec2-detach-%: $(CONDA_PREFIX)/bin/aws clean-pyc
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else
@@ -839,9 +837,9 @@ else
 	ssh-ec2 --attach
 endif
 
-# Recette permettant un `make ec2-finish`
+# Recette permettant un `make ec2-terminate`
 ## Call 'make %' recipe on EC2 and detach immediatly (`make ec2-detach-train`)
-ec2-finish: $(CONDA_PREFIX)/bin/aws
+ec2-terminate: $(CONDA_PREFIX)/bin/aws
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline mode$(normal)"
 else
@@ -855,7 +853,6 @@ ec2-notebook: $(CONDA_PREFIX)/bin/aws
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline$(normal)"
 else
-	@$(VALIDATE_VENV)
 	set -x
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 endif
@@ -872,6 +869,16 @@ endif
 #
 
 .PHONY: prepare features train evaluate visualize
+# Meta parameters
+# TODO: Ajustez les meta-paramètres
+ifdef DEBUG
+EPOCHS :=--epochs 1
+BATCH_SIZE :=--batch-size 1
+else
+EPOCHS :=--epochs 10
+BATCH_SIZE :=--batch-size 16
+endif
+SEED :=--seed 12345
 
 # Rule to declare an implicite dependencies from sub module for all root project files
 TOOLS:=$(shell find bda_project/ -mindepth 2 -type f -name '*.py')
@@ -894,18 +901,21 @@ features: $(DATA)/processed/datas-features.csv
 
 models/model.pkl : $(REQUIREMENTS) bda_project/train_model.py $(DATA)/processed/datas-features.csv
 	@python -O -m bda_project.train_model \
+		$(SEED) \
+		$(BATCH_SIZE) \
+		$(EPOCHS) \
 		$(DATA)/processed/datas-features.csv \
 		models/model.pkl
 ## Train the model
 train: models/model.pkl
 
-reports/auc.metric: $(REQUIREMENTS) bda_project/evaluate_model.py models/model.pkl
+reports/metric.json: $(REQUIREMENTS) bda_project/evaluate_model.py models/model.pkl
 	@python -O -m bda_project.evaluate_model \
 		models/model.pkl \
 		$(DATA)/processed/datas-features.csv \
-		reports/auc.metric
+		reports/metric.json
 ## Evalutate the model
-evaluate: reports/auc.metric
+evaluate: reports/metric.json
 
 ## Visualize the result
 visualize: $(REQUIREMENTS) bda_project/visualize.py models/model.pkl

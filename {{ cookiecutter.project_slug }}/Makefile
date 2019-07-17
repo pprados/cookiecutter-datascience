@@ -106,12 +106,14 @@ PROFILE = default{% endif %}
 # Data directory (can be in other place, in VM or Docker for example)
 export DATA?=data
 {% if cookiecutter.use_DVC == 'y' %}
-# Use DVC bucket. May be :
+# Use DVC bucket.
+# TODO: select DVC_BUCKET with make dvc-external-...
+# May be :
 # DVC_BUCKET?=s3://$(PRJ)
 # DVC_BUCKET?=gs://$(PRJ)
 # DVC_BUCKET?=ssh://user@example.com:
 # DVC_BUCKET?=hdfs://user@example.com
-DVC_BUCKET?={% if cookiecutter.use_aws == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
+DVC_BUCKET?={% if cookiecutter.use_s3 == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
 # List of source and tests files
 PYTHON_SRC=$(shell find -L {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
 PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
@@ -381,8 +383,8 @@ $(CONDA_PYTHON):
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
-	echo -e "$(cyan)Install setup.py dependencies ...$(normal)"
-	pip install $(PIP_ARGS) -q $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
+	echo -e "$(cyan)Install setup.py dependencies ... (may take minutes)$(normal)"
+	pip install $(PIP_ARGS) $(EXTRA_INDEX) -e '.[dev,test]' | grep -v 'already satisfied' || true
 	echo -e "$(cyan)setup.py dependencies updated$(normal)"
 	@touch $(PIP_PACKAGE)
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -453,17 +455,20 @@ else
 	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
 endif{% endif %}
 {% if cookiecutter.use_tensorflow == "y" %}
+$(CONDA_PREFIX)/bin/tensorboard:
+	@pip install $(PIP_ARGS) -q tensorboard
 ## Start tensorbard
-tensorboard:
-	tensorboard --logdir $(TENSORFLOW_LOGDIR)
+tensorboard: $(CONDA_PREFIX)/bin/tensorboard
+	tensorboard --host localhost --logdir $(TENSORFLOW_LOGDIR)
 {% if cookiecutter.use_aws == 'y' %}
 ## Start tensorbord on EC2
-ec2-tensorboard: clean-pyc
+ec2-tensorboard: clean-pyc $(CONDA_PREFIX)/bin/tensorboard
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not use ssh-ec2 in offline$(normal)"
 else
 	set -x
-	ssh-ec2 --stop -L 6006:localhost:6006 "tensorboard --logdir $(TENSORFLOW_LOGDIR)"
+	ssh-ec2 --stop -L 6006:localhost:6006 "tensorboard --host localhost --logdir $(TENSORFLOW_LOGDIR)"
+endif
 {% endif %}
 {% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}

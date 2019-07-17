@@ -278,11 +278,11 @@ try_default: $(REQUIREMENTS) try/$(BRANCH)
 
 try: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	# PPR DVC=n
 	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_DVC=n use_text_processing=y use_aws=y use_s3=y open_source_software=y
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 
 _make-%:
+	$(VALIDATE_VENV)
 	$(MAKE) try
 	@pushd tmp/bda_project
 	@source $(CONDA_BASE)/bin/activate bda_project
@@ -291,6 +291,7 @@ _make-%:
 
 # Check all version of documentations
 .make-check-docs: {{\ cookiecutter.project_slug\ }}/Makefile {{\ cookiecutter.project_slug\ }}/docs
+	$(VALIDATE_VENV)
 	$(MAKE) try
 	@source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate bda_project
 	@pushd try/$(BRANCH)/bda_project
@@ -322,9 +323,10 @@ check-docs: .make-check-docs
 
 # Il faut probablement lancer des builds avants, pour remetre l'état valide
 .make-check-makefile: Makefile-TU {{\ cookiecutter.project_slug\ }}/Makefile
-	@$(MAKE) try
+	$(VALIDATE_VENV)
+	$(MAKE) try
 	pushd try/$(BRANCH)/bda_project
-	export VENV=$(BRANCH)
+	export VENV=bda_project
 	source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $$VENV
 	# Check double make validate
 	make clean-build
@@ -339,6 +341,7 @@ check-makefile: .make-check-makefile
 
 ## Check empty configure
 .make-check-configure:
+	$(VALIDATE_VENV)
 	@conda env remove -n $(BRANCH) 2>/dev/null
 	pushd try/$(BRANCH)/bda_project
 	export VENV=$(BRANCH)
@@ -357,7 +360,7 @@ check-configure: .make-check-configure
 check-all-make: .make-check-all-make
 
 .PHONY: validate
-.make-validate: Makefile Makefile.snippet .make-test .make-check-all-make
+.make-validate: Makefile Makefile.snippet .make-test .make-check-all-make .make-check-examples
 	@date >.make-validate
 ## Validate all before commit
 validate: .make-validate
@@ -386,6 +389,7 @@ define generate_example
 		project_slug=$2 \
 		$3
 	rm -Rf "examples/$1/$2/$2/" "examples/$1/$2/tests/"
+	rm "examples/$1/$2/data/raw/datas.csv"
 	ln -s "../../../examples.template/$2/$2" "$$(pwd)/examples/$1/$2/"
 	ln -s "../../../examples.template/$2/tests" "$$(pwd)/examples/$1/$2/"
 	sed -i '1,/^#####*$$/!d' examples/$1/$2/Makefile
@@ -398,20 +402,49 @@ examples.template/flower_classifier/flower_photos.tgz:
 	wget -P examples.template/flower_classifier/ 'http://download.tensorflow.org/example_images/flower_photos.tgz'
 
 # PPR gérer les dépendences
-examples/classic/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
-	$(call generate_example,classic,flower_classifier,use_DVC=n use_tensorflow=y use_aws=y)
+examples/classic/flower_classifier: Makefile \
+	examples.template/flower_classifier/*
+	@$(call generate_example,classic,flower_classifier,use_DVC=n use_tensorflow=y use_aws=y use_s3=n)
 	ln -s ../../../../../examples.template/flower_classifier/flower_photos.tgz examples/classic/flower_classifier/data/raw
-	pushd examples/classic/flower_classifier/data/raw
-	conda activate bda_project
-	make visualize
-	popd
 
-examples/dvc/flower_classifier: Makefile examples.template/flower_classifier/flower_photos.tgz
-	$(call generate_example,dvc,flower_classifier,use_DVC=y use_tensorflow=y use_aws=y)
+examples/dvc/flower_classifier: Makefile \
+	examples.template/flower_classifier/*
+	@$(call generate_example,dvc,flower_classifier,use_DVC=y use_tensorflow=y use_aws=y use_s3=n)
 	ln -s ../../../../../examples.template/flower_classifier/flower_photos.tgz examples/dvc/flower_classifier/data/raw
-	pushd examples/dvc/flower_classifier/data/raw
-	conda activate bda_project
-	make visualize
-	popd
 
-examples: examples/*/flower_classifier
+.PHONY: examples
+examples: examples/classic/flower_classifier examples/dvc/flower_classifier
+
+.PHONY: check-flower-classic check-flower-dvc check-examples
+
+## Test la production de l'exemple flower en mode classic
+check-flower-classic: examples.template/flower_classifier/*
+	rm -Rf examples/classic/flower_classifier
+	$(MAKE) examples/classic/flower_classifier
+	pushd examples/classic/flower_classifier
+	source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate flower_classifier
+	DEBUG=True make test visualize
+	conda deactivate
+	popd
+	# Purge sample for git
+	rm -Rf examples/classic/flower_classifier
+	$(MAKE) examples/classic/flower_classifier
+
+## Test la production de l'exemple flower en mode dvc
+check-flower-dvc: examples.template/flower_classifier/*
+	rm -Rf examples/dvc/flower_classifier
+	$(MAKE) examples/dvc/flower_classifier
+	pushd examples/dvc/flower_classifier
+	source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate flower_classifier
+	DEBUG=True make test visualize
+	conda deactivate
+	popd
+	# Purge sample for git
+	rm -Rf examples/dvc/flower_classifier
+	$(MAKE) examples/dvc/flower_classifier
+
+.make-check-examples: $(REQUIREMENTS)
+	$(MAKE) check-flower-classic check-flower-dvc
+	@date >.make-check-examples
+
+check-examples: .make-check-examples

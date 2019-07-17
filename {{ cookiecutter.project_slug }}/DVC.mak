@@ -61,6 +61,17 @@ clean-dvc:
 # └─────────┘ └──────────┘ └───────┘ └──────────┘ └───────────┘
 #
 
+# Meta parameters
+# TODO: Ajustez les meta-paramètres
+ifdef DEBUG
+EPOCHS :=--epochs 1
+BATCH_SIZE :=--batch-size 1
+else
+EPOCHS :=--epochs 10
+BATCH_SIZE :=--batch-size 16
+endif
+SEED :=--seed 12345
+
 .PHONY: prepare features train evaluate visualize
 
 # Rule to declare an implicite dependencies from sub module for all root project files
@@ -68,57 +79,91 @@ TOOLS:=$(shell find {{ cookiecutter.project_slug }}/ -mindepth 2 -type f -name '
 {{ cookiecutter.project_slug }}/*.py : $(TOOLS)
 	@touch $@
 
-data/interim/datas-prepared.csv: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/prepare_dataset.py data/raw/*
+prepare.dvc \
+$(DATA)/interim/datas-prepared.csv: $(REQUIREMENTS) \
+    {{ cookiecutter.project_slug }}/prepare_dataset.py \
+    $(DATA)/raw/*
 	dvc run -q -f prepare.dvc \
+		--overwrite-dvcfile \
+		--ignore-build-cache \
 		-d {{ cookiecutter.project_slug }}/prepare_dataset.py \
-		-d data/raw/ \
-		-o data/interim/datas-prepared.csv \
+		-d {{ cookiecutter.project_slug }}/tools \
+		-d $(DATA)/raw/ \
+		-o $(DATA)/interim/datas-prepared.csv \
 	python -O -m {{ cookiecutter.project_slug }}.prepare_dataset \
-		data/raw/datas.csv \
-		data/interim/datas-prepared.csv\
-	)
-prepare.dvc: data/interim/datas-prepared.csv
+		$(DATA)/raw/datas.csv \
+		$(DATA)/interim/datas-prepared.csv
+	git add prepare.dvc
+prepare.dvc: $(DATA)/interim/datas-prepared.csv
 ## Prepare the dataset
 prepare: prepare.dvc
 
-data/interim/datas-features.csv : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/build_features.py data/interim/datas-prepared.csv
+features.dvc \
+$(DATA)/interim/datas-features.csv : $(REQUIREMENTS) \
+    {{ cookiecutter.project_slug }}/build_features.py \
+    $(DATA)/interim/datas-prepared.csv
 	dvc run -q -f features.dvc \
+		--overwrite-dvcfile \
+		--ignore-build-cache \
 		-d {{ cookiecutter.project_slug }}/build_features.py \
-		-d data/interim/datas-prepared.csv \
-		-o data/interim/datas-features.csv \
+		-d {{ cookiecutter.project_slug }}/tools \
+		-d $(DATA)/interim/datas-prepared.csv \
+		-o $(DATA)/interim/datas-features.csv \
 	python -O -m {{ cookiecutter.project_slug }}.build_features \
-		data/interim/datas-prepared.csv \
-		data/interim/datas-features.csv
+		$(DATA)/interim/datas-prepared.csv \
+		$(DATA)/interim/datas-features.csv
+	git add features.dvc
 ## Add features
-features: data/interim/datas-features.csv
+features: $(DATA)/interim/datas-features.csv
 
-models/model.pkl : $(REQUIREMENTS) {{ cookiecutter.project_slug }}/train_model.py data/interim/datas-features.csv
+train.dvc \
+models/model.pkl : $(REQUIREMENTS) \
+    {{ cookiecutter.project_slug }}/train_model.py \
+    $(DATA)/interim/datas-features.csv
 	dvc run -q -f train.dvc \
+		--overwrite-dvcfile \
+		--ignore-build-cache \
 		-d {{ cookiecutter.project_slug }}/train_model.py \
-		-d data/interim/datas-features.csv \
-	python -O -m {{ cookiecutter.project_slug }}.train_model \{% if cookiecutter.use_tensorflow == "y" %}
+		-d {{ cookiecutter.project_slug }}/tools \
+		-d $(DATA)/interim/datas-features.csv \
+		-o models/model.pkl \
+	python -O -m {{ cookiecutter.project_slug }}.train_model \
+	    $(SEED) \
+		$(BATCH_SIZE) \
+		$(EPOCHS) \{% if cookiecutter.use_tensorflow == "y" %}
 	    --logdir $(TENSORFLOW_LOGDIR) \{% endif %}
-		data/interim/datas-features.csv \
+		$(DATA)/interim/datas-features.csv \
 		models/model.pkl
+	git add train.dvc
 ## Train the model
 train: models/model.pkl
 
-
-reports/metric.json: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/evaluate_model.py models/model.pkl
-	dvc run -q -f evaluate.dvc \
+Dvcfile.dvc \
+reports/metric.json: $(REQUIREMENTS) \
+    {{ cookiecutter.project_slug }}/evaluate_model.py \
+    models/model.pkl
+	dvc run -q -f Dvcfile.dvc \
+		--overwrite-dvcfile \
+		--ignore-build-cache \
 		-d {{ cookiecutter.project_slug }}/evaluate_model.py \
+		-d {{ cookiecutter.project_slug }}/tools \
 		-d models/model.pkl \
 		-M reports/metric.json \
 	python -O -m {{ cookiecutter.project_slug }}.evaluate_model \
 		models/model.pkl \
-		data/interim/datas-features.csv \
+		$(DATA)/interim/datas-features.csv \
 		reports/metric.json
+	git add Dvcfile.dvc
 ## Evalutate the model
 evaluate: reports/metric.json
 
 ## Visualize the result
-visualize: $(REQUIREMENTS) {{ cookiecutter.project_slug }}/visualize.py models/model.pkl
-	@python -O -m {{ cookiecutter.project_slug }}.visualize \
+visualize: $(REQUIREMENTS) \
+    {{ cookiecutter.project_slug }}/visualize.py \
+    models/model.pkl \
+    reports/metric.json
+	@dvc metrics show
+	python -O -m {{ cookiecutter.project_slug }}.visualize \
 	    reports/
 
 {% if cookiecutter.add_makefile_comments == "y" %}

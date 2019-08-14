@@ -35,7 +35,7 @@ La doc de [Gnu Makefile](https://www.gnu.org/software/make/manual/make.html).
 
 Il y a plusieurs `Makefile`, à différents niveaux:
 - Le `Makefile` à la racine du projet. Il est en charge de qualifier la génération des projets via Cookiecutter
-- Le `Makefile` dans le répertoire `{{ cookiecutter.project_slug }}`. C’est le `Makefile` servabt à générer 
+- Le `Makefile` dans le répertoire `{{ cookiecutter.project_slug }}`. C’est le `Makefile` servant à générer 
 le projet créé par Cookiecutter
 - Le `Makefile` dans les projets d’exemples, dans `examples/(classic|dvc)/*/Makefile`. 
 Ce dernier est généré à partir du précédent, lors de la création du projet d’exemple, 
@@ -103,7 +103,6 @@ Elles sont conçu pour pouvoir être surchargées avant l'invocation (opérateur
 | OFFLINE=True | Pour éviter d'aller sur internet pour résourdre les dépendances |
 
 # Reste à faire pour la version 1.0
-- ajouter des TU à flower_classifier
 - deverminer le code pour qu'il puisse apprendre (probablement un pb sur la normalisation des images)
 - Verifier le typing de cet exemple
 - Verifier le format des sources

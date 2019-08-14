@@ -121,7 +121,7 @@ Le reste des règles sont pour la gestion du projet
 - Tracks des fichiers standards (.pkl, *.bin, *.jpg, *.jpeg, *.git, *.png)
 
 ### use_[DVC](https://dvc.org/)
-- Modification dès règles du pipeline du projet, pour exploiter `dvc run`
+- Modification dès règles du workflow du projet, pour exploiter `dvc run`
 - Une variable `DVC_BUCKET` pour indiquer où localiser les données
 - `make dvc-external-%` # Pour ajouter un suivit des modifications de fichier externe
 - `make lock-%` # Pour bloquer le rebuild d'un fichier DVC
@@ -160,7 +160,7 @@ du Makefile](Makefile.snippet).
 # Fonctionnalités à ajouter
 
 De base
-- [X] Proposition d'un pipeline datascience
+- [X] Proposition d'un pipeline standard de datascience
 - [X] Execution unique en cas de rejeu de la règle make
 - [X] Fonctionnement Conda
 - [ ] Fonctionnement virtualenv
@@ -232,9 +232,12 @@ Sécurité
 - [ ] [Sops](https://pypi.org/project/sops/)
 - [ ] [Secret AWS](https://drivendata.github.io/cookiecutter-data-science/#keep-secrets-and-configuration-out-of-version-control)
 
+Pipeline
+- [ ] [Airflow](https://airflow.apache.org/)
+- [ ] [Prefect](https://www.prefect.io/)
+
 Autres
 - [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
-- [ ] [Airflow](https://airflow.apache.org/)
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
 - [X] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
 - [ ] [Koalas](https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html)

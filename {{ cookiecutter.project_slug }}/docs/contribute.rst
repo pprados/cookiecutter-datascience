@@ -25,7 +25,7 @@ Principes d'organisation du projet
 
   - d'executer plusieurs règles en parallèle dans le ``Makefile`` utilisant le même script (``make -j 4 ...``)
   - d'ajuster les noms des répertoires aux environements d'exécution (local, Docker, SageMaker, etc)
-  - d'avoir des tests unitaires isolant facilement chaque étape du pipeline
+  - d'avoir des tests unitaires isolant facilement chaque étape du workflow
 
 * Les meta-paramètres des algorithmes doivent également pouvoir être valorisés via des paramètres de la ligne
   de commande. Cela permet d'utiliser des outils d'optimisations des meta-paramètres.

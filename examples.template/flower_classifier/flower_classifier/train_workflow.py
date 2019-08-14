@@ -62,7 +62,7 @@ def main(input_raw_filepath: Path,
 
     # 1. load and train the model simultaneously
     labels, domain = caculate_labels_and_domains_from_paths(tar_paths(input_raw_filepath))
-    image_datas = generator_itemgetter(1, prepare_dataset(extract_tgz(input_raw_filepath), dim))
+    image_datas = (x[1] for x in prepare_dataset(extract_tgz(input_raw_filepath), dim))
     model = train_model(domain,
                         labels,
                         image_datas,

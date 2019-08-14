@@ -265,21 +265,29 @@ try_aws: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
 	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_aws=y use_s3=y
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
+	cd try/$(BRANCH)/bda_project
+	git init
 
 try_opensource: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
 	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) open_source_software=y
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
+	cd try/$(BRANCH)/bda_project
+	git init
 
 try_default: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
 	python tests/try_cookiecutter.py --output_dir try/$(BRANCH)
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
+	cd try/$(BRANCH)/bda_project
+	git init
 
 try: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
 	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_DVC=n use_text_processing=y use_aws=y use_s3=y open_source_software=y
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
+	cd try/$(BRANCH)/bda_project
+	git init
 
 _make-%:
 	$(VALIDATE_VENV)
@@ -417,6 +425,11 @@ examples: examples/classic/flower_classifier examples/dvc/flower_classifier
 
 .PHONY: check-flower-classic check-flower-dvc check-examples
 
+clean-flower-classic:
+	# Purge sample for git
+	rm -Rf examples/classic/flower_classifier
+	$(MAKE) examples/classic/flower_classifier
+
 ## Test la production de l'exemple flower en mode classic
 check-flower-classic: examples.template/flower_classifier/*
 	rm -Rf examples/classic/flower_classifier
@@ -426,9 +439,11 @@ check-flower-classic: examples.template/flower_classifier/*
 	DEBUG=True make test visualize
 	conda deactivate
 	popd
+
+clean-flower-dvc:
 	# Purge sample for git
-	rm -Rf examples/classic/flower_classifier
-	$(MAKE) examples/classic/flower_classifier
+	rm -Rf examples/dvc/flower_classifier
+	$(MAKE) examples/dvc/flower_classifier
 
 ## Test la production de l'exemple flower en mode dvc
 check-flower-dvc: examples.template/flower_classifier/*
@@ -439,12 +454,12 @@ check-flower-dvc: examples.template/flower_classifier/*
 	DEBUG=True make test visualize
 	conda deactivate
 	popd
-	# Purge sample for git
-	rm -Rf examples/dvc/flower_classifier
-	$(MAKE) examples/dvc/flower_classifier
+
+clean-flower: clean-flower-classic clean-flower-dvc
 
 .make-check-examples: $(REQUIREMENTS)
 	$(MAKE) check-flower-classic check-flower-dvc
+	$(MAKE) clean-flower
 	@date >.make-check-examples
 
 check-examples: .make-check-examples

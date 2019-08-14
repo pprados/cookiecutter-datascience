@@ -22,7 +22,7 @@ def _run_make_cmd(dirname: str, cmd: str):
     	conda create {CONDA_ARGS} -n $V -y
 	    conda activate $V
         export AWS_INSTANCE_TYPE=t2.small
-        ln -f Makefile-TU {dirname}/bda_project/Makefile-TU
+        cp -f Makefile-TU {dirname}/bda_project/Makefile-TU
         cd "{dirname}/bda_project"
         pwd
         echo "{cmd}"

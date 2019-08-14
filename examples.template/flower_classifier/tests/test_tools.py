@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from flower_classifier.tools import init_logger, caculate_labels_and_domains_from_paths, generator_itemgetter
+from flower_classifier.tools import init_logger, caculate_labels_and_domains_from_paths
 
 
 class TestTools(unittest.TestCase):
@@ -39,15 +39,3 @@ class TestTools(unittest.TestCase):
         self.assertEqual(0, domain["roses"])
         self.assertEqual(1, domain["tulips"])
         self.assertListEqual(labels, [0, 1, 0])
-
-    def test_generator_itemgetter(self) -> None:
-        # Given
-        pseudo_generator = [('A', 0), ('B', 1)]
-
-        # When
-        result_0 = list(generator_itemgetter(0, pseudo_generator))
-        result_1 = list(generator_itemgetter(1, pseudo_generator))
-
-        # Then
-        self.assertListEqual(result_0, ['A', 'B'])
-        self.assertListEqual(result_1, [0, 1])

@@ -91,12 +91,6 @@ def save_model_and_domain(model_filepath: Path,
         pickle.dump(domain, domain_file)
 
 
-def generator_itemgetter(k: Any, generator: Generator) -> Generator:
-    """A generator to select specify key of the previous generator """
-    for g in generator:
-        yield g.__getitem__(k)
-
-
 def tar_paths(tar_filepath: Path) -> Iterator[Path]:
     def tarIterator(tar):
         for tarf in tar:

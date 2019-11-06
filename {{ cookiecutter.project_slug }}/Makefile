@@ -623,6 +623,9 @@ add-typing: typing
 build-docker-dev:
 	docker-compose -f docker/docker-compose-dev.yml build
 
+up-docker-dev:
+	docker-compose -f docker/docker-compose-dev.yml up
+
 {% endif %}
 
 

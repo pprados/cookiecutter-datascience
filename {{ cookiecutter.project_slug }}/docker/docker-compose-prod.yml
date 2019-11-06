@@ -14,13 +14,7 @@ services:
             - /var/lib/postgresql/data/pgdata
 
     webserver:
-        build:
-            args:
-              - VENV={{cookiecutter.project_slug}}
-            context: ..
-            dockerfile: docker/Dockerfile
-        container_name: {{cookiecutter.project_slug}}_app
-        image: {{cookiecutter.docker_registry}}/{{cookiecutter.project_slug}}_app
+        image: {{cookiecutter.docker_registry}}/{{cookiecutter.project_slug}}_app:${APP_VERSION}
         restart: always
         depends_on:
             - postgres
@@ -36,20 +30,3 @@ services:
             interval: 30s
             timeout: 30s
             retries: 3
-
-    lab:
-        build:
-            context: ..
-            dockerfile: docker/Dockerfile
-        container_name: {{cookiecutter.project_slug}}_lab
-        restart: always
-        environment:
-            - LOAD_EX=n
-            - EXECUTOR=Local
-        command: lab
-        volumes:
-            - ./notebooks:/app/notebooks
-        ports:
-            - "8888"
-
-

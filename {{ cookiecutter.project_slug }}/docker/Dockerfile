@@ -24,6 +24,9 @@ COPY Makefile /app
 COPY README.md /app
 COPY docker/entrypoint.sh /
 COPY {{cookiecutter.project_slug}} /app/{{cookiecutter.project_slug}}
+COPY airflow /app/airflow
+COPY scripts /app/scripts
+COPY tests /app/tests
 
 RUN chmod +x /entrypoint.sh
 

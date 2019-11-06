@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Based on https://github.com/puckel/docker-airflow/blob/master/script/entrypoint.sh
 
 source /opt/conda/bin/activate $VENV
 
@@ -11,7 +12,7 @@ TRY_LOOP="20"
 : "${POSTGRES_HOST:="postgres"}"
 : "${POSTGRES_PORT:="5432"}"
 : "${POSTGRES_USER:="airflow"}"
-: "${POSTGRES_PASSWORD:="airflow"}"
+: "${POSTGRES_PASSWORD:="change_me"}"
 : "${POSTGRES_DB:="airflow"}"
 
 # Defaults and back-compat
@@ -71,8 +72,6 @@ fi
 
 case "$1" in
   webserver)
-    sudo chown -R airflow: /airflow
-    sudo chmod -R 755 /airflow
     airflow initdb
     if [ "$AIRFLOW__CORE__EXECUTOR" = "LocalExecutor" ]; then
       # With the "Local" executor it should all run in one container.
@@ -83,8 +82,6 @@ case "$1" in
   worker|scheduler)
     # To give the webserver time to run initdb.
     sleep 10
-    sudo chown -R airflow: /airflow
-    sudo chmod -R 755 /airflow
     exec airflow "$@"
     ;;
   flower)
@@ -95,7 +92,7 @@ case "$1" in
     exec airflow "$@"
     ;;
   lab)
-    sudo chown -R airflow: /project
+    chown -R airflow: /app
     exec jupyter lab --no-browser --ip=0.0.0.0 --port=8888 --allow-root --notebook-dir=/project --NotebookApp.token=""
     ;;
   *)

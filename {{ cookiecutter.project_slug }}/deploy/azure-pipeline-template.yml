@@ -1,0 +1,64 @@
+trigger:
+- master
+
+resources:
+- repo: self
+
+variables:
+  tag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build image
+  jobs:
+  - job: Build
+    displayName: Build
+    #pool: 'Pool name'
+
+    steps:
+    - script: docker build -t {{ cookiecutter.docker_registry }}/{{ cookiecutter.project_slug }}_app:$(Build.SourceBranchName) .
+      displayName: "Build container"
+
+    - script: docker login {{ cookiecutter.docker_registry }} -u $(AZURE_REGISTRY_USER) -p $(AZURE_REGISTRY_PASSWORD) && docker push {{ cookiecutter.docker_registry }}/{{ cookiecutter.project_slug }}_app:$(Build.SourceBranchName)
+      displayName: "Push container"
+
+    - task: SSH@0
+      displayName: 'Stopping previous version'
+      inputs:
+        sshEndPoint: '{{ cookiecutter.deploy_server }}'
+        runOptions: 'inline'
+        failOnStdErr: false
+        inline: |
+          cd {{ cookiecutter.deploy_path }}
+          APP_VERSION=$(Build.SourceBranchName) docker-compose -f docker-compose-prod.yml stop -t 30
+
+    - task: CopyFilesOverSSH@0
+      displayName: 'Publish file on production server'
+      inputs:
+        sshEndpoint: '{{ cookiecutter.deploy_server }}'
+        sourceFolder: ./
+        contents: docker-compose-prod.yml
+        targetFolder: {{ cookiecutter.deploy_path }}
+
+    - task: SSH@0
+      displayName: 'Pull new version'
+      inputs:
+        sshEndPoint: '{{ cookiecutter.deploy_server }}'
+        runOptions: 'inline'
+        failOnStdErr: false
+        inline: |
+          mkdir -p {{ cookiecutter.deploy_path }}
+          cd {{ cookiecutter.deploy_path }}
+          docker login {{ cookiecutter.docker_registry }} -u $(AZURE_REGISTRY_USER) -p $(AZURE_REGISTRY_PASSWORD)
+          APP_VERSION=$(Build.SourceBranchName) docker-compose -f docker-compose-prod.yml pull
+
+    - task: SSH@0
+      displayName: 'Starting service'
+      inputs:
+        sshEndPoint: '{{ cookiecutter.deploy_server }}'
+        runOptions: 'inline'
+        failOnStdErr: false
+        inline: |
+          cd {{ cookiecutter.deploy_path }}
+          APP_VERSION=$(Build.SourceBranchName) docker-compose -f docker-compose-prod.yml up -d
+

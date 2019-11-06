@@ -24,7 +24,8 @@ requirements: List[str] = [
     'keras',{% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}
-    'appdirs', {% endif %}
+    'appdirs', {% endif %}{% if cookiecutter.use_datadriver == "y" %}
+    'datadriver', {% endif %}
     'numpy~=1.14',
     'pandas~=0.22',
 ]

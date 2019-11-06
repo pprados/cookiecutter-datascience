@@ -618,6 +618,14 @@ add-typing: typing
 	  ( cd $$phase ; find -L . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
 	done
 
+{% if cookiecutter.use_datadriver == 'y' %}
+
+build-docker-dev:
+	docker-compose -f docker/docker-compose-dev.yml build
+
+{% endif %}
+
+
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour créer la documentation html et pdf du projet.

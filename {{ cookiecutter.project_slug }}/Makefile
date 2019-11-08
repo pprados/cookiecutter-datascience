@@ -618,7 +618,7 @@ add-typing: typing
 	  ( cd $$phase ; find -L . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
 	done
 
-{% if cookiecutter.use_datadriver == 'y' %}
+{% if cookiecutter.use_airflow == 'y' %}
 
 build-docker-dev:
 	docker-compose -f docker/docker-compose-dev.yml build

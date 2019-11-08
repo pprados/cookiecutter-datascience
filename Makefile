@@ -287,6 +287,11 @@ try_datadriver: $(REQUIREMENTS) try/$(BRANCH)
 	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_datadriver=y
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 
+try_airflow: $(REQUIREMENTS) try/$(BRANCH)
+	$(VALIDATE_VENV)
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_airflow=y
+	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
+
 try: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
 	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_DVC=n use_text_processing=y use_aws=y use_s3=y open_source_software=y

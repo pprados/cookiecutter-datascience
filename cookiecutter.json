@@ -1,9 +1,9 @@
 {
   "project_name": "BDA Project",
   "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '_').replace('-', '_') }}",
-  "project_short_description": "Description of the project",
+  "project_short_description": "Project description",
   "open_source_software": "n",
-  "author": "OCTO Technology",
+  "author": "",
   "python_version": "3.6",
   "use_jupyter":"n",
   "use_tensorflow": "n",
@@ -12,5 +12,10 @@
   "use_aws":"n",
   "use_s3":"{{ \"n\" if (cookiecutter.use_aws == \"n\" or cookiecutter.use_git_LFS == \"y\") else \"n\"}}",
   "use_DVC":"{{ \"n\" if (cookiecutter.use_git_LFS == \"y\" or cookiecutter.use_s3 == \"y\") else \"n\"}}",
+  "use_datadriver": "n",
+  "use_airflow": "{{ \"y\" if (cookiecutter.use_datadriver == \"y\") else cookiecutter.use_datadriver}}",
+  "deploy_path": "/app/{{ cookiecutter.project_slug }}",
+  "docker_registry": "hub.docker.com",
+  "deploy_server": "deploy_server_url",
   "add_makefile_comments": "y"
 }

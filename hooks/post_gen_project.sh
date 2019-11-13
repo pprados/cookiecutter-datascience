@@ -18,6 +18,9 @@ rm Classic.mak DVC.mak
 {% if cookiecutter.use_jupyter == "n" %}
 rm -Rf notebooks
 {% endif %}
+{% if cookiecutter.use_airflow == "n" %}
+rm -Rf docker airflow config
+{% endif %}
 {% if cookiecutter.use_s3 == "n" %}
 rm data/raw/.gitignore
 {% else %}

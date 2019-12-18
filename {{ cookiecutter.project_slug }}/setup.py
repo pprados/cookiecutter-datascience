@@ -16,8 +16,11 @@ USE_GPU: str = "-gpu" if (os.environ['GPU'].lower() in 'yes'
                      else os.path.isdir("/proc/driver/nvidia")
                           or "CUDA_PATH" in os.environ) else ""
 
+{% if cookiecutter.use_airflow == "y" %}
+AIRFLOW_VERSION: str = os.environ['AIRFLOW_VERSION'] if "AIRFLOW_VERSION" in os.environ else "1.10.3"
+{% endif %}
 
-# Package nécessaires à l'execution
+# Run package dependencies
 # FIXME Ajoutez et ajustez les dépendences nécessaire à l'exécution.
 requirements: List[str] = [
     'click', 'click-pathlib',
@@ -28,6 +31,10 @@ requirements: List[str] = [
     'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}
     'appdirs', {% endif %}
+    'appdirs', {% endif %}{% if cookiecutter.use_datadriver == "y" %}
+    'datadriver', {% endif %}{% if cookiecutter.use_airflow == "y" %}
+    'apache-airflow[crypto,celery,postgres,hive,jdbc,mysql,ssh]==' + AIRFLOW_VERSION,
+    'redis==3.2',{% endif %}
     'PyInstaller',
     'numpy~=1.14',
     'pandas~=0.22',

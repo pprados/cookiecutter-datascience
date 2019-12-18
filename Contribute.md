@@ -1,6 +1,6 @@
 # Contribuer au projet
 
-Le code est complexe, car il y a plein de langage de template imbriqué.
+Le code est complexe, car il y a pleins de langages de template imbriqués.
 
 ## Templating
 
@@ -9,8 +9,8 @@ Pour cela, il faut utiliser des syntaxes du type `{{ … }}`.
 
 Puis il y a le fichier `Makefile` qui utilise:
 - `$(VAR)` pour remplacer le text d’un script par la valeur de la variable, vu du Makefile
-Il faut donc doubler le $ lors d’une utilisation à l'intérieur d’un shell
-- `$(shell cmd)` pour executer une commande dans le `Makfile`, et suivant les cas, 
+Il faut donc doubler le `$` lors d’une utilisation à l'intérieur d’un shell
+- `$(shell cmd)` pour executer une commande dans le `Makefile`, et suivant les cas, 
 la ré-executer à chaque fois, ou une seule fois.
     - `TOTO:=$(shell cmd)` # Exécuté une fois
     - `TOTO=$(shell cmd)` # Exécuté à chaque résolution de la variable.
@@ -28,7 +28,7 @@ VENV ?= $(PRJ)
 # Injection d’une variable via Jinja2
 PYTHON_VERSION:={{ cookiecutter.python_version }}
 ```
-Attention à vérifier qu'il y a bien une tabulation au début des règles de Makefile (utilisez un plugin PyCharm pour cela)
+Attention à vérifier qu'il y a bien une tabulation au début des règles de `Makefile` (utilisez un plugin PyCharm pour cela)
 
 ## Makefiles
 La doc de [Gnu Makefile](https://www.gnu.org/software/make/manual/make.html).
@@ -48,13 +48,14 @@ Pour valider une génération de projet depuis cookiecutter, il faut invoquer un
 
 Cela génère un projet dans `./try/<nom de la branche git>/bda_project`.
 
-L’idéal est d’utiliser un autre shell pour s’y placer, activer l’env conda bda_project, et tester les règles
+L’idéal est d’utiliser un autre shell pour s’y placer, activer l’env conda `bda_project`, et tester les règles
 ```bash
 cd try/master/bda_project
 conda activate bda_project
 make evaluate
 ```
-Il y a plusieurs scénario proposé (try, try_jupyter, try_text_processing, try_DVC, try_aws, try_opensource, try_default)
+Il y a plusieurs scénario proposé (`try`, `try_jupyter`, `try_text_processing`, `try_DVC`, `try_aws`, `try_opensource`, 
+`try_default`)
 
 Le code racine propose des TU pour vérifier les différentes règles.
 ```
@@ -88,7 +89,7 @@ export DEBUG=True
 make train
 
 ```
-soit uniquement une une commande `make`
+soit uniquement pour une commande `make`
 ```bash
 DEBUG=True make train
 ```

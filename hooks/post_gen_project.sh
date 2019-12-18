@@ -23,6 +23,11 @@ rm data/raw/.gitignore
 {% else %}
 rm data/raw/.gitkeep
 {% endif %}
+
+ln -s ../README.md docs/README.md
+ln -s ../CHANGELOG.md docs/CHANGELOG.md
+ln -s ../commands.md docs/commands.md
+
 cat <<END
 Read README.md file.
 

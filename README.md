@@ -179,6 +179,11 @@ Datascience
 - [X] [DVC](https://dvc.org/)
 - [ ] [MLFlow](https://mlflow.org/) (alternative a DVC et exposition REST)
 - [ ] [MLeap](http://mleap-docs.combust.ml/)
+- [ ] [Pachyderm](https://www.pachyderm.io/open_source.html)
+
+Explicabilité
+- [ ] [Facet](https://pair-code.github.io/facets/)
+- [ ] [Eli5](https://eli5.readthedocs.io/en/latest/overview.html)
 
 Norme et qualité
 - [X] Typing
@@ -188,6 +193,7 @@ Norme et qualité
 
 Tests
 - [X] [pytype](https://opensource.google.com/projects/pytype)
+- [ ] [Runtime typechecking](https://github.com/agronholm/typeguard)
 - [X] Test unitaires
 - [X] Test unitaires du makefile produit par cookiecutter
 - [X] [Pytest xdist](https://docs.pytest.org/en/3.0.0/xdist.html)
@@ -212,6 +218,7 @@ Docs
 Ressources
 - [X] [LFS](https://git-lfs.github.com/)
 - [ ] [Gitlab LFS](https://docs.gitlab.com/ce/workflow/lfs/lfs_administration.html#storing-lfs-objects-in-remote-object-storage)
+- [ ] [Cloud storage](https://pypi.org/project/cloudstorage/)
 
 CI/CD
 - [X] Hook avant un `commit` sur la branche `master` de git
@@ -219,7 +226,7 @@ CI/CD
 - [ ] [Github Travis](https://notes.farcellier.com/travisci/index.html)
 - [ ] Gitlab CI
 - [ ] Docker pour le build/train
-- [ ] Docker pour le run
+- [X] Docker pour le run
 
 Cloud
 - [X] AWS ([aws cli](https://aws.amazon.com/fr/cli/))
@@ -238,6 +245,7 @@ Pipeline
 
 Autres
 - [X] Distribution et publication ([twine](https://pypi.org/project/twine/))
+- [X] [PyInstaller](https://www.pyinstaller.org/)
 - [ ] [Cython](https://cython.org/) et [tests](https://pypi.org/project/pytest-cython/)
 - [X] [Hook git locaux](https://fr.atlassian.com/git/tutorials/git-hooks)
 - [ ] [Koalas](https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html)
@@ -247,3 +255,10 @@ Autres
 - [ ] [DevPi](https://devpi.net/docs/devpi/devpi/stable/%2Bd/index.html)
 - [ ] [Structured logs](https://github.com/FabienArcellier/spike_json_formatter_for_logging_python)
 - [ ] Dans le code python, lecture depuis URI et non d'un fichier
+- [ ] [Cloud Bridge](https://github.com/CloudVE/cloudbridge)
+- [ ] [pysoniq](https://pysoniq.com)
+- [ ] Spark
+- [ ] [Spark+Array](https://spark.apache.org/docs/2.4.0/sql-pyspark-pandas-with-arrow.html#apache-arrow-in-spark)
+- [ ] [Sécurité Bandit](https://pypi.org/project/bandit/)
+- [ ] [Honcho](https://honcho.readthedocs.io/)
+- [ ] [Snap](https://tutorials.ubuntu.com/tutorial/create-your-first-snap)

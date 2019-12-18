@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    Ceci est un module pour regrouper les fonctions et classes
-    nécessaires aux différentes phases du projet.
-
+    This module is for share functions and classes
+    for all the project.
 """
 from .tools import *

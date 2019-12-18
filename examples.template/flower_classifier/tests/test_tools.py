@@ -6,7 +6,6 @@ import logging
 import unittest
 from pathlib import Path
 
-import numpy as np
 from flower_classifier.tools import init_logger, caculate_labels_and_domains_from_paths
 
 
@@ -38,4 +37,4 @@ class TestTools(unittest.TestCase):
         self.assertEqual(2, len(domain))
         self.assertEqual(0, domain["roses"])
         self.assertEqual(1, domain["tulips"])
-        self.assertListEqual(labels, [0, 1, 0])
+        self.assertListEqual(list(labels), [0, 1, 0])

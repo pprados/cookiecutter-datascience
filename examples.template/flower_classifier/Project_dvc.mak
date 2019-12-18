@@ -84,6 +84,7 @@ train: models/model_flower_classifier.h5
 # Last step of pipeline
 Dvcfile.dvc \
 reports/metric.json: $(REQUIREMENTS) \
+	$(PYTHON_SRC) \
 	flower_classifier/evaluate_model.py \
 	models/model_flower_classifier.h5 \
 	models/model_flower_classifier.pkl

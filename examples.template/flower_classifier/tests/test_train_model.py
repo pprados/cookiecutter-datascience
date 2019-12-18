@@ -2,15 +2,15 @@
 """
     Test.
 """
-import numpy as np
 import os
 import unittest
 
+import numpy as np
 import pytest
-from click import Path
 from PIL import Image
+
 from flower_classifier.evaluate_model import evaluate_model
-from flower_classifier.train_model import train_model, Model
+from flower_classifier.train_model import train_model
 
 
 class TestTrainModel(unittest.TestCase):
@@ -37,12 +37,13 @@ class TestTrainModel(unittest.TestCase):
                             test_ratio=0,
                             epochs=1,
                             batch_size=1,
-                            dim=dim,
+                            dims=dim,
                             seed=0)
         metric = evaluate_model(model=model,
                                 domain=domain,
                                 image_datas=image_datas,
-                                labels=labels)
+                                labels=labels,
+                                test_ratio=0,)
 
         # Then
         self.assertIsNotNone(model)

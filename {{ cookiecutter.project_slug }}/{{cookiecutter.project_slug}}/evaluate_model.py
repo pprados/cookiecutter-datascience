@@ -8,7 +8,7 @@ import pickle
 import sys
 from pathlib import Path
 from time import strftime, gmtime
-from typing import Sequence, Iterator
+from typing import Sequence, Iterator, Dict, Any
 
 import click
 import click_pathlib
@@ -30,7 +30,7 @@ def evaluate_model(model: Model,
     """
     LOGGER.info('Evaluate model')
 
-    metrics = {}
+    metrics: Dict[str, Any] = {}
     for a_sample in samples:
         pass  # TODO Code d'evaluation de chaque dataframe
     metrics['datetime'] = strftime("%Y-%m-%d %H:%M:%S", gmtime())
@@ -62,6 +62,7 @@ if __name__ == '__main__':
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables
-    dotenv.load_dotenv(dotenv.find_dotenv())
+    if not getattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
+        dotenv.load_dotenv(dotenv.find_dotenv())
 
     sys.exit(main())  # pylint: disable=E1120

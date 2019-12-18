@@ -12,11 +12,13 @@ NPROC = 0 # PPR: si tensorflow ?
 # Meta-parameters
 ifeq ($(DEBUG),True)
 FILTER=$(DATA)/processed/**/21*.jpg
+EVAL_FILTER=$(DATA)/processed/**/2*.jpg
 EPOCHS=--epochs 1
 BATCH_SIZE=--batch-size 1
 else
 FILTER=$(DATA)/processed/**/*.jpg
-EPOCHS=--epochs 10
+EVAL_FILTER=$(DATA)/processed/**/2*.jpg
+EPOCHS=--epochs 30
 BATCH_SIZE=--batch-size 16
 endif
 SEED=--seed 12345
@@ -67,11 +69,12 @@ reports/metric.json: $(REQUIREMENTS) \
 	models/model_flower_classifier.h5 \
 	models/model_flower_classifier.pkl
 	python -O -m flower_classifier.evaluate_model \
-		'$(FILTER)' \
+		'$(EVAL_FILTER)' \
 		models/model_flower_classifier.h5 \
 		models/model_flower_classifier.pkl \
-		reports/metric.json
-
+		reports/metric.json \
+		$(SEED) \
+		--test-ratio=1
 ## Evalutate the model
 evaluate: reports/metric.json
 

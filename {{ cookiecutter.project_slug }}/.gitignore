@@ -123,6 +123,7 @@ datas/interim/{% if cookiecutter.use_tensorflow == 'y' %}
 logdir/{% endif %}{% if cookiecutter.use_aws == 'y' %}
 # A activer si les données peuvent venir d'un bucket s3 ou d'autres sources
 #data/raw{% endif %}
+{% if cookiecutter.use_docker == 'y' %}Dockerfile.standalone{% endif %}
 
 # Jupyter Notebook
 .ipynb_checkpoints

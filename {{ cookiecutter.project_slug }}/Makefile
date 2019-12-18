@@ -32,9 +32,14 @@ SHELL=/bin/bash
 # SNIPPET pour détecter l'OS d'exécution.{% endif %}
 ifeq ($(OS),Windows_NT)
     OS := Windows
+    EXE:=.exe
+    SUDO?=
 else
     OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+    EXE:=
+    SUDO?=
 endif
+
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour détecter la présence d'un GPU afin de modifier le nom du projet
@@ -103,6 +108,7 @@ PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:={{ cookiecutter.python_version }}
 {% if cookiecutter.use_aws == 'y' %}S3_BUCKET?=s3://$(subst _,-,$(PRJ))
 PROFILE = default{% endif %}
+DOCKER_REPOSITORY = $(USER)
 # Data directory (can be in other place, in VM or Docker for example)
 export DATA?=data
 {% if cookiecutter.use_DVC == 'y' %}
@@ -115,7 +121,7 @@ export DATA?=data
 # DVC_BUCKET?=hdfs://user@example.com
 DVC_BUCKET?={% if cookiecutter.use_s3 == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
 # List of source and tests files
-PYTHON_SRC=$(shell find -L {{ cookiecutter.project_slug }} -type f -iname '*.py' | grep -v __pycache__)
+PYTHON_SRC=$(shell find -L "$(PRJ)" -type f -iname '*.py' | grep -v __pycache__)
 PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
 {% if cookiecutter.use_tensorflow == "y" %}TENSORFLOW_LOGDIR?=./logdir{% endif %}
 # ---------------------------------------------------------------------------------------
@@ -221,8 +227,10 @@ dump-%:
 # S'assure de la présence de git (util en cas de synchronisation sur le cloud par exemple,
 # après avoir exclus le répertoire .git (cf. ssh-ec2){% endif %}
 .git:
-	@git init -q
-	git commit --allow-empty -m "Create project {{ cookiecutter.project_slug }}"
+	@if [[ ! -d .git ]]; then
+		@git init -q
+		git commit --allow-empty -m "Create project $(PRJ)"
+	fi
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # Règle technique importante, invoquées lors du `git commit` d'un fichier *.ipynb via
 # le paramètrage de `.gitattributes`.{% endif %}
@@ -578,10 +586,11 @@ run-%:
 
 .make-lint: $(REQUIREMENTS) $(PYTHON_SRC) | .pylintrc
 	$(VALIDATE_VENV)
+	@echo -e "$(cyan)Check lint...$(normal)"
 	@echo "---------------------- FLAKE"
-	@flake8 flower_classifier
+	@flake8 $(PRJ_PACKAGE)
 	@echo "---------------------- PYLINT"
-	@pylint flower_classifier
+	@pylint $(PRJ_PACKAGE)
 	touch .make-lint
 
 ## Lint the code
@@ -600,19 +609,27 @@ pytype.cfg: $(CONDA_PREFIX)/bin/pytype
 .PHONY: typing
 .make-typing: $(REQUIREMENTS) $(CONDA_PREFIX)/bin/pytype pytype.cfg $(PYTHON_SRC)
 	$(VALIDATE_VENV)
-	pytype {{ cookiecutter.project_slug }}
+	@echo -e "$(cyan)Check typing...$(normal)"
+	# pytype
+	pytype "$(PRJ)"
 	for phase in scripts/*
 	do
 	  ( cd $$phase ; find -L . -type f -name '*.py' -exec pytype {} \; )
 	done
-	touch .pytype/pyi/{{ cookiecutter.project_slug }}
+	touch ".pytype/pyi/$(PRJ)"
 	touch .make-typing
+
+	# mypy
+	# TODO: find Pandas stub
+	# MYPYPATH=./stubs/ mypy "$(PRJ)"
+	# touch .make-mypy
+
 ## Check python typing
 typing: .make-typing
 
 ## Add infered typing in module
 add-typing: typing
-	@find -L {{ cookiecutter.project_slug }} -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
+	@find -L "$(PRJ)" -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \;
 	for phase in scripts/*
 	do
 	  ( cd $$phase ; find -L . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
@@ -631,11 +648,11 @@ SPHINX_FLAGS=
 # Generate API docs
 docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
-	sphinx-apidoc -f -o docs/source {{ cookiecutter.project_slug }}/
+	sphinx-apidoc -f -o docs/source $(PRJ)/
 	touch docs/source
 
 # Build the documentation in specificed format (build/html, build/latexpdf, ...)
-build/%: $(REQUIREMENTS) docs/source docs/* README.md CHANGELOG.md | .git
+build/%: $(REQUIREMENTS) docs/source docs/* *.md | .git
 	@$(VALIDATE_VENV)
 	@TARGET=$(*:build/%=%)
 ifeq ($(OFFLINE),True)
@@ -711,7 +728,8 @@ ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not test-twine in offline mode$(normal)"
 else
 	$(VALIDATE_VENV)
-	ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
+	twine upload --sign --repository-url https://test.pypi.org/legacy/ dist/*
+	# PPR ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -926,8 +944,10 @@ test: .make-test
 # SNIPPET pour vérifier les TU et le recalcul de tout les notebooks et scripts.
 # Cette règle est invoqué avant un commit sur la branche master de git.{% endif %}
 .PHONY: validate
+.make-validate: .make-test typing $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
+	@date >.make-validate
 ## Validate the version before release
-validate: .make-test typing $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
+validate: .make-validate
 {% if cookiecutter.use_aws == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter la capacité d'exécuter des recettes sur une instance éphémère EC2.
@@ -1023,6 +1043,129 @@ else
 	ssh-ec2 --stop -L 8888:localhost:8888 "jupyter notebook --NotebookApp.open_browser=False"
 endif
 {% endif %}{% endif %}
+
+## Install the tools in conda env
+install: $(CONDA_PREFIX)/bin/$(PRJ)
+
+## Install the tools in conda env with 'develop' link
+develop:
+	python setup.py develop
+
+## Install the tools in conda env
+uninstall: $(CONDA_PREFIX)/bin/$(PRJ)
+	rm $(CONDA_PREFIX)/bin/$(PRJ)
+
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# Recette permettant un `make installer` pour générer un programme autonome comprennant le code et
+# un interpreteur Python. Ainsi, il suffit de le copier et de l'exécuter sans pré-requis{% endif %}
+dist/$(PRJ)$(EXE): .make-validate
+	# FIXME: faire un installer pour Alpine ?
+	@PYTHONOPTIMIZE=2 && pyinstaller --onefile $(PRJ)/$(PRJ).py
+	echo -e "$(cyan)Executable is here 'dist/$(PRJ)$(EXE)'$(normal)"
+## Build standalone executable for this OS
+installer: dist/$(PRJ)$(EXE)
+
+{% if cookiecutter.use_docker == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
+# Recette pour créer un Dockerfile.standalone avec la version du projet.
+# Modifiez le code du directement ici.{% endif %}
+Dockerfile.standalone: setup.py
+	@# Build docker file with setup parameters
+	VERSION="$$(./setup.py --version)"
+	DESCRIPTION="$$(./setup.py --description)"
+	LICENSE="$$(./setup.py --license)"
+	AUTHOR="$$(./setup.py --author)"
+	AUTHOR_EMAIL="$$(./setup.py --author-email)"
+	KEYWORDS="$$(./setup.py --keywords)"
+	D='$$'
+
+	cat >Dockerfile.standalone <<EOF
+	# DO NOT ADD THIS FILE TO VERSION CONTROL!
+	ARG OS_VERSION=latest
+	FROM alpine:$${D}{OS_VERSION}
+
+	LABEL version="$${VERSION}"
+	LABEL description="$${DESCRIPTION}"
+	LABEL license="$${LICENSE}"
+	LABEL keywords="$${KEYWORDS}"
+	LABEL maintainer="$${AUTHOR}"
+
+	ENV LANG=C.UTF-8
+	ENV LC_ALL=C.UTF-8
+	WORKDIR /data
+	COPY dist/$(PRJ) /usr/local/bin
+	ENTRYPOINT [ "/usr/local/bin/$(PRJ)" ]
+	# TODO: update parameters
+	CMD [ "--help" ]
+	EOF
+
+.make-docker-build: Dockerfile.standalone dist/$(PRJ)$(EXE)
+	@# Detect release version
+	if [[ "$${VERSION}" =~ "^[0-9](\.[0-9])+$$" ]];
+	then
+		TAG_VERSION=-t "$(DOCKER_REPOSITORY)/$(PRJ):$${VERSION}"
+	fi
+	$(SUDO) docker build \
+		-f Dockerfile.standalone \
+		--build-arg OS_VERSION="latest" \
+		$${TAG_VERSION} \
+		-t "$(DOCKER_REPOSITORY)/$(PRJ):latest" .
+	date >.make-docker-build
+
+## Build the docker <PRJ>:latest
+docker-build: .make-docker-build
+
+# Reset and rebuild the container
+docker-rebuild:
+	@rm -f Dockerfile.standalone .make-docker-build
+	$(MAKE) docker-stop docker-start
+
+# Create a dedicated volume
+docker-volume:
+	@$(SUDO) docker volume inspect "$(PRJ)" >/dev/null 2>&1 || \
+	$(SUDO) docker volume create --name "$(PRJ)"
+	echo -e "$(cyan)Docker volume '$(PRJ)' created$(normal)"
+
+.cid_docker_daemon: .make-docker-build
+	$(SUDO) docker volume inspect "$(PRJ)" >/dev/null 2>&1 || $(MAKE) docker-volume
+	# Remove --detach if it's not a daemon
+	$(SUDO) docker run \
+		--detach \
+		--cidfile ".cid_docker_daemon" \
+		-v $(PRJ):/data \
+		-it "$(DOCKER_REPOSITORY)/$(PRJ):latest"
+	echo -e "$(cyan)Docker daemon started$(normal)"
+
+# Start and attach the container
+docker-run: .cid_docker_daemon docker-attach
+
+## Start a daemon container with the docker image
+docker-start: .cid_docker_daemon
+
+## Attach to the docker
+docker-attach: .cid_docker_daemon
+	@CID=$$(cat .cid_docker_daemon)
+	$(SUDO) docker attach "$${CID}"
+
+## Connect a bash in the container
+docker-bash: .cid_docker_daemon
+	@CID=$$(cat .cid_docker_daemon)
+	$(SUDO) docker exec -i -t "$${CID}" /bin/bash
+
+## Stop the container daemon
+docker-stop:
+	@if [[ -e ".cid_docker_daemon" ]] ; then
+		CID=$$(cat .cid_docker_daemon)
+		$(SUDO) docker stop "$${CID}" || true
+		rm -f .cid_docker_daemon
+		echo -e "$(cyan)Docker daemon stopped$(normal)"
+	fi
+
+docker-logs: .cid_docker_daemon
+	@$(SUDO) docker container logs -f "$(PRJ)"
+
+docker-top: .cid_docker_daemon
+	@$(SUDO) docker container top "$(PRJ)"
+{% endif %}
 
 {% if cookiecutter.use_DVC == 'y' %}
 {% include 'DVC.mak' %}

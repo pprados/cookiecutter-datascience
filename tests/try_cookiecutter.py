@@ -23,6 +23,7 @@ def try_cookiecutter(params: List[str], output_dir: str = "try") -> str:
         "use_aws": "n",
         "use_s3": "n",
         "use_DVC": "n",
+        "use_docker": "n",
         "add_makefile_comments": "y"
     }
     options.update(dict(s.split('=', 1) for s in params))

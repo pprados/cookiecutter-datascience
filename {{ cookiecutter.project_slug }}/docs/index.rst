@@ -1,5 +1,5 @@
 ==============================================================
-{{cookiecutter.project_slug}}
+{{cookiecutter.project_name}}
 ==============================================================
 .. todo::
    {{cookiecutter.project_short_description}}
@@ -16,12 +16,12 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   contribute
+   README
    commands
-   readme
-   changelog
-   source/modules
+   contribute
+   CHANGELOG
    todo
+   source/modules
 
 Indices and tables
 ==================

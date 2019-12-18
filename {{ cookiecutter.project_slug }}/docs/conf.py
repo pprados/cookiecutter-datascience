@@ -61,11 +61,11 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
-    'sphinx.ext.viewcode',
-    {% if cookiecutter.use_jupyter == 'y' %}'nbsphinx',{% endif %}
-    'm2r',
+    'sphinx.ext.viewcode',{% if cookiecutter.use_jupyter == 'y' %}
+    'nbsphinx',{% endif %}    'sphinx.ext.autosectionlabel',
+    'recommonmark',
 ]
-{% if cookiecutter.add_makefile_comments == 'y' %}
+autosectionlabel_prefix_document = True{% if cookiecutter.add_makefile_comments == 'y' %}
 # Add any paths that contain templates here, relative to this directory.{% endif %}
 templates_path = ['_templates']
 {% if cookiecutter.add_makefile_comments == 'y' %}
@@ -107,7 +107,7 @@ release = version
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.{% endif %}
 exclude_patterns = ['../tests']
-exclude_patterns = ['_build', '**.ipynb_checkpoints']
+exclude_patterns += ['_build', '**.ipynb_checkpoints']
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # The reST default role (used for this markup: `text`) to use for all documents.
 # default_role = None

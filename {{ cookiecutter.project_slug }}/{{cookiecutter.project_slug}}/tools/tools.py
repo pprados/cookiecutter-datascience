@@ -26,14 +26,14 @@ def init_logger(logger: logging.Logger, level:int) -> None:
     logger.addHandler(ch)
 
 class Glob(click.ParamType):
+    """
+    A Click path argument that returns a ``List[Path]`` via un glob syntax, not a string.
+    """
+
     def __init__(self, exists=False, recursive=False, default_suffix="*"):
         self.exists = exists
         self.default_suffix = default_suffix
         self.recursive = recursive
-
-    """
-    A Click path argument that returns a ``List[str`` via un glob syntax, not a string.
-    """
 
     def convert(
             self,
@@ -51,4 +51,4 @@ class Glob(click.ParamType):
                 glob.glob(super().convert(value=value, param=param, ctx=ctx), recursive=self.recursive)]
 
 
-# TODO: Ajoutez le code communs ici
+# TODO: Add common code here

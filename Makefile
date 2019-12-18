@@ -270,7 +270,7 @@ try_aws: $(REQUIREMENTS) try/$(BRANCH)
 
 try_opensource: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) open_source_software=y
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) open_source_software=y use_docker=y
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 	cd try/$(BRANCH)/bda_project
 	git init
@@ -284,7 +284,7 @@ try_default: $(REQUIREMENTS) try/$(BRANCH)
 
 try: $(REQUIREMENTS) try/$(BRANCH)
 	$(VALIDATE_VENV)
-	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_DVC=n use_text_processing=y use_aws=y use_s3=y open_source_software=y
+	python tests/try_cookiecutter.py --output_dir try/$(BRANCH) use_DVC=n use_text_processing=y use_aws=y use_s3=y open_source_software=y use_docker=y
 	ln -f Makefile-TU try/$(BRANCH)/bda_project/Makefile-TU
 	cd try/$(BRANCH)/bda_project
 	git init

@@ -3,87 +3,70 @@
     Treatment in charge of training the model.
 """
 import logging
-import math
 import sys
 from pathlib import Path
-from typing import Tuple, Sequence, Mapping, Optional, Iterator
+from typing import Tuple, Sequence, Mapping, Optional, Iterable, Dict, List
 
 import click
 import click_pathlib
 import dotenv
-import keras
 import numpy as np
-import tensorflow as tf
 from PIL import Image
-from keras.applications import VGG19
-from keras.callbacks import Callback, TensorBoard
-from keras.layers import Dense, Flatten, Dropout
-from keras.utils import np_utils
+from keras.callbacks import TensorBoard
+from keras.layers import Conv2D, MaxPool2D, Flatten, Dense
+from keras.models import Sequential
 from sklearn.model_selection import train_test_split
 
-from flower_classifier.tools import init_logger, save_model_and_domain, Glob, Model, normalize_image
+from flower_classifier.tools.tools import init_logger, save_model_and_domain, Glob, Model, normalize_image
+from flower_classifier.tools import DEFAULT_TEST_RATIO, DEFAULT_EPOCHS, DEFAULT_BATCH_SIZE, DEFAULT_IMAGE_SIZE
 
 LOGGER = logging.getLogger(__name__)
 
+
 def _create_model(input_shape: Tuple[int, int, int], classes: int) -> Model:
-    """
-      use VGG19
-    """
-    model = VGG19(weights="imagenet",
-                  include_top=False,
-                  input_shape=input_shape)
+    model = Sequential()
+    model.add(Conv2D(16, (2, 2), input_shape=input_shape, activation='relu'))
+    model.add(MaxPool2D(pool_size=(2, 2)))
+    model.add(Conv2D(32, (2, 2), activation='relu'))
+    model.add(MaxPool2D(pool_size=(2, 2)))
+    model.add(Flatten())
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(classes, activation='softmax'))
 
-    # Freeze the layers which you don't want to train. Here I am freezing the first 5 layers.
-    for layer in model.layers[:1]:
-        layer.trainable = False
-
-    # Adding custom Layers
-    x = model.output
-    x = Flatten()(x)
-    x = Dense(1024, activation="relu")(x)
-    x = Dropout(0.5)(x)
-    x = Dense(1024, activation="relu")(x)
-    predictions = Dense(classes, activation="softmax", name='predictions')(x)
-
-    # creating the final model
-    final_model = Model(inputs=model.input, outputs=predictions)
-
-    final_model.compile(loss='categorical_crossentropy', optimizer='adam',
-                        metrics=['acc'])  # optimizer=RMSprop(lr=0.001)
-
-    return final_model
+    model.compile(loss='sparse_categorical_crossentropy',
+                  optimizer='adam',
+                  metrics=['accuracy'])
+    return model
 
 
 def train_model(
         domain: Mapping[str, int],
         labels: Sequence[int],
-        image_datas: Iterator[np.array],
-        test_ratio: float,
-        epochs: int = 1,
-        batch_size: int = 1,
-        dim: Tuple[int, int] = (224, 224),
+        image_datas: Iterable[np.ndarray],
+        test_ratio: float = DEFAULT_TEST_RATIO,
+        epochs: int = DEFAULT_EPOCHS,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        dims: Tuple[int, int] = (DEFAULT_IMAGE_SIZE, DEFAULT_IMAGE_SIZE),
         seed: Optional[int] = None,
-        logdir: Path="./logdir/") -> Model:
-    """ Train VGG19 model on provided image files.
-
-        May be called in Tensorflow session.
+        logdir: Path = "./logdir/") -> Model:
+    """ Train model on provided image files.
 
         :param labels: Sequence of labels for the image files.
         :param domain: Dictionary representing the domain of the reponse.
                        Provides mapping label-name -> label-id.
-        :param image_datas: iterator of nparray with image in float normalisation
+        :param image_datas: iterator of ndarray with image in float normalisation
         :param test_ratio: Ration beetween train and test. (default 0.2)
         :param epochs: Maximum number of epochs to evaluate. (default 1)
         :param batch_size: Batch size passed to the learning algo. (default 1)
-        :param dim: Input image width and height in pixels. (default 224,224)
+        :param dims: Input image width and height in pixels. (default 224,224)
         :param seed: Force seed (default None)
         :param logdir: Tensorflow logdir
         :return: The trained model
     """
     meta_parameters = {
         "test_ratio": test_ratio,
-        "image_width": dim[0],
-        "image_height": dim[1],
+        "image_width": dims[0],
+        "image_height": dims[1],
         "epochs": epochs,
         "batch_size": batch_size,
         "seed": seed
@@ -92,18 +75,18 @@ def train_model(
 
     assert len(set(labels)) == len(domain)
 
-    input_shape = (dim[0], dim[1], 3)
+    model = _create_model(input_shape=dims + (3,), classes=len(domain))
+
+    model.compile(loss='sparse_categorical_crossentropy',
+                  optimizer='adam',
+                  metrics=['accuracy'])
 
     x = np.array(list(image_datas))
-    y = np_utils.to_categorical(np.array(labels), num_classes=len(domain))
-    train_size = 1 - test_ratio
-    x_train, x_valid, y_train, y_valid = train_test_split(x, y, random_state=seed,
-                                                          train_size=train_size)
-    model = _create_model(input_shape=input_shape, classes=len(domain))
-    model.compile(
-        optimizer=keras.optimizers.SGD(decay=1e-5, nesterov=True, momentum=.9),
-        loss=keras.losses.categorical_crossentropy,
-        metrics=["accuracy"])
+    y = np.array(list(labels))
+    x_train, x_valid, y_train, y_valid = train_test_split(x, y,
+                                                          random_state=seed,
+                                                          train_size=1 - test_ratio)
+
     model.fit(
         x=x_train,
         y=y_train,
@@ -115,18 +98,18 @@ def train_model(
     return model
 
 
-def _load_images_for_train(files: Iterator[Path]) -> Tuple[Sequence[int], Mapping[str, int], Sequence[bytes]]:
+def _load_images(files: Iterable[Path], dim: Tuple[int, int]) -> \
+        Tuple[List[int], Dict[str, int], np.ndarray]:
     """
     Load iterator and returns data and labels
-    :param input_filepath: Glob path
-    :return: (
+    :param files: Iterable of Path
+    :return: labels, domain and images
     """
-    print("LEN=",len(files)) # PPR
-    labels: Sequence[int] = []
-    domain: Mapping[str, int] = {}
-    image_datas: Sequence[bytes] = []
+    labels: List[int] = []
+    domain: Dict[str, int] = {}
+    image_datas: List[bytes] = []
     for file in files:
-        with Image.open(file) as image_file:
+        with Image.open(file).resize(dim) as image_file:
             clazz = Path(file).parts[-2:-1][0]
             if clazz not in domain:
                 domain[clazz] = len(domain)
@@ -142,16 +125,14 @@ def _load_images_for_train(files: Iterator[Path]) -> Tuple[Sequence[int], Mappin
 @click.argument('domain_filepath', metavar='<domain>', type=click_pathlib.Path(dir_okay=True))
 @click.option('--logdir', type=click_pathlib.Path(), help='Tensorflow logdir', default="./logdir/")
 # Hyper parameters
-@click.option("--epochs", type=click.INT, default=1, help="Maximum number of epochs to evaluate.")
-@click.option("--batch-size", type=click.INT, default=1,
+@click.option("--epochs", type=click.INT, default=DEFAULT_EPOCHS, help="Maximum number of epochs to evaluate.")
+@click.option("--batch-size", type=click.INT, default=DEFAULT_BATCH_SIZE,
               help="Batch size passed to the learning algo.")
-@click.option("--image-width", type=click.INT, default=224, help="Input image width in pixels.")
-@click.option("--image-height", type=click.INT, default=224, help="Input image height in pixels.")
-@click.option("--test-ratio", type=click.FLOAT, default=0.2)
+@click.option("--image-width", type=click.INT, default=DEFAULT_IMAGE_SIZE, help="Input image width in pixels.")
+@click.option("--image-height", type=click.INT, default=DEFAULT_IMAGE_SIZE, help="Input image height in pixels.")
+@click.option("--test-ratio", type=click.FLOAT, default=DEFAULT_TEST_RATIO)
 @click.option("--seed", type=click.INT, help="Seed for the random generator.")
-def main(input_files: Sequence[Path],
-         model_filepath: Path,
-         domain_filepath: Path,
+def main(input_files: Iterable[Path], model_filepath: Path, domain_filepath: Path,
          test_ratio: float,
          epochs: int,
          batch_size: int,
@@ -171,27 +152,19 @@ def main(input_files: Sequence[Path],
     """
     LOGGER.info('Train model from processed and featured data')
 
-    with tf.Graph().as_default() as graph:  # pylint: disable=E1129
-        with tf.Session(graph=graph).as_default():  # pylint: disable=E1129
-            # 1. Load datas
-            dim = (image_width, image_height)
-            labels, domain, image_datas = _load_images_for_train(input_files)
+    # 1. Load datas
+    dim = (image_width, image_height)
+    labels, domain, image_datas = _load_images(input_files, dim)
 
-            # 2. Train the model
-            model = train_model(
-                domain,
-                labels,
-                iter(image_datas),
-                test_ratio,
-                epochs,
-                batch_size,
-                dim,
-                seed,
-                logdir)
+    # 2. Train the model
+    model = train_model(
+        domain, labels, image_datas,
+        test_ratio, epochs, batch_size,
+        dim, seed, logdir)
 
-            # 3. Save the model
-            save_model_and_domain(model_filepath, model,
-                                  domain_filepath, domain)
+    # 3. Save the model
+    save_model_and_domain(model_filepath, model,
+                          domain_filepath, domain)
     return 0
 
 
@@ -200,6 +173,7 @@ if __name__ == '__main__':
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables
-    dotenv.load_dotenv(dotenv.find_dotenv())
+    if not getattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
+        dotenv.load_dotenv(dotenv.find_dotenv())
 
     sys.exit(main())  # pylint: disable=E1120

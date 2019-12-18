@@ -1,4 +1,4 @@
-# Commands
+# Make commands
 
 The Makefile contains the central entry points for common tasks related to this project.
 
@@ -22,6 +22,7 @@ The Makefile contains the central entry points for common tasks related to this 
 
 * ``make docs`` will create and show a HTML documentation in 'build/'
 * ``make dist`` will create a full wheel distribution
+* ``make installer`` will create a standalone executable for this OS
 {% if cookiecutter.use_jupyter == 'y' %}
 ## Jupyter commands
 * ``make remove-kernel`` will remove the project's kernel
@@ -53,4 +54,14 @@ The Makefile contains the central entry points for common tasks related to this 
 * ``make test-twine`` will publish the package in `test.pypi.org <https://test.pypi.org>`_)
 * ``make twine`` will publish the package in `pypi.org <https://pypi.org>`_)
 {% endif %}
+{% if cookiecutter.use_docker == 'y' %}
+## Docker commands
+* ``make docker-build`` will build the Dockerfile and container
+* ``make docker-run`` will start the container in background and attach the console
+* ``make docker-start`` will start the container in background
+* ``make docker-stop`` will stop the container
+* ``make docker-attach`` will attach the console to the container
+* ``make docker-bash`` will attach a shell in the container
+{% endif %}
+
 

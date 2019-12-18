@@ -1,2 +1,6 @@
 (C) {{cookiecutter.author}} {% now 'utc' %}
-Private licence
+{% if cookiecutter.open_source_software == 'y' %}
+See Apache Licence (https://www.apache.org/licenses/LICENSE-2.0)
+{% else %}
+Private licence. All right reserved
+{% endif %}

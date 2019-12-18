@@ -2,13 +2,9 @@
 """
     Test.
 """
-import io
 import os
-import tarfile
 import unittest
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from typing import List, Tuple, Sequence
 
 from flower_classifier.prepare_dataset import prepare_dataset
 

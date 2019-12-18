@@ -5,17 +5,15 @@ in the model.
 """
 import glob
 import logging
-import operator
 import os
 import pickle
 import tarfile
 from pathlib import Path
-from typing import Sequence, Tuple, Optional, List, Mapping, Iterator, Generator, Any
+from typing import Sequence, Tuple, Optional, List, Mapping, Iterator
 
 import click
 import keras
 import numpy as np
-from PIL import Image
 
 Model = keras.Model
 
@@ -66,7 +64,12 @@ class Glob(click.ParamType):
 
 
 def caculate_labels_and_domains_from_paths(paths: Iterator[Path]) -> Tuple[Sequence[int], Mapping[str, int]]:
-    labels: Sequence[str] = []
+    """
+    Calculate labels and domains from path name.
+    :param paths: Iterator of Path.
+    :return: Sequences of labels and detected domain.
+    """
+    labels: List[int] = []
     domain: Mapping[str, int] = {}
     for path in paths:
         if path.suffix == ".jpg":
@@ -78,22 +81,34 @@ def caculate_labels_and_domains_from_paths(paths: Iterator[Path]) -> Tuple[Seque
 
 
 def normalize_image(image: np.array) -> np.array:
-    return (image / 127.5) - 1
-
+    """
+    Normalise image range values.
+    :param image: The image to transform
+    :return: The image with right range values.
+    """
+    return np.array((image / 127.5) - 1)
 
 
 def save_model_and_domain(model_filepath: Path,
                           model: Model,
                           domain_filepath: Path,
                           domain: Mapping[str, int]) -> None:
+    """
+    Save model and demains if files.
+    :param model_filepath:  Model file name.
+    :param model: The model to save.
+    :param domain_filepath: Domain file name.
+    :param domain: The domain
+    """
     model.save(str(model_filepath))
-    with open(domain_filepath, 'wb') as domain_file:
+    with open(str(domain_filepath), 'wb') as domain_file:
         pickle.dump(domain, domain_file)
 
 
 def tar_paths(tar_filepath: Path) -> Iterator[Path]:
-    def tarIterator(tar):
-        for tarf in tar:
-            yield Path(tarf.name)
-
-    return tarIterator(tarfile.open(tar_filepath))
+    """
+    Return generator with Path of tar files"
+    :param tar_filepath: Tar file name
+    :return: Generator to yield path of each files in tar file.
+    """
+    return (Path(tarf.name) for tarf in tarfile.open(tar_filepath))

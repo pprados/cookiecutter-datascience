@@ -6,11 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.1] - YYYY-MM-DD
 ### Added
 - TODO: Update CHANGELOG.md
+
 ### Changed
+
 ### Deprecated
+
 ### Removed
+
 ### Fixed
+
 ### Security
+
+## [0.0.1] - YYYY-MM-DD
+
+- TODO: Update CHANGELOG.md

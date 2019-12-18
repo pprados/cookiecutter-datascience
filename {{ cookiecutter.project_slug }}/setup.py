@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
 import re
@@ -5,6 +6,8 @@ import subprocess
 from typing import List
 
 from setuptools import setup, find_packages
+
+PYTHON_VERSION="{{ cookiecutter.python_version }}"
 
 # USE_GPU="-gpu" ou "" si le PC possède une carte NVidia
 # ou suivant la valeur de la variable d'environnement GPU (export GPU=yes)
@@ -25,6 +28,7 @@ requirements: List[str] = [
     'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}
     'appdirs', {% endif %}
+    'PyInstaller',
     'numpy~=1.14',
     'pandas~=0.22',
 ]
@@ -48,14 +52,14 @@ dev_requirements: List[str] = [
     'pip',
     # PPR necessaire a mlflow ? 'conda',
     'twine',  # To publish package in Pypi
-    'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'm2r', 'nbsphinx',  # To generate doc
+    'sphinx', 'sphinx-execute-code', 'sphinx_rtd_theme', 'recommonmark', 'nbsphinx',  # To generate doc
     'flake8', 'pylint',  # For lint
     'daff',
-    'pytype',
-{% if cookiecutter.use_jupyter == "y"    %}    'jupyter',  # Use Jupyter{% endif %}
-{% if cookiecutter.use_DVC == "y"        %}    'dvc', 'boto3', # Use DVC{% endif %}
-{% if cookiecutter.use_aws == "y"        %}    'awscli',  # Use AWS{% endif %}
-{% if cookiecutter.use_tensorflow == "y" %}    'tensorboard',  # Use tensorflow{% endif %}
+    'pytype','mypy',{% if cookiecutter.use_jupyter == "y"    %}
+    'jupyter',  # Use Jupyter{% endif %}{% if cookiecutter.use_DVC == "y"        %}
+    'dvc', 'boto3', # Use DVC{% endif %}{% if cookiecutter.use_aws == "y"        %}
+    'awscli',  # Use AWS{% endif %}{% if cookiecutter.use_tensorflow == "y" %}
+    'tensorboard',  # Use tensorflow{% endif %}
 ]
 
 
@@ -96,16 +100,16 @@ setup(
     classifiers=[  # See https://pypi.org/classifiers/
         'Development Status :: 2 - PRE-ALPHA',
         # Before release
-        # 'Development Status :: 5 - Production/Stable'
+        # 'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'Intended Audience :: Developers',
         {% if cookiecutter.open_source_software == 'y' %}'License :: OSI Approved'{% else %}'License :: Other/Proprietary License'{% endif %},
         'Natural Language :: English',
-        'Programming Language :: Python :: {{ cookiecutter.python_version }}',
+        'Programming Language :: Python :: '+ PYTHON_VERSION,
         'Operating System :: OS Independent',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
     ],
-    python_requires='~={{ cookiecutter.python_version }}',  # Version de Python
+    python_requires='~=' + PYTHON_VERSION,
     test_suite="tests",
     setup_requires=setup_requirements,
     tests_require=test_requirements,
@@ -114,6 +118,14 @@ setup(
         'test': test_requirements,
         },
     packages=find_packages(),
-    use_scm_version=True,  # Gestion des versions à partir des tags Git
+    # TODO Declare the typing is correct ? (See PEP 561)
+    # package_data={"{{cookiecutter.project_slug}}": ["py.typed"]},
+    use_scm_version=True,  # Manage versions from Git tags
     install_requires=requirements,
+# TODO: select the main function
+#    entry_points = {
+#            "console_scripts": [
+#                '{{cookiecutter.project_slug}} = {{cookiecutter.project_slug}}.{{cookiecutter.project_slug}}:main'
+#            ]
+#        },
 )

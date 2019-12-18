@@ -12,5 +12,6 @@
   "use_aws":"n",
   "use_s3":"{{ \"n\" if (cookiecutter.use_aws == \"n\" or cookiecutter.use_git_LFS == \"y\") else \"n\"}}",
   "use_DVC":"{{ \"n\" if (cookiecutter.use_git_LFS == \"y\" or cookiecutter.use_s3 == \"y\") else \"n\"}}",
+  "use_docker":"y",
   "add_makefile_comments": "y"
 }

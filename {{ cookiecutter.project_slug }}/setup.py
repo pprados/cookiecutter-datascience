@@ -25,17 +25,16 @@ AIRFLOW_VERSION: str = os.environ['AIRFLOW_VERSION'] if "AIRFLOW_VERSION" in os.
 requirements: List[str] = [
     'click', 'click-pathlib',
     'python-dotenv',
+    'PyInstaller',
     'sklearn',{% if cookiecutter.use_tensorflow == "y" %}
     'tensorflow' + USE_GPU + '~=1.3', # Ubuntu: sudo apt-get install cuda-libraries-10.0
     'keras',{% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'spacy~=2.0', {% endif %}{% if cookiecutter.use_text_processing == "y" %}
     'nltk~=3.3', {% endif %}{% if cookiecutter.use_DVC == "y" %}
-    'appdirs', {% endif %}
     'appdirs', {% endif %}{% if cookiecutter.use_datadriver == "y" %}
     'datadriver', {% endif %}{% if cookiecutter.use_airflow == "y" %}
     'apache-airflow[crypto,celery,postgres,hive,jdbc,mysql,ssh]==' + AIRFLOW_VERSION,
     'redis==3.2',{% endif %}
-    'PyInstaller',
     'numpy~=1.14',
     'pandas~=0.22',
 ]

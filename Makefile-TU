@@ -2,6 +2,8 @@
 
 # This is a unit test of all target of generated Makefile
 # Use a temporay coTS = -e -c
+SHELL=/bin/bash
+.SHELLFLAGS = -e -c
 .ONESHELL:
 ifeq ($(OFFLINE),True)
 export CONDA_ARGS=--use-index-cache --use-local --offline
@@ -88,7 +90,7 @@ define do_make
 	conda deactivate
 	conda env remove -n $$V 2>/dev/null
 	# PPR bug avec DVC si je rm ?
-	rm -Rf $$D
+	#rm -Rf $$D
 endef
 
 .PHONY: help
@@ -306,7 +308,7 @@ ML: prepare features train evaluate visualize
 
 #-------------------
 # Group of options
-NOT_TESTED: clean-pip check-twine test-twine release ec2-attach ec2-notebook
+NOT_TESTED: clean-pip check-twine test-twine release ec2-attach ec2-notebook docker-*
 TEXT_PROCESSING_ONLINE:spacy NLTK
 DEFAULT: CLEAN STD DVC DIST TEST ML
 DEFAULT_ONLINE: STD_ONLINE

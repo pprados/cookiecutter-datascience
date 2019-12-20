@@ -29,7 +29,7 @@ def _run_make_cmd(dirname: str, cmd: str):
         {cmd} || (echo ">>>>>>>>>>> ERROR with '{cmd}'" ; read PPR )
         conda deactivate
         conda env remove -n $V 2>/dev/null
-        """, shell=True)
+        """, shell=True, executable='/bin/bash')
 
 
 @pytest.fixture

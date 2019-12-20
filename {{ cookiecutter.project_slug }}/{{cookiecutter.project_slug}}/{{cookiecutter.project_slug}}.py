@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables
-    if not getattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
+    if not hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
         dotenv.load_dotenv(dotenv.find_dotenv())
 
     sys.exit(main())  # pylint: disable=E1120

@@ -6,9 +6,12 @@ import glob
 import logging
 import os
 from typing import Optional, List, Any
-from pathlib import Path
-
+from pathlib import Path{% if cookiecutter.use_tensorflow == 'y' %}
+import keras{% endif %}
 import click
+
+# Expose the type of model for all python packages
+{% if cookiecutter.use_tensorflow == 'y' %}Model = keras.Model{% else %}Model = Any  # TODO: Select type{% endif %}
 
 def init_logger(logger: logging.Logger, level:int) -> None:
     """ Init logger

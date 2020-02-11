@@ -14,6 +14,12 @@
 # Attention, il n'est pas possible de passer les paramètres aux scripts
 {% endif %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
+# SNIPPET pour vérifier la version du programme `make`.
+{% endif %}# WARNING: Use make >4.0
+ifeq ($(shell echo "$(MAKE_VERSION) > 4" | bc -l),0)
+$(error Bad make version, please install make >= 4)
+endif{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
 # SNIPPET pour changer le mode de gestion du Makefile.
 # Avec ces trois paramètres, toutes les lignes d'une recette sont invoquées dans le même shell.
 # Ainsi, il n'est pas nécessaire d'ajouter des '&&' ou des '\' pour regrouper les lignes.
@@ -729,7 +735,8 @@ ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not check-twine in offline mode$(normal)"
 else
 	$(VALIDATE_VENV)
-	twine check dist/*
+	twine check \
+		$(shell find dist -type f \( -name "*.whl" -or -name '*.gz' \) -and ! -iname "*dev*" )
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -742,22 +749,28 @@ ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not test-twine in offline mode$(normal)"
 else
 	$(VALIDATE_VENV)
-	twine upload --sign --repository-url https://test.pypi.org/legacy/ dist/*
-	# PPR ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
+	rm -f dist/*.asc
+	twine upload --sign --repository-url https://test.pypi.org/legacy/ \
+		$(shell find dist -type f \( -name "*.whl" -or -name '*.gz' \) -and ! -iname "*dev*" )
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour publier la version sur pypi.org.{% endif %}
 .PHONY: release
 ## Publish distribution on pypi.org
-release: dist
+release: clean dist
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not release in offline mode$(normal)"
 else
 	@$(VALIDATE_VENV)
-	[[ $$(ls -1 dist --hide "*.dev*" | wc -l) -ne 0 ]] || echo -e "$(red)Add a tag version in GIT to release$(normal)"
+	[[ $$( find dist -name "*.dev*" | wc -l ) == 0 ]] || \
+		( echo -e "$(red)Add a tag version in GIT before release$(normal)" \
+		; exit 1 )
+	rm -f dist/*.asc
 	echo "Enter Pypi password"
-	ls $(PWD)/dist/* --hide "*.dev*" | xargs twine upload
+	twine upload --sign \
+		$(shell find dist -type f \( -name "*.whl" -or -name '*.gz' \) -and ! -iname "*dev*" )
+
 endif
 {% endif %}
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
@@ -958,7 +971,7 @@ test: .make-test
 # SNIPPET pour vérifier les TU et le recalcul de tout les notebooks et scripts.
 # Cette règle est invoqué avant un commit sur la branche master de git.{% endif %}
 .PHONY: validate
-.make-validate: .make-test typing $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
+.make-validate: .make-test .make-typing $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
 	@date >.make-validate
 ## Validate the version before release
 validate: .make-validate
@@ -1067,17 +1080,30 @@ develop:
 
 ## Install the tools in conda env
 uninstall: $(CONDA_PREFIX)/bin/$(PRJ)
-	rm $(CONDA_PREFIX)/bin/$(PRJ)
+	pip uninstall $(PRJ)
 
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette permettant un `make installer` pour générer un programme autonome comprennant le code et
 # un interpreteur Python. Ainsi, il suffit de le copier et de l'exécuter sans pré-requis{% endif %}
+# FIXME: Installer for Alpine ?
 dist/$(PRJ)$(EXE): .make-validate
-	# FIXME: faire un installer pour Alpine ?
-	@PYTHONOPTIMIZE=2 && pyinstaller --onefile $(PRJ)/$(PRJ).py
-	echo -e "$(cyan)Executable is here 'dist/$(PRJ)$(EXE)'$(normal)"
+	@PYTHONOPTIMIZE=2 && pyinstaller $(PYINSTALLER_OPT) --onefile $(PRJ)/$(PRJ).py
+	touch dist/$(PRJ)
+ifeq ($(BACKOS),Windows)
+# Must have conda installed on windows with tag_images_for_google_drive env
+	/mnt/c/WINDOWS/system32/cmd.exe /C 'conda activate $(PRJ) && python setup.py develop && pyinstaller --onefile tag_images_for_google_drive/tag_images_for_google_drive.py'
+	touch dist/$(PRJ).exe
+	echo -e "$(cyan)Executable is here 'dist/$(PRJ).exe'$(normal)"
+endif
+ifeq ($(OS),Darwin)
+	ln -f "dist/$(PRJ)" "dist/$(PRJ).macos"
+	echo -e "$(cyan)Executable is here 'dist/$(PRJ).macos'$(normal)"
+else
+	echo -e "$(cyan)Executable is here 'dist/$(PRJ)'$(normal)"
+endif
+
 ## Build standalone executable for this OS
-installer: dist/$(PRJ)$(EXE)
+installer: dist/$(PRJ)
 
 {% if cookiecutter.use_docker == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette pour créer un Dockerfile.standalone avec la version du projet.

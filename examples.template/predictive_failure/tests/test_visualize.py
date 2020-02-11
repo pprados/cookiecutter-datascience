@@ -12,7 +12,7 @@ class TestVisualize(unittest.TestCase):
     """ Unit test of prepare_dataset.
     """
 
-    def test_visualize_with_empty_list(self) -> None:  # pylint: disable=R0201
+    def test_visualize_with_empty_list(self) -> None:  # pylint: disable=no-self-use
         """ Test train_model() with no data.
         """
         # Given

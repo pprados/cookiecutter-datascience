@@ -56,4 +56,4 @@ if __name__ == '__main__':
     if not getattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
         dotenv.load_dotenv(dotenv.find_dotenv())
 
-    sys.exit(main())  # pylint: disable=E1120
+    sys.exit(main(standalone_mode=False))  # pylint: disable=no-value-for-parameter,unexpected-keyword-arg

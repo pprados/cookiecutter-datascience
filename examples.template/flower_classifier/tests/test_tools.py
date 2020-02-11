@@ -13,7 +13,7 @@ class TestTools(unittest.TestCase):
     """ Test tools
     """
 
-    def test_init_logger(self) -> None:  # pylint: disable=R0201
+    def test_init_logger(self) -> None:  # pylint: disable=no-self-use
         """ Test init_logger().
         """
         # Given

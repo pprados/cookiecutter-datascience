@@ -21,7 +21,7 @@ class TestFunctional(unittest.TestCase):
     """ Functional test of pipeline.
     """
 
-    def test_all_pipeline_with_none(self) -> None:  # pylint: disable=R0201
+    def test_all_pipeline_with_none(self) -> None:  # pylint: disable=no-self-use
         """ Test prepare_dataset() with no data.
         """
         # Given

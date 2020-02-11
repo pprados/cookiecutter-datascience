@@ -113,8 +113,8 @@ def main(input_files: Sequence[Path],
     """
     LOGGER.info('Evaluate model \'%s\' with datas', model_filepath)
 
-    with tf.Graph().as_default() as graph:  # pylint: disable=E1129
-        with tf.Session(graph=graph).as_default():  # pylint: disable=E1129
+    with tf.Graph().as_default() as graph:  # pylint: disable=not-context-manager
+        with tf.Session(graph=graph).as_default():  # pylint: disable=not-context-manager
             # 1. Load datas
             with open(str(domain_filepath), 'rb') as domain_file:
                 domain = pickle.load(domain_file)
@@ -143,4 +143,4 @@ if __name__ == '__main__':
     if not getattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
         dotenv.load_dotenv(dotenv.find_dotenv())
 
-    sys.exit(main())  # pylint: disable=E1120
+    sys.exit(main(standalone_mode=False))  # pylint: disable=no-value-for-parameter,unexpected-keyword-arg

@@ -18,7 +18,7 @@ class TestTrainModel(unittest.TestCase):
 
     @pytest.mark.slow
     @pytest.mark.gpu
-    def test_train_model_with_empty_list(self) -> None:  # pylint: disable=R0201
+    def test_train_model_with_empty_list(self) -> None:  # pylint: disable=no-self-use
         """ Test train_model() with no data.
         """
         # Given

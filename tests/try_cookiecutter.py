@@ -59,4 +59,4 @@ def main(output_dir: str, params: List[str]):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(standalone_mode=False))  # pylint: disable=no-value-for-parameter,unexpected-keyword-arg

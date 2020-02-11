@@ -4,6 +4,11 @@ SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
 
+# WARNING: Use make >4.0
+ifeq (0,$(shell echo "$(shell echo "$(MAKE_VERSION)" | sed 's@^[^0-9]*\([0-9]\+\).*@\1@') >= 4" | bc -l))
+$(error Bad make version, please install make >= 4)
+endif
+
 # Use NPROC=n
 .NOTPARALLEL:
 export NPROC?=$(shell nproc)
@@ -357,7 +362,7 @@ check-docs: .make-check-docs
 ## Check all generated rules
 check-makefile: .make-check-makefile
 
-## Check empty configure
+# Check empty configure
 .make-check-configure:
 	$(VALIDATE_VENV)
 	@conda env remove -n $(BRANCH) 2>/dev/null

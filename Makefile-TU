@@ -5,6 +5,11 @@
 SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
+
+ifeq ($(shell echo "$(MAKE_VERSION) >= 4" | bc -l),0)
+$(error Bad make version, please install make >= 4)
+endif
+
 ifeq ($(OFFLINE),True)
 export CONDA_ARGS=--use-index-cache --use-local --offline
 else

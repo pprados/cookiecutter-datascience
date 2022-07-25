@@ -62,6 +62,10 @@ The Makefile contains the central entry points for common tasks related to this 
 * ``make docker-stop`` will stop the container
 * ``make docker-attach`` will attach the console to the container
 * ``make docker-bash`` will attach a shell in the container
+
+* ``make docker-make-image`` create an image to build the project inside a container
+* ``make docker-make-shell`` start a shell inside a container to build the project
+* ``make docker-make-clean`` remove the docker image for build the project
 {% endif %}
 
 

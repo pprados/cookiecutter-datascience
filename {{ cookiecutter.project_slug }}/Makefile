@@ -16,7 +16,7 @@
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour vérifier la version du programme `make`.
 {% endif %}# WARNING: Use make >4.0
-ifeq ($(shell echo "$(MAKE_VERSION) > 4" | bc -l),0)
+ifeq ($(shell echo "$(shell echo $(MAKE_VERSION) | sed 's@^[^0-9]*\([0-9]\+\).*@\1@' ) >= 4" | bc -l),0)
 $(error Bad make version, please install make >= 4)
 endif{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -33,6 +33,14 @@ endif{% if cookiecutter.add_makefile_comments == 'y' %}
 SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
+
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour injecter les variables de .env.{% endif %}
+ifneq (,$(wildcard .env))
+include .env
+endif
+
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour détecter l'OS d'exécution.{% endif %}
@@ -54,8 +62,11 @@ ifdef GPU
 USE_GPU:=$(shell [[ "$$GPU" == yes ]] && echo "-gpu")
 else ifneq ("$(wildcard /proc/driver/nvidia)","")
 USE_GPU:=-gpu
-else ifdef CUDA_PATH
+else ifdef CUDA_HOME
 USE_GPU:=-gpu
+endif
+ifdef USE_GPU
+CUDA_VER=$(shell nvidia-smi | awk -F"CUDA Version:" 'NR==3{split($$2,a," ");print a[1]}')
 endif
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -112,6 +123,8 @@ VENV ?= $(PRJ)
 {% if cookiecutter.use_jupyter == 'y' %}KERNEL ?=$(VENV){% endif %}
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:={{ cookiecutter.python_version }}
+PYTHON_SRC=$(shell find -L "$(PRJ)" -type f -iname '*.py' | grep -v __pycache__)
+PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
 {% if cookiecutter.use_aws == 'y' %}S3_BUCKET?=s3://$(subst _,-,$(PRJ))
 PROFILE = default{% endif %}
 DOCKER_REPOSITORY = $(USER)
@@ -127,8 +140,6 @@ export DATA?=data
 # DVC_BUCKET?=hdfs://user@example.com
 DVC_BUCKET?={% if cookiecutter.use_s3 == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% endif %}
 # List of source and tests files
-PYTHON_SRC=$(shell find -L "$(PRJ)" -type f -iname '*.py' | grep -v __pycache__)
-PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
 {% if cookiecutter.use_tensorflow == "y" %}TENSORFLOW_LOGDIR?=./logdir{% endif %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour reconstruire tous les chemins importants permettant
@@ -137,10 +148,11 @@ PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
 # Pour que cela fonctionne, il faut avoir un environement Conda actif,
 # identifié par la variable CONDA_PREFIX (c'est généralement le cas).{% endif %}
 # Conda environment
-CONDA_BASE:=$(shell conda info --base)
+CONDA_BASE:=$(shell AWS_DEFAULT_PROFILE=default conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
 CONDA_ARGS?=
+export VIRTUAL_ENV=$(CONDA_PREFIX)
 {# PIP_INDEX_URL?=https://pypi.org/simple #}
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
 PIP_ARGS?=
@@ -151,6 +163,19 @@ PIP_ARGS?=
 # A utiliser avec par exemple
 # pip $(EXTRA_INDEX) install ...{% endif %}
 EXTRA_INDEX:=--extra-index-url=https://pypi.anaconda.org/octo
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour gérer permettre d'invoquer une cible make avec des paramètres.
+# Pour cela, toutes les cibles inconnues, sont considérées comme des paramètres
+# et se retrouvent dans la variables ARGS. Pour que ces cibles ne génères pas d'erreurs
+# on ajoute une règle pour ignorer toutes les cibles inconnes.
+# Cela est en commentaire et doit être activé spécifiquement.{% endif %}
+# Calculate the make extended parameter
+# Keep only the unknown target
+#ARGS = `ARGS="$(filter-out $@,$(MAKECMDGOALS))" && echo $${ARGS:-${1}}`
+# Hack to ignore unknown target. May be used to calculate parameters
+#%:
+#	@:
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer automatiquement l'aide du Makefile.
@@ -214,6 +239,14 @@ dump-%:
 	else
 		echo "$*=${${*}}";
 	fi
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour invoker un shell dans le context du Makefile{% endif %}
+.PHONY: shell
+## Run shell in Makefile context
+shell:
+	$(SHELL)
+
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer les Notebooks avec GIT.
@@ -295,7 +328,7 @@ endif{% endif %}{% endif %}
 	chmod +x .git/hooks/pre-push
 
 # Init git configuration
-.gitattributes: | .git .git/hooks/pre-push{% if cookiecutter.use_DVC == 'y' %} .dvc{% endif %}  # Configure git
+.git/config: | .git .git/hooks/pre-push{% if cookiecutter.use_DVC == 'y' %} .dvc{% endif %}  # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
@@ -334,8 +367,8 @@ endif{% endif %}
 # - ACTIVATE_VENV pour activer le VENV avant le traitement
 # Pour cela, sélectionnez la version de VALIDATE_VENV qui vous convient.
 # Attention, toute les règles proposées ne sont pas compatible avec le mode ACTIVATE_VENV{% endif %}
-CHECK_VENV=@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
-  then ( echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ) ; fi
+CHECK_VENV=@if [[ "$VENV" != "$(CONDA_DEFAULT_ENV)" ]] ; \
+  then echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ; fi
 
 ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV) $(CONDA_ARGS)
 DEACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda deactivate
@@ -513,7 +546,7 @@ endif{% endif %}
 configure:
 	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y $(CONDA_ARGS)
 	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
-	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal) $(CONDA_ARGS)" ; fi
+	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal)" ; fi
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------{% endif %}
 .PHONY: remove-venv
@@ -641,6 +674,41 @@ add-typing: typing
 	  ( cd $$phase ; find -L . -type f -name '*.py' -exec merge-pyi -i {} .pytype/pyi/{}i \; )
 	done
 
+{% if cookiecutter.use_docker == 'y' %}
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour créer un environnement 'make' dans un conteneur Docker.{% endif %}
+.PHONY: docker-make-image docker-make-shell docker-make-clean
+## Create a docker image to build the project with make
+docker-make-image: docker/MakeDockerfile
+	$(CHECK_DOCKER)
+	echo -e "$(green)Build docker image '$(DOCKER_REPOSITORY)/$(PRJ)-make' to build the project...$(normal)"
+	REPO=$(shell git remote get-url origin)
+	echo "REPO=$$REPO"
+	docker build \
+		--build-arg UID=$$(id -u) \
+		--build-arg REPO="$$REPO" \
+		--build-arg BRANCH=develop \
+		--tag $(DOCKER_REPOSITORY)/$(PRJ)-make \
+		-f docker/MakeDockerfile .
+	printf	"$(green)Declare\n$(cyan)alias dmake='docker run -v $$PWD:/$(PRJ) -it $(DOCKER_REPOSITORY)/$(PRJ)-make'$(normal)\n"
+	@echo -e "$(green)and $(cyan)dmake ...  # Use make in a Docker container$(normal)"
+
+## Start a shell to build the project in a docker container
+docker-make-shell:
+	@docker run --rm \
+		-v $(PWD):/$(PRJ) \
+		--group-add $$(getent group docker | cut -d: -f3) \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(PWD):/$(PRJ) \
+		{% if (cookiecutter.use_aws == 'y' or cookiecutter.use_s3 == 'y') %}
+		-v $$HOME/.aws:/home/$(PRJ)/.aws \{% endif %}
+		--entrypoint $(SHELL) \
+		-it $(DOCKER_REPOSITORY)/$(PRJ)-make
+
+docker-make-clean:
+	@docker image rm $(DOCKER_REPOSITORY)/$(PRJ)-make
+	@echo -e "$(cyan)Docker image '$(DOCKER_REPOSITORY)/$(PRJ)-make' removed$(normal)"{% endif %}
 {% if cookiecutter.use_airflow == 'y' %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -666,6 +734,7 @@ up-docker-dev:
 #PPR SPHINX_FLAGS=-j$(NPROC)
 SPHINX_FLAGS=
 # Generate API docs
+#PPR: Voir Mkdoc https://news.ycombinator.com/item?id=17717513
 docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	sphinx-apidoc -f -o docs/source $(PRJ)/
@@ -708,7 +777,7 @@ sdist: dist/$(PRJ_PACKAGE)-*.tar.gz
 # python setup.py --version
 # Cela correspond au dernier tag d'un format 'version'{% endif %}
 .PHONY: bdist
-dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl: $(REQUIREMENTS)
+dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl: $(REQUIREMENTS) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	python setup.py bdist_wheel
 
@@ -888,9 +957,7 @@ clean-pyc:
 # Remove build artifacts and docs
 clean-build:
 	@/usr/bin/find -L . -type f -name ".make-*" -delete
-	@rm -fr build/
-	@rm -fr dist/*
-	@rm -fr *.egg-info
+	@rm -fr build/ dist/* *.egg-info .repository
 	@echo -e "$(cyan)Build cleaned$(normal)"
 {% if cookiecutter.use_jupyter == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -929,14 +996,14 @@ clean: clean-pyc clean-build {% if cookiecutter.use_jupyter == 'y' %}clean-noteb
 # SNIPPET pour faire le ménage du projet{% endif %}
 .PHONY: clean-all
 # Clean all environments
-clean-all:{% if cookiecutter.use_jupyter == 'y' %} remove-kernel{% endif %} clean remove-venv
+clean-all:{% if cookiecutter.use_jupyter == 'y' %} remove-kernel{% endif %} clean remove-venv {% if cookiecutter.use_docker == 'y' %}docker-make-clean{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour executer les tests unitaires et les tests fonctionnels.
 # Utilisez 'NPROC=1 make unit-test' pour ne pas paralléliser les tests
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite{% endif %}
 ifeq ($(shell test $(NPROC) -gt 1; echo $$?),0)
-PYTEST_ARGS ?=-n $(NPROC)
+PYTEST_ARGS ?=-n $(NPROC)  --dist loadgroup
 else
 PYTEST_ARGS ?=
 endif
@@ -1078,7 +1145,7 @@ install: $(CONDA_PREFIX)/bin/$(PRJ)
 develop:
 	python setup.py develop
 
-## Install the tools in conda env
+## Uninstall the tools from the conda env
 uninstall: $(CONDA_PREFIX)/bin/$(PRJ)
 	pip uninstall $(PRJ)
 
@@ -1104,6 +1171,15 @@ endif
 
 ## Build standalone executable for this OS
 installer: dist/$(PRJ)
+
+## Publish the distribution in a local repository
+local-repository:
+	@pip install pypiserver || true
+	mkdir -p .repository/$(PRJ)
+	( cd .repository/$(PRJ) ; ln -fs ../../dist/*.whl . )
+	echo -e "$(green)export PIP_EXTRA_INDEX_URL=http://localhost:8888/simple$(normal)"
+	echo -e "or use $(green)pip install --index-url http://localhost:8888/simple/$(normal)"
+	pypi-server -p 8888 .repository/
 
 {% if cookiecutter.use_docker == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # Recette pour créer un Dockerfile.standalone avec la version du projet.

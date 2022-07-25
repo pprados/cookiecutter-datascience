@@ -21,7 +21,7 @@ $ conda install cookiecutter
 
 ## Pour démarrer un nouveau projet, executez:
 ```bash
-    cookiecutter https://gitlab.octo.com/pprados/cookiecutter-bda.git
+    cookiecutter https://github.com/pprados/cookiecutter-datascience.git
 ```
 et répondez aux questions.
 

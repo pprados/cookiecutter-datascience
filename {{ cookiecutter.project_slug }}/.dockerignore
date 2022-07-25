@@ -2,3 +2,7 @@ docs/
 reports/
 stubs/
 test/
+venv/
+.venv
+.git
+.env

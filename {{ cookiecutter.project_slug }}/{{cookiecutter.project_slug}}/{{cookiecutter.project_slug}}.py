@@ -3,7 +3,7 @@ import sys
 import click
 import dotenv
 
-from bda_project.tools import init_logger, logging
+from {{ cookiecutter.project_slug }}.tools import init_logger, logging
 
 LOGGER = logging.getLogger(__name__)
 

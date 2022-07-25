@@ -35,7 +35,7 @@ pip-delete-this-directory.txt
 *.manifest
 *.spec
 MANIFEST
-.DS_Store
+*DS_Store
 
 
 # PyInstaller
@@ -119,6 +119,7 @@ site/
 *.rdb
 
 # Project
+.repository
 datas/interim/{% if cookiecutter.use_tensorflow == 'y' %}
 logdir/{% endif %}{% if cookiecutter.use_aws == 'y' %}
 # A activer si les données peuvent venir d'un bucket s3 ou d'autres sources

@@ -231,7 +231,7 @@ latex_documents = [
         master_doc,  # Doc name
         '{{cookiecutter.project_slug.replace('_', '')}}.tex',  # targetname
         '{{cookiecutter.project_name}} Documentation',  # title
-        '{{cookiecutter.project_slug.replace('_', '')}}',  # author
+        '{{cookiecutter.author}}',  # author
         'manual',  # documentclass
         # 'howto',  # documentclass
         False,  # toctree_only

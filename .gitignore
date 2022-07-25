@@ -34,7 +34,7 @@ pip-delete-this-directory.txt
 *.manifest
 *.spec
 MANIFEST
-.DS_Store
+*DS_Store
 Dockerfile
 
 

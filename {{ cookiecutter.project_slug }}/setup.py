@@ -39,7 +39,7 @@ requirements: List[str] = [
     'pandas~=0.22',
 ]
 
-setup_requirements: List[str] = ["pytest-runner","setuptools_scm"]
+setup_requirements: List[str] = ["pytest-runner", "setuptools_scm"]
 
 # Package nécessaires aux tests
 test_requirements: List[str] = [

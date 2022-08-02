@@ -14,6 +14,12 @@
 # Attention, il n'est pas possible de passer les paramètres aux scripts
 
 # ---------------------------------------------------------------------------------------
+# SNIPPET pour vérifier la version du programme `make`.
+# WARNING: Use make >4.0
+ifeq ($(shell echo "$(shell echo $(MAKE_VERSION) | sed 's@^[^0-9]*\([0-9]\+\).*@\1@' ) >= 4" | bc -l),0)
+$(error Bad make version, please install make >= 4)
+endif
+# ---------------------------------------------------------------------------------------
 # SNIPPET pour changer le mode de gestion du Makefile.
 # Avec ces trois paramètres, toutes les lignes d'une recette sont invoquées dans le même shell.
 # Ainsi, il n'est pas nécessaire d'ajouter des '&&' ou des '\' pour regrouper les lignes.
@@ -27,6 +33,14 @@
 SHELL=/bin/bash
 .SHELLFLAGS = -e -c
 .ONESHELL:
+
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour injecter les variables de .env.
+ifneq (,$(wildcard .env))
+include .env
+endif
+
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour détecter l'OS d'exécution.
@@ -44,12 +58,16 @@ endif
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour détecter la présence d'un GPU afin de modifier le nom du projet
 # et ses dépendances si nécessaire.
-ifdef GPU
-USE_GPU:=$(shell [[ "$$GPU" == yes ]] && echo "-gpu")
-else ifneq ("$(wildcard /proc/driver/nvidia)","")
+ifndef USE_GPU
+ifneq ("$(wildcard /proc/driver/nvidia)","")
 USE_GPU:=-gpu
-else ifdef CUDA_PATH
+else ifdef CUDA_HOME
 USE_GPU:=-gpu
+endif
+endif
+
+ifdef USE_GPU
+CUDA_VER=$(shell nvidia-smi | awk -F"CUDA Version:" 'NR==3{split($$2,a," ");print a[1]}')
 endif
 
 # ---------------------------------------------------------------------------------------
@@ -106,6 +124,8 @@ VENV ?= $(PRJ)
 
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:=3.6
+PYTHON_SRC=$(shell find -L "$(PRJ)" -type f -iname '*.py' | grep -v __pycache__)
+PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
 S3_BUCKET?=s3://$(subst _,-,$(PRJ))
 PROFILE = default
 DOCKER_REPOSITORY = $(USER)
@@ -113,10 +133,11 @@ DOCKER_REPOSITORY = $(USER)
 export DATA?=data
 
 # Conda environment
-CONDA_BASE:=$(shell conda info --base)
+CONDA_BASE:=$(shell AWS_DEFAULT_PROFILE=default conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
 CONDA_ARGS?=
+export VIRTUAL_ENV=$(CONDA_PREFIX)
 
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
 PIP_ARGS?=
@@ -127,6 +148,19 @@ PIP_ARGS?=
 # A utiliser avec par exemple
 # pip $(EXTRA_INDEX) install ...
 EXTRA_INDEX:=--extra-index-url=https://pypi.anaconda.org/octo
+
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour gérer permettre d'invoquer une cible make avec des paramètres.
+# Pour cela, toutes les cibles inconnues, sont considérées comme des paramètres
+# et se retrouvent dans la variables ARGS. Pour que ces cibles ne génères pas d'erreurs
+# on ajoute une règle pour ignorer toutes les cibles inconnes.
+# Cela est en commentaire et doit être activé spécifiquement.
+# Calculate the make extended parameter
+# Keep only the unknown target
+#ARGS = `ARGS="$(filter-out $@,$(MAKECMDGOALS))" && echo $${ARGS:-${1}}`
+# Hack to ignore unknown target. May be used to calculate parameters
+#%:
+#	@:
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer automatiquement l'aide du Makefile.
@@ -192,6 +226,14 @@ dump-%:
 	fi
 
 # ---------------------------------------------------------------------------------------
+# SNIPPET pour invoker un shell dans le context du Makefile
+.PHONY: shell
+## Run shell in Makefile context
+shell:
+	$(SHELL)
+
+
+# ---------------------------------------------------------------------------------------
 # SNIPPET pour gérer les Notebooks avec GIT.
 # Les recettes suivantes s'assure que git est bien initialisé
 # et ajoute des recettes pour les fichiers *.csv.
@@ -249,7 +291,7 @@ dump-%:
 	chmod +x .git/hooks/pre-push
 
 # Init git configuration
-.gitattributes: | .git .git/hooks/pre-push  # Configure git
+.gitattribute: | .git .git/hooks/pre-push  # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
@@ -276,8 +318,8 @@ endif
 # - ACTIVATE_VENV pour activer le VENV avant le traitement
 # Pour cela, sélectionnez la version de VALIDATE_VENV qui vous convient.
 # Attention, toute les règles proposées ne sont pas compatible avec le mode ACTIVATE_VENV
-CHECK_VENV=@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
-  then ( echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ) ; fi
+CHECK_VENV=@if [[ "$(VENV)" != "$(CONDA_DEFAULT_ENV)" ]] ; \
+  then echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ; fi
 
 ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV) $(CONDA_ARGS)
 DEACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda deactivate
@@ -425,7 +467,7 @@ endif
 configure:
 	@conda create --name "$(VENV)" python=$(PYTHON_VERSION) -y $(CONDA_ARGS)
 	@if [[ "base" == "$(CONDA_DEFAULT_ENV)" ]] || [[ -z "$(CONDA_DEFAULT_ENV)" ]] ; \
-	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal) $(CONDA_ARGS)" ; fi
+	then echo -e "Use: $(cyan)conda activate $(VENV)$(normal)" ; fi
 
 # ---------------------------------------------------------------------------------------
 .PHONY: remove-venv
@@ -473,7 +515,7 @@ scripts/phases: $(sort $(subst scripts/,scripts/.make-,$(wildcard scripts/*)))
 
 ## Invoke all script in lexical order from scripts/<% dir>
 run-%:
-	$(MAKE) scripts/.make-$*
+	$(MAKE) --no-print-directory scripts/.make-$*
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le code avec flake8 et pylint
@@ -511,7 +553,7 @@ pytype.cfg: $(CONDA_PREFIX)/bin/pytype
 	pytype "$(PRJ)"
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find -L . -type f -name '*.py' -exec pytype {} \; )
+	  [[ -e "$$phase" ]] && ( cd $$phase && find -L . -type f -name '*.py' -exec pytype {} \; )
 	done
 	touch ".pytype/pyi/$(PRJ)"
 	touch .make-typing
@@ -534,6 +576,41 @@ add-typing: typing
 
 
 
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour créer un environnement 'make' dans un conteneur Docker.
+.PHONY: docker-make-image docker-make-shell docker-make-clean
+## Create a docker image to build the project with make
+docker-make-image: docker/MakeDockerfile
+	$(CHECK_DOCKER)
+	echo -e "$(green)Build docker image '$(DOCKER_REPOSITORY)/$(PRJ)-make' to build the project...$(normal)"
+	REPO=$(shell git remote get-url origin)
+	echo "REPO=$$REPO"
+	docker build \
+		--build-arg UID=$$(id -u) \
+		--build-arg REPO="$$REPO" \
+		--build-arg BRANCH=develop \
+		--tag $(DOCKER_REPOSITORY)/$(PRJ)-make \
+		-f docker/MakeDockerfile .
+	printf	"$(green)Declare\n$(cyan)alias dmake='docker run -v $$PWD:/$(PRJ) -it $(DOCKER_REPOSITORY)/$(PRJ)-make'$(normal)\n"
+	@echo -e "$(green)and $(cyan)dmake ...  # Use make in a Docker container$(normal)"
+
+## Start a shell to build the project in a docker container
+docker-make-shell:
+	@docker run --rm \
+		-v $(PWD):/$(PRJ) \
+		--group-add $$(getent group docker | cut -d: -f3) \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(PWD):/$(PRJ) \
+		
+		-v $$HOME/.aws:/home/$(PRJ)/.aws \
+		--entrypoint $(SHELL) \
+		-it $(DOCKER_REPOSITORY)/$(PRJ)-make
+
+docker-make-clean:
+	@docker image rm $(DOCKER_REPOSITORY)/$(PRJ)-make
+	@echo -e "$(cyan)Docker image '$(DOCKER_REPOSITORY)/$(PRJ)-make' removed$(normal)"
+
+
 
 
 # ---------------------------------------------------------------------------------------
@@ -546,6 +623,7 @@ add-typing: typing
 #PPR SPHINX_FLAGS=-j$(NPROC)
 SPHINX_FLAGS=
 # Generate API docs
+#PPR: Voir Mkdoc https://news.ycombinator.com/item?id=17717513
 docs/source: $(REQUIREMENTS) $(PYTHON_SRC)
 	$(VALIDATE_VENV)
 	sphinx-apidoc -f -o docs/source $(PRJ)/
@@ -588,7 +666,7 @@ sdist: dist/$(PRJ_PACKAGE)-*.tar.gz
 # python setup.py --version
 # Cela correspond au dernier tag d'un format 'version'
 .PHONY: bdist
-dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl: $(REQUIREMENTS)
+dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl: $(REQUIREMENTS) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	python setup.py bdist_wheel
 
@@ -615,7 +693,8 @@ ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not check-twine in offline mode$(normal)"
 else
 	$(VALIDATE_VENV)
-	twine check dist/*
+	twine check \
+		$(shell find dist -type f \( -name "*.whl" -or -name '*.gz' \) -and ! -iname "*dev*" )
 endif
 
 # ---------------------------------------------------------------------------------------
@@ -628,22 +707,28 @@ ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not test-twine in offline mode$(normal)"
 else
 	$(VALIDATE_VENV)
-	twine upload --sign --repository-url https://test.pypi.org/legacy/ dist/*
-	# PPR ls . --hide "*.dev*" | xargs twine upload --sign --repository-url https://test.pypi.org/legacy/
+	rm -f dist/*.asc
+	twine upload --sign --repository-url https://test.pypi.org/legacy/ \
+		$(shell find dist -type f \( -name "*.whl" -or -name '*.gz' \) -and ! -iname "*dev*" )
 endif
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour publier la version sur pypi.org.
 .PHONY: release
 ## Publish distribution on pypi.org
-release: dist
+release: clean dist
 ifeq ($(OFFLINE),True)
 	@echo -e "$(red)Can not release in offline mode$(normal)"
 else
 	@$(VALIDATE_VENV)
-	[[ $$(ls -1 dist --hide "*.dev*" | wc -l) -ne 0 ]] || echo -e "$(red)Add a tag version in GIT to release$(normal)"
+	[[ $$( find dist -name "*.dev*" | wc -l ) == 0 ]] || \
+		( echo -e "$(red)Add a tag version in GIT before release$(normal)" \
+		; exit 1 )
+	rm -f dist/*.asc
 	echo "Enter Pypi password"
-	ls $(PWD)/dist/* --hide "*.dev*" | xargs twine upload
+	twine upload --sign \
+		$(shell find dist -type f \( -name "*.whl" -or -name '*.gz' \) -and ! -iname "*dev*" )
+
 endif
 
 
@@ -705,9 +790,7 @@ clean-pyc:
 # Remove build artifacts and docs
 clean-build:
 	@/usr/bin/find -L . -type f -name ".make-*" -delete
-	@rm -fr build/
-	@rm -fr dist/*
-	@rm -fr *.egg-info
+	@rm -fr build/ dist/* *.egg-info .repository
 	@echo -e "$(cyan)Build cleaned$(normal)"
 
 
@@ -739,14 +822,14 @@ clean: clean-pyc clean-build
 # SNIPPET pour faire le ménage du projet
 .PHONY: clean-all
 # Clean all environments
-clean-all: clean remove-venv
+clean-all: clean remove-venv docker-make-clean
 
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour executer les tests unitaires et les tests fonctionnels.
 # Utilisez 'NPROC=1 make unit-test' pour ne pas paralléliser les tests
 # Voir https://setuptools.readthedocs.io/en/latest/setuptools.html#test-build-package-and-run-a-unittest-suite
 ifeq ($(shell test $(NPROC) -gt 1; echo $$?),0)
-PYTEST_ARGS ?=-n $(NPROC)
+PYTEST_ARGS ?=-n $(NPROC)  --dist loadgroup
 else
 PYTEST_ARGS ?=
 endif
@@ -781,7 +864,7 @@ test: .make-test
 # SNIPPET pour vérifier les TU et le recalcul de tout les notebooks et scripts.
 # Cette règle est invoqué avant un commit sur la branche master de git.
 .PHONY: validate
-.make-validate: .make-test typing $(DATA)/raw scripts/* build/html build/linkcheck
+.make-validate: .make-test .make-typing $(DATA)/raw build/html build/linkcheck
 	@date >.make-validate
 ## Validate the version before release
 validate: .make-validate
@@ -888,19 +971,41 @@ install: $(CONDA_PREFIX)/bin/$(PRJ)
 develop:
 	python setup.py develop
 
-## Install the tools in conda env
+## Uninstall the tools from the conda env
 uninstall: $(CONDA_PREFIX)/bin/$(PRJ)
-	rm $(CONDA_PREFIX)/bin/$(PRJ)
+	pip uninstall $(PRJ)
 
 
 # Recette permettant un `make installer` pour générer un programme autonome comprennant le code et
 # un interpreteur Python. Ainsi, il suffit de le copier et de l'exécuter sans pré-requis
+# FIXME: Installer for Alpine ?
 dist/$(PRJ)$(EXE): .make-validate
-	# FIXME: faire un installer pour Alpine ?
-	@PYTHONOPTIMIZE=2 && pyinstaller --onefile $(PRJ)/$(PRJ).py
-	echo -e "$(cyan)Executable is here 'dist/$(PRJ)$(EXE)'$(normal)"
+	@PYTHONOPTIMIZE=2 && pyinstaller $(PYINSTALLER_OPT) --onefile $(PRJ)/$(PRJ).py
+	touch dist/$(PRJ)
+ifeq ($(BACKOS),Windows)
+# Must have conda installed on windows with tag_images_for_google_drive env
+	/mnt/c/WINDOWS/system32/cmd.exe /C 'conda activate $(PRJ) && python setup.py develop && pyinstaller --onefile tag_images_for_google_drive/tag_images_for_google_drive.py'
+	touch dist/$(PRJ).exe
+	echo -e "$(cyan)Executable is here 'dist/$(PRJ).exe'$(normal)"
+endif
+ifeq ($(OS),Darwin)
+	ln -f "dist/$(PRJ)" "dist/$(PRJ).macos"
+	echo -e "$(cyan)Executable is here 'dist/$(PRJ).macos'$(normal)"
+else
+	echo -e "$(cyan)Executable is here 'dist/$(PRJ)'$(normal)"
+endif
+
 ## Build standalone executable for this OS
-installer: dist/$(PRJ)$(EXE)
+installer: dist/$(PRJ)
+
+## Publish the distribution in a local repository
+local-repository:
+	@pip install pypiserver || true
+	mkdir -p .repository/$(PRJ)
+	( cd .repository/$(PRJ) ; ln -fs ../../dist/*.whl . )
+	echo -e "$(green)export PIP_EXTRA_INDEX_URL=http://localhost:8888/simple$(normal)"
+	echo -e "or use $(green)pip install --index-url http://localhost:8888/simple/$(normal)"
+	pypi-server -p 8888 .repository/
 
 
 # Recette pour créer un Dockerfile.standalone avec la version du projet.
@@ -954,7 +1059,7 @@ docker-build: .make-docker-build
 # Reset and rebuild the container
 docker-rebuild:
 	@rm -f Dockerfile.standalone .make-docker-build
-	$(MAKE) docker-stop docker-start
+	$(MAKE) --no-print-directory docker-stop docker-start
 
 # Create a dedicated volume
 docker-volume:
@@ -963,7 +1068,7 @@ docker-volume:
 	echo -e "$(cyan)Docker volume '$(PRJ)' created$(normal)"
 
 .cid_docker_daemon: .make-docker-build
-	$(SUDO) docker volume inspect "$(PRJ)" >/dev/null 2>&1 || $(MAKE) docker-volume
+	$(SUDO) docker volume inspect "$(PRJ)" >/dev/null 2>&1 || $(MAKE) --no-print-directory docker-volume
 	# Remove --detach if it's not a daemon
 	$(SUDO) docker run \
 		--detach \

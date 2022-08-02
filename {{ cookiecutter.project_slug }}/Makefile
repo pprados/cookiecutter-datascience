@@ -58,13 +58,14 @@ endif
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour détecter la présence d'un GPU afin de modifier le nom du projet
 # et ses dépendances si nécessaire.{% endif %}
-ifdef GPU
-USE_GPU:=$(shell [[ "$$GPU" == yes ]] && echo "-gpu")
-else ifneq ("$(wildcard /proc/driver/nvidia)","")
+ifndef USE_GPU
+ifneq ("$(wildcard /proc/driver/nvidia)","")
 USE_GPU:=-gpu
 else ifdef CUDA_HOME
 USE_GPU:=-gpu
 endif
+endif
+
 ifdef USE_GPU
 CUDA_VER=$(shell nvidia-smi | awk -F"CUDA Version:" 'NR==3{split($$2,a," ");print a[1]}')
 endif
@@ -76,7 +77,7 @@ NPROC?=$(shell nproc)
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour pouvoir lancer un browser avec un fichier local{% endif %}
 define BROWSER
-	python -c '
+	python $(PYTHON_ARGS) -c '
 	import os, sys, webbrowser
 	from urllib.request import pathname2url
 
@@ -123,6 +124,7 @@ VENV ?= $(PRJ)
 {% if cookiecutter.use_jupyter == 'y' %}KERNEL ?=$(VENV){% endif %}
 PRJ_PACKAGE:=$(PRJ)$(USE_GPU)
 PYTHON_VERSION:={{ cookiecutter.python_version }}
+PYTHON_ARGS:=
 PYTHON_SRC=$(shell find -L "$(PRJ)" -type f -iname '*.py' | grep -v __pycache__)
 PYTHON_TST=$(shell find -L tests -type f -iname '*.py' | grep -v __pycache__)
 {% if cookiecutter.use_aws == 'y' %}S3_BUCKET?=s3://$(subst _,-,$(PRJ))
@@ -151,12 +153,17 @@ DVC_BUCKET?={% if cookiecutter.use_s3 == 'y' %}$(S3_BUCKET){% else %}~/.dvc{% en
 CONDA_BASE:=$(shell AWS_DEFAULT_PROFILE=default conda info --base)
 CONDA_PACKAGE:=$(CONDA_PREFIX)/lib/python$(PYTHON_VERSION)/site-packages
 CONDA_PYTHON:=$(CONDA_PREFIX)/bin/python
-CONDA_ARGS?=
+CONDA_ARGS?=-c conda-forge
 export VIRTUAL_ENV=$(CONDA_PREFIX)
 {# PIP_INDEX_URL?=https://pypi.org/simple #}
 PIP_PACKAGE:=$(CONDA_PACKAGE)/$(PRJ_PACKAGE).egg-link
 PIP_ARGS?=
-{% if cookiecutter.use_jupyter == 'y' %}JUPYTER_DATA_DIR:=$(shell jupyter --data-dir 2>/dev/null || echo "~/.local/share/jupyter"){% endif %}
+{% if cookiecutter.use_jupyter == 'y' %}# Add lab extensions here
+JUPYTER_LABEXTENSIONS?=
+JUPYTER_DATA_DIR:=$(shell jupyter --data-dir 2>/dev/null || echo "~/.local/share/jupyter")
+JUPYTER_LABEXTENSIONS_DIR:=$(CONDA_PREFIX)/share/jupyter/labextensions
+_JUPYTER_LABEXTENSIONS:=$(foreach ext,$(JUPYTER_LABEXTENSIONS),$(JUPYTER_LABEXTENSIONS_DIR)/$(ext))
+{% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour ajouter des repositories complémentaires à PIP.
@@ -328,7 +335,7 @@ endif{% endif %}{% endif %}
 	chmod +x .git/hooks/pre-push
 
 # Init git configuration
-.git/config: | .git .git/hooks/pre-push{% if cookiecutter.use_DVC == 'y' %} .dvc{% endif %}  # Configure git
+.gitattribute: | .git .git/hooks/pre-push{% if cookiecutter.use_DVC == 'y' %} .dvc{% endif %}  # Configure git
 	@git config --local core.autocrlf input
 	# Set tabulation to 4 when use 'git diff'
 	@git config --local core.page 'less -x4'
@@ -367,7 +374,7 @@ endif{% endif %}
 # - ACTIVATE_VENV pour activer le VENV avant le traitement
 # Pour cela, sélectionnez la version de VALIDATE_VENV qui vous convient.
 # Attention, toute les règles proposées ne sont pas compatible avec le mode ACTIVATE_VENV{% endif %}
-CHECK_VENV=@if [[ "$VENV" != "$(CONDA_DEFAULT_ENV)" ]] ; \
+CHECK_VENV=@if [[ "$(VENV)" != "$(CONDA_DEFAULT_ENV)" ]] ; \
   then echo -e "$(green)Use: $(cyan)conda activate $(VENV)$(green) before using 'make'$(normal)"; exit 1 ; fi
 
 ACTIVATE_VENV=source $(CONDA_BASE)/etc/profile.d/conda.sh && conda activate $(VENV) $(CONDA_ARGS)
@@ -394,7 +401,9 @@ VALIDATE_VENV=$(CHECK_VENV)
 {% endif %}
 # All dependencies of the project must be here
 .PHONY: requirements dependencies
-REQUIREMENTS=$(PIP_PACKAGE) \
+{% if cookiecutter.use_rapids == 'y' %}
+REQUIREMENTS=$(RAPIDS) $(PIP_PACKAGE) \{% else %}
+REQUIREMENTS=$(PIP_PACKAGE) \{% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}	$(NLTK_DATABASE) $(SPACY_DATABASE) \
 {% endif %}	.gitattributes
 requirements: $(REQUIREMENTS)
@@ -427,6 +436,27 @@ $(CONDA_PYTHON):
 	@$(VALIDATE_VENV)
 	conda install -q "python=$(PYTHON_VERSION).*" -y $(CONDA_ARGS)
 
+{% if cookiecutter.use_rapids == 'y' %}
+# Rule to install NVIDIA Rapid
+RAPIDS=$(CONDA_PACKAGE)/cuda
+.PHONY: install-rapids
+## Install NVidia rapids framework
+install-rapids: $(RAPIDS)
+$(RAPIDS):
+ifeq ($(USE_GPU),-gpu)
+	@echo "$(green)  Install NVidia Rapids...$(normal)"
+	conda install -q -y $(CONDA_ARGS) \
+		cudf==$(CUDF_VER) \
+		cudatoolkit==$(CUDA_VER) \
+		dask-cuda \
+		dask-cudf \
+		dask-labextension
+else
+	conda install -q -y $(CONDA_ARGS) \
+		dask-labextension
+endif
+	touch $(RAPIDS)
+%{ endif %}
 # Rule to update the current venv, with the dependencies describe in `setup.py`
 $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 	@$(VALIDATE_VENV)
@@ -440,14 +470,29 @@ $(PIP_PACKAGE): $(CONDA_PYTHON) setup.py | .git # Install pip dependencies
 # Intall a Jupyter kernel
 $(JUPYTER_DATA_DIR)/kernels/$(KERNEL): $(REQUIREMENTS)
 	@$(VALIDATE_VENV)
-	python -O -m ipykernel install --user --name $(KERNEL)
+	python $(PYTHON_ARGS) -O -m ipykernel install --user --name $(KERNEL)
 	echo -e "$(cyan)Kernel $(KERNEL) installed$(normal)"
 
 # Remove the Jupyter kernel
 .PHONY: remove-kernel
 remove-kernel: $(REQUIREMENTS)
 	@echo y | jupyter kernelspec uninstall $(KERNEL) 2>/dev/null || true
-	echo -e "$(yellow)Warning: Kernel $(KERNEL) uninstalled$(normal)"{% endif %}
+	echo -e "$(yellow)Warning: Kernel $(KERNEL) uninstalled$(normal)"
+
+{% if cookiecutter.add_makefile_comments == 'y' %}# ---------------------------------------------------------------------------------------
+# SNIPPET pour gener les extensions jupyter
+#$(JUPYTER_LABEXTENSIONS)/dask-labextension:
+#	jupyter labextension install dask-labextension{% endif %}
+$(JUPYTER_LABEXTENSIONS_DIR)/%:
+	@echo -e "$(green)Install jupyter labextension $* $(normal)"
+	jupyter labextension install $*
+{% if cookiecutter.add_makefile_comments == 'y' %}
+# ---------------------------------------------------------------------------------------
+# SNIPPET pour gener les extensions jupyter{% endif %}
+$(JUPYTER_LABEXTENSIONS)/%:
+	jupyter labextension install $*
+
+JUPYTER_EXTENSIONS:= $(JUPYTER_LABEXTENSIONS)/dask-labextension{% endif %}
 {% if cookiecutter.use_text_processing == 'y' %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour récupérer les bases de données de nltk.
@@ -486,7 +531,7 @@ NLTK_DATABASE=
 $(NLTK_DATA)/tokenizers/%: $(PIP_PACKAGE)
 ifneq ($(OFFLINE),True)
 	@$(VALIDATE_VENV)
-	python -O -m nltk.downloader $* || true
+	python $(PYTHON_ARGS) -O -m nltk.downloader $* || true
 	touch $(NLTK_DATA)/tokenizers/$*
 else
 	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
@@ -496,7 +541,7 @@ $(NLTK_DATA)/corpora/%: $(PIP_PACKAGE)
 ifneq ($(OFFLINE),True)
 	@$(VALIDATE_VENV)
 	echo -e "$(cyan)Download $*...$(normal)"
-	python -O -m nltk.downloader $* || true
+	python $(PYTHON_ARGS) -O -m nltk.downloader $* || true
 	touch $(NLTK_DATA)/corpora/$*
 else
 	@echo -e "$(red)Can not download NLTK in offline mode$(normal)"
@@ -533,7 +578,7 @@ $(CONDA_PACKAGE)/spacy/data/%: $(PIP_PACKAGE)
 ifneq ($(OFFLINE),True)
 	@$(VALIDATE_VENV)
 	echo -e "$(cyan)Download $*...$(normal)"
-	python -O -m spacy download $*
+	python $(PYTHON_ARGS) -O -m spacy download $*
 	@touch $(CONDA_PACKAGE)/spacy/data/$*
 else
 	@echo -e "$(red)Can not download Spacy database in offline mode$(normal)"
@@ -581,7 +626,7 @@ upgrade-venv: upgrade-$(VENV)
 # Pour valider toutes les phases : `make nb-run-*`.
 # L'ordre alphabétique est utilisé. Il est conseillé de préfixer chaque notebook d'un numéro.{% endif %}
 .PHONY: nb-run-*
-notebooks/.make-%: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
+notebooks/.make-%: $(PIP_PACKAGE) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 	$(VALIDATE_VENV)
 	time jupyter nbconvert \
 	  --ExecutePreprocessor.timeout=-1 \
@@ -593,7 +638,7 @@ notebooks/phases: $(sort $(subst notebooks/,notebooks/.make-,$(wildcard notebook
 
 ## Invoke all notebooks in lexical order from notebooks/<% dir>
 nb-run-%: $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
-	VENV=$(VENV) $(MAKE) notebooks/.make-$*
+	VENV=$(VENV) $(MAKE) --no-print-directory notebooks/.make-$*
 {% endif %}
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
@@ -607,7 +652,7 @@ nb-run-%: $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
 scripts/.make-%: $(REQUIREMENTS)
 	$(VALIDATE_VENV)
 	time ls scripts/$*/*.py | grep -v __ | sed 's/\.py//g; s/\//\./g' | \
-		xargs -L 1 -t python -O -m
+		xargs -L 1 -t python $(PYTHON_ARGS) -O -m
 	@date >scripts/.make-$*
 
 # All phases
@@ -615,7 +660,7 @@ scripts/phases: $(sort $(subst scripts/,scripts/.make-,$(wildcard scripts/*)))
 
 ## Invoke all script in lexical order from scripts/<% dir>
 run-%:
-	$(MAKE) scripts/.make-$*
+	$(MAKE) --no-print-directory scripts/.make-$*
 {% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour valider le code avec flake8 et pylint{% endif %}
@@ -650,10 +695,10 @@ pytype.cfg: $(CONDA_PREFIX)/bin/pytype
 	$(VALIDATE_VENV)
 	@echo -e "$(cyan)Check typing...$(normal)"
 	# pytype
-	pytype "$(PRJ)"
+	pytype --config pytype.cfg "$(PRJ)"
 	for phase in scripts/*
 	do
-	  ( cd $$phase ; find -L . -type f -name '*.py' -exec pytype {} \; )
+	  [[ -e "$$phase" ]] && ( cd $$phase && find -L . -type f -name '*.py' -exec pytype --config pytype.cfg {} \; )
 	done
 	touch ".pytype/pyi/$(PRJ)"
 	touch .make-typing
@@ -766,7 +811,7 @@ docs: build/html
 .PHONY: sdist
 dist/$(PRJ_PACKAGE)-*.tar.gz: $(REQUIREMENTS)
 	@$(VALIDATE_VENV)
-	python setup.py sdist
+	python $(PYTHON_ARGS) setup.py sdist
 
 # Create a source distribution
 sdist: dist/$(PRJ_PACKAGE)-*.tar.gz
@@ -779,7 +824,7 @@ sdist: dist/$(PRJ_PACKAGE)-*.tar.gz
 .PHONY: bdist
 dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl: $(REQUIREMENTS) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
-	python setup.py bdist_wheel
+	python $(PYTHON_ARGS) setup.py bdist_wheel
 
 # Create a binary wheel distribution
 bdist: dist/$(subst -,_,$(PRJ_PACKAGE))-*.whl
@@ -849,9 +894,11 @@ endif
 # Utilisez `make notebook` à la place de `jupyter notebook`.{% endif %}
 .PHONY: notebook
 ## Start jupyter notebooks
-notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL)
+notebook: $(REQUIREMENTS) $(JUPYTER_DATA_DIR)/kernels/$(KERNEL) $(_JUPYTER_LABEXTENSIONS)
 	@$(VALIDATE_VENV)
-	DATA=$$DATA jupyter notebook --ExecutePreprocessor.kernel_name=$(KERNEL) {% endif %}
+	DATA=$$DATA jupyter lab \
+		--notebook-dir=notebooks \
+		--ExecutePreprocessor.kernel_name=$(KERNEL){% endif %}
 {% if (cookiecutter.use_aws == 'y' or cookiecutter.use_s3 == 'y') %}{% if cookiecutter.add_makefile_comments == 'y' %}
 # ---------------------------------------------------------------------------------------
 # SNIPPET pour installer aws cli.{% endif %}
@@ -1011,7 +1058,7 @@ endif
 .make-unit-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	@echo -e "$(cyan)Run unit tests...$(normal)"
-	python -m pytest  -s tests $(PYTEST_ARGS) -m "not functional"
+	python $(PYTHON_ARGS) -m pytest  -s tests $(PYTEST_ARGS) -m "not functional"
 	@date >.make-unit-test
 # Run only unit tests
 unit-test: .make-unit-test
@@ -1019,15 +1066,15 @@ unit-test: .make-unit-test
 .make-functional-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@$(VALIDATE_VENV)
 	@echo -e "$(cyan)Run functional tests...$(normal)"
-	python -m pytest  -s tests $(PYTEST_ARGS) -m "functional"
+	python $(PYTHON_ARGS) -m pytest  -s tests $(PYTEST_ARGS) -m "functional"
 	@date >.make-functional-test
 # Run only functional tests
 functional-test: .make-functional-test
 
 .make-test: $(REQUIREMENTS) $(PYTHON_TST) $(PYTHON_SRC)
 	@echo -e "$(cyan)Run all tests...$(normal)"
-	python -m pytest $(PYTEST_ARGS) -s tests
-	#python setup.py test
+	python $(PYTHON_ARGS) -m pytest $(PYTEST_ARGS) -s tests
+	#python $(PYTHON_ARGS) setup.py test
 	@date >.make-test
 	@date >.make-unit-test
 	@date >.make-functional-test
@@ -1038,7 +1085,7 @@ test: .make-test
 # SNIPPET pour vérifier les TU et le recalcul de tout les notebooks et scripts.
 # Cette règle est invoqué avant un commit sur la branche master de git.{% endif %}
 .PHONY: validate
-.make-validate: .make-test .make-typing $(DATA)/raw scripts/* {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
+.make-validate: .make-test .make-typing $(DATA)/raw {% if cookiecutter.use_jupyter == 'y' %}notebooks/* {% endif %}build/html build/linkcheck
 	@date >.make-validate
 ## Validate the version before release
 validate: .make-validate
@@ -1143,7 +1190,7 @@ install: $(CONDA_PREFIX)/bin/$(PRJ)
 
 ## Install the tools in conda env with 'develop' link
 develop:
-	python setup.py develop
+	python $(PYTHON_ARGS) setup.py develop
 
 ## Uninstall the tools from the conda env
 uninstall: $(CONDA_PREFIX)/bin/$(PRJ)
@@ -1158,7 +1205,7 @@ dist/$(PRJ)$(EXE): .make-validate
 	touch dist/$(PRJ)
 ifeq ($(BACKOS),Windows)
 # Must have conda installed on windows with tag_images_for_google_drive env
-	/mnt/c/WINDOWS/system32/cmd.exe /C 'conda activate $(PRJ) && python setup.py develop && pyinstaller --onefile tag_images_for_google_drive/tag_images_for_google_drive.py'
+	/mnt/c/WINDOWS/system32/cmd.exe /C 'conda activate $(PRJ) && python $(PYTHON_ARGS) setup.py develop && pyinstaller --onefile tag_images_for_google_drive/tag_images_for_google_drive.py'
 	touch dist/$(PRJ).exe
 	echo -e "$(cyan)Executable is here 'dist/$(PRJ).exe'$(normal)"
 endif
@@ -1233,7 +1280,7 @@ docker-build: .make-docker-build
 # Reset and rebuild the container
 docker-rebuild:
 	@rm -f Dockerfile.standalone .make-docker-build
-	$(MAKE) docker-stop docker-start
+	$(MAKE) --no-print-directory docker-stop docker-start
 
 # Create a dedicated volume
 docker-volume:
@@ -1242,7 +1289,7 @@ docker-volume:
 	echo -e "$(cyan)Docker volume '$(PRJ)' created$(normal)"
 
 .cid_docker_daemon: .make-docker-build
-	$(SUDO) docker volume inspect "$(PRJ)" >/dev/null 2>&1 || $(MAKE) docker-volume
+	$(SUDO) docker volume inspect "$(PRJ)" >/dev/null 2>&1 || $(MAKE) --no-print-directory docker-volume
 	# Remove --detach if it's not a daemon
 	$(SUDO) docker run \
 		--detach \

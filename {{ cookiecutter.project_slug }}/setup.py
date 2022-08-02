@@ -101,7 +101,7 @@ setup(
     long_description_content_type='text/markdown',
     url=_git_http_url(),
 
-    license={% if cookiecutter.open_source_software == 'y' %}'Apache License'{% else %}'Private usage'{% endif %},
+    license={% if cookiecutter.open_source_software == 'y' %}'Apache License'{% else %}'PROPRIETARY'{% endif %},
     keywords= "data science",
     classifiers=[  # See https://pypi.org/classifiers/
         'Development Status :: 2 - PRE-ALPHA',
@@ -123,7 +123,7 @@ setup(
         'dev': dev_requirements,
         'test': test_requirements,
         },
-    packages=find_packages(),
+    packages=find_packages(exclude=("tests",)),
     # TODO Declare the typing is correct ? (See PEP 561)
     # package_data={"{{cookiecutter.project_slug}}": ["py.typed"]},
     use_scm_version=True,  # Manage versions from Git tags

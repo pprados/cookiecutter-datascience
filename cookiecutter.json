@@ -7,6 +7,7 @@
   "python_version": "3.6",
   "use_jupyter":"n",
   "use_tensorflow": "n",
+  "use_rapids": "y",
   "use_text_processing": "{{ \"n\" if (cookiecutter.use_tensorflow == \"y\") else \"n\" }}",
   "use_git_LFS":"{{ \"y\" if (cookiecutter.open_source_software == \"y\") else \"n\"}}",
   "use_aws":"n",
